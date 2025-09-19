@@ -34,8 +34,12 @@ object WallpaperUtil {
 
             val wallpaperDrawable = try {
                 when {
+                    Build.VERSION.SDK_INT >= Build.VERSION_CODES.VANILLA_ICE_CREAM -> {
+                        // Android 15+ - Handle new wallpaper restrictions
+                        wallpaperManager.getDrawable(WallpaperManager.FLAG_SYSTEM)
+                    }
                     Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE -> {
-                        // Android 14+ - Use FLAG_SYSTEM explicitly
+                        // Android 14 - Use FLAG_SYSTEM explicitly
                         wallpaperManager.getDrawable(WallpaperManager.FLAG_SYSTEM)
                     }
                     else -> {
@@ -46,6 +50,15 @@ object WallpaperUtil {
             } catch (e: SecurityException) {
                 Log.w(TAG, "SecurityException accessing wallpaper: ${e.message}")
                 return null
+            } catch (e: Exception) {
+                Log.w(TAG, "Exception accessing wallpaper (possible HyperOS issue): ${e.message}")
+                // Fallback for HyperOS/MIUI
+                try {
+                    wallpaperManager.drawable
+                } catch (fallbackException: Exception) {
+                    Log.e(TAG, "Fallback also failed: ${fallbackException.message}")
+                    return null
+                }
             }
 
             if (wallpaperDrawable == null) {
@@ -66,10 +79,17 @@ object WallpaperUtil {
             // Convert to base64
             val base64String = bitmapToBase64(resizedBitmap, Bitmap.CompressFormat.JPEG, JPEG_QUALITY)
 
-            if (resizedBitmap != bitmap) {
-                resizedBitmap.recycle()
+            // Safe bitmap recycling
+            try {
+                if (resizedBitmap != bitmap && !resizedBitmap.isRecycled) {
+                    resizedBitmap.recycle()
+                }
+                if (!bitmap.isRecycled) {
+                    bitmap.recycle()
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Error recycling bitmaps: ${e.message}")
             }
-            bitmap.recycle()
 
             Log.d(TAG, "Successfully encoded wallpaper to base64 (${base64String?.length ?: 0} chars)")
             return base64String
