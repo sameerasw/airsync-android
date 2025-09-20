@@ -26,5 +26,8 @@ data class UiState(
     val isContinueBrowsingEnabled: Boolean = true,
     val isSendNowPlayingEnabled: Boolean = true,
     // Mac device status
-    val macDeviceStatus: MacDeviceStatus? = null
+    val macDeviceStatus: MacDeviceStatus? = null,
+    // Wallpaper selection
+    val showWallpaperSelectionDialog: Boolean = false,
+    val wallpaperSelectionMessage: String = ""
 )

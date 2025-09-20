@@ -1,6 +1,7 @@
 package com.sameerasw.airsync.presentation.viewmodel
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -678,6 +679,60 @@ class AirSyncViewModel(
                 com.sameerasw.airsync.service.MediaNotificationListener.setNowPlayingEnabled(ctx, enabled)
             }
         }
+    }
+
+    // Wallpaper selection functions
+    fun showWallpaperSelectionDialog(message: String = "") {
+        _uiState.value = _uiState.value.copy(
+            showWallpaperSelectionDialog = true,
+            wallpaperSelectionMessage = message
+        )
+    }
+
+    fun hideWallpaperSelectionDialog() {
+        _uiState.value = _uiState.value.copy(
+            showWallpaperSelectionDialog = false,
+            wallpaperSelectionMessage = ""
+        )
+    }
+
+    fun handleWallpaperSelected(context: Context, uri: Uri?) {
+        if (uri != null) {
+            viewModelScope.launch {
+                try {
+                    // Convert URI to bitmap and then to base64
+                    val bitmap = com.sameerasw.airsync.utils.WallpaperUtil.uriToBitmap(context, uri)
+                    if (bitmap != null) {
+                        val base64 = com.sameerasw.airsync.utils.WallpaperUtil.bitmapToBase64(
+                            bitmap,
+                            android.graphics.Bitmap.CompressFormat.JPEG,
+                            85
+                        )
+                        if (base64 != null) {
+                            // Send wallpaper to connected device
+                            com.sameerasw.airsync.utils.SyncManager.sendWallpaper(context, base64)
+                            _uiState.value = _uiState.value.copy(
+                                response = "Wallpaper synced successfully!"
+                            )
+                        } else {
+                            _uiState.value = _uiState.value.copy(
+                                response = "Failed to process wallpaper image"
+                            )
+                        }
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            response = "Failed to load wallpaper image"
+                        )
+                    }
+                } catch (e: Exception) {
+                    Log.e("AirSyncViewModel", "Error processing selected wallpaper: ${e.message}")
+                    _uiState.value = _uiState.value.copy(
+                        response = "Error processing wallpaper: ${e.message}"
+                    )
+                }
+            }
+        }
+        hideWallpaperSelectionDialog()
     }
 
 }
