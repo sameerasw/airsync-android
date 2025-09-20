@@ -26,6 +26,20 @@ object WallpaperUtil {
     private const val MAX_WALLPAPER_SIZE = 1920
     private const val JPEG_QUALITY = 85
 
+    // Callback interface for user wallpaper selection
+    interface WallpaperSelectionCallback {
+        fun onUserSelectionRequested(message: String = "All automated methods failed — require user selection")
+    }
+
+    private var wallpaperSelectionCallback: WallpaperSelectionCallback? = null
+
+    /**
+     * Set the callback for user wallpaper selection
+     */
+    fun setWallpaperSelectionCallback(callback: WallpaperSelectionCallback?) {
+        wallpaperSelectionCallback = callback
+    }
+
     /**
      * Public entry: get user's current static wallpaper as a Base64 JPEG (or null).
      * Tries multiple strategies (HyperOS/MIUI/Samsung/AOSP).
@@ -93,11 +107,9 @@ object WallpaperUtil {
                 Log.d(TAG, "OEM path probe failed: ${e.message}")
             }
 
-            // 5) As final resort: you must ask user to pick the wallpaper (SAF)
-            Log.w(TAG, "All automated methods failed — require user selection (SAF)")
-            // Implement promptUserForWallpaper in UI layer; placeholder here:
-            // val userPickedBitmap = promptUserForWallpaper(context)
-            // if (userPickedBitmap != null) return bitmapToBase64(userPickedBitmap,...)
+            // 5) As final resort: request user to pick the wallpaper via UI callback
+            Log.w(TAG, "All automated methods failed — require user selection")
+            wallpaperSelectionCallback?.onUserSelectionRequested("All automated methods failed — please select your wallpaper manually")
             return null
 
         } catch (e: Exception) {
@@ -301,7 +313,7 @@ object WallpaperUtil {
         return bitmap.scale(newW, newH)
     }
 
-    private fun bitmapToBase64(bitmap: Bitmap, format: Bitmap.CompressFormat, quality: Int): String? {
+    fun bitmapToBase64(bitmap: Bitmap, format: Bitmap.CompressFormat, quality: Int): String? {
         return try {
             val baos = ByteArrayOutputStream()
             bitmap.compress(format, quality, baos)
@@ -311,5 +323,43 @@ object WallpaperUtil {
             Log.e(TAG, "bitmapToBase64 error: ${e.message}")
             null
         }
+    }
+
+    /**
+     * Convert URI to Bitmap for wallpaper processing
+     */
+    fun uriToBitmap(context: Context, uri: Uri): Bitmap? {
+        return try {
+            val contentResolver = context.contentResolver
+            contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "uriToBitmap error: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Process user-selected wallpaper URI and return base64
+     */
+    fun processUserSelectedWallpaper(context: Context, uri: Uri): String? {
+        try {
+            val bitmap = uriToBitmap(context, uri)
+            if (bitmap != null) {
+                val resized = resizeBitmapIfNeeded(bitmap)
+                val base64 = bitmapToBase64(resized, Bitmap.CompressFormat.JPEG, JPEG_QUALITY)
+                try {
+                    if (resized != bitmap && !resized.isRecycled) resized.recycle()
+                    if (!bitmap.isRecycled) bitmap.recycle()
+                } catch (e: Exception) {
+                    Log.d(TAG, "bitmap recycle error: ${e.message}")
+                }
+                return base64
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "processUserSelectedWallpaper error: ${e.message}")
+        }
+        return null
     }
 }

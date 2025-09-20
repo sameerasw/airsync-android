@@ -48,6 +48,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCa
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.AboutDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
+import com.sameerasw.airsync.presentation.ui.components.dialogs.WallpaperSelectionDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,6 +93,15 @@ fun AirSyncMainScreen(
 
         // Start network monitoring for dynamic Wi-Fi changes
         viewModel.startNetworkMonitoring(context)
+
+        // Set up wallpaper selection callback
+        com.sameerasw.airsync.utils.WallpaperUtil.setWallpaperSelectionCallback(
+            object : com.sameerasw.airsync.utils.WallpaperUtil.WallpaperSelectionCallback {
+                override fun onUserSelectionRequested(message: String) {
+                    viewModel.showWallpaperSelectionDialog(message)
+                }
+            }
+        )
     }
 
     // Mark QR dialog as processed when it's shown or when already connected
@@ -218,6 +228,8 @@ fun AirSyncMainScreen(
     DisposableEffect(Unit) {
         onDispose {
             ClipboardSyncManager.stopSync(context)
+            // Clean up wallpaper selection callback
+            com.sameerasw.airsync.utils.WallpaperUtil.setWallpaperSelectionCallback(null)
         }
     }
 
@@ -446,6 +458,18 @@ fun AirSyncMainScreen(
                     Text(if (uiState.isIconSyncLoading) "Syncing Icons..." else "Sync App Icons")
                 }
 
+                // Wallpaper Selection Button
+                OutlinedButton(
+                    onClick = {
+                        viewModel.showWallpaperSelectionDialog("Choose your wallpaper to sync with your desktop")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(ExtraCornerRadius),
+                    enabled = uiState.isConnected
+                ) {
+                    Text("Choose Wallpaper")
+                }
+
                 // Icon Sync Message Display
                 AnimatedVisibility(
                     visible = uiState.iconSyncMessage.isNotEmpty(),
@@ -500,6 +524,16 @@ fun AirSyncMainScreen(
                 onConnect = {
                     viewModel.setDialogVisible(false)
                     connect()
+                }
+            )
+        }
+
+        // Wallpaper Selection Dialog
+        if (uiState.showWallpaperSelectionDialog) {
+            WallpaperSelectionDialog(
+                onDismiss = { viewModel.hideWallpaperSelectionDialog() },
+                onWallpaperSelected = { uri: android.net.Uri? ->
+                    viewModel.handleWallpaperSelected(context, uri)
                 }
             )
         }
