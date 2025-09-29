@@ -237,6 +237,10 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(symmetricKey = symmetricKey)
     }
 
+    fun setCustomWallpaperBase64(base64: String?) {
+        _uiState.value = _uiState.value.copy(customWallpaperBase64 = base64)
+    }
+
     fun updateManualPcName(name: String) {
         _uiState.value = _uiState.value.copy(manualPcName = name)
     }
@@ -271,7 +275,7 @@ class AirSyncViewModel(
         if (ctx != null) {
             // Send updated device info immediately so desktop sees the new name
             try {
-                com.sameerasw.airsync.utils.SyncManager.sendDeviceInfoNow(ctx, name)
+                com.sameerasw.airsync.utils.SyncManager.sendDeviceInfoNow(ctx, name, uiState.value.customWallpaperBase64)
             } catch (_: Exception) {
                 // ignore
             }

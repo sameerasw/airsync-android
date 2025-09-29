@@ -123,7 +123,7 @@ object SyncManager {
         }
     }
 
-    fun performInitialSync(context: Context) {
+    fun performInitialSync(context: Context, wallpaperBase64: String? = null) {
         CoroutineScope(Dispatchers.IO).launch {
             Log.d(TAG, "Performing initial sync sequence")
 
@@ -158,8 +158,8 @@ object SyncManager {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         delay(1500)
-                        val wallpaperBase64 = try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
-                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, wallpaperBase64)
+                        val finalWallpaperBase64 = wallpaperBase64 ?: try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
+                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, finalWallpaperBase64)
                         if (WebSocketUtil.sendMessage(fullDeviceInfoJson)) {
                             Log.d(TAG, "Full device info sent with wallpaper: ${if (wallpaperBase64 != null) "included" else "not available"}")
                         }
@@ -196,7 +196,7 @@ object SyncManager {
     /**
      * Send updated device info immediately (used when user changes device name in the app).
      */
-    fun sendDeviceInfoNow(context: Context, name: String? = null) {
+    fun sendDeviceInfoNow(context: Context, name: String? = null, wallpaperBase64: String? = null) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ds = DataStoreManager(context)
@@ -209,8 +209,8 @@ object SyncManager {
                     ""
                 }
 
-                val wallpaperBase64 = try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
-                val deviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, wallpaperBase64)
+                val finalWallpaperBase64 = wallpaperBase64 ?: try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
+                val deviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, finalWallpaperBase64)
 
                 if (WebSocketUtil.sendMessage(deviceInfoJson)) {
                     Log.d(TAG, "Sent updated device info: $deviceName")

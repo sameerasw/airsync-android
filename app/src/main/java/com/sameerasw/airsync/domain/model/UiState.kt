@@ -25,6 +25,7 @@ data class UiState(
     val manualIsPlus: Boolean = false,
     val isContinueBrowsingEnabled: Boolean = true,
     val isSendNowPlayingEnabled: Boolean = true,
+    val customWallpaperBase64: String? = null,
     // Mac device status
     val macDeviceStatus: MacDeviceStatus? = null,
     // Auth failure dialog

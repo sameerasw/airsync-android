@@ -3,8 +3,10 @@ package com.sameerasw.airsync.utils
 import android.app.WallpaperManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.BitmapDrawable
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Build
 import android.util.Base64
 import android.util.Log
@@ -81,6 +83,41 @@ object WallpaperUtil {
     }
 
     /**
+     * Gets a custom wallpaper from URI and converts it to base64 string
+     * @param uri The URI of the wallpaper image
+     * @param context Application context
+     * @return Base64 encoded wallpaper string or null if unavailable
+     */
+    fun getCustomWallpaperAsBase64(uri: Uri, context: Context): String? {
+        return try {
+            // Load bitmap from URI
+            val bitmap = loadBitmapFromUri(uri, context)
+            if (bitmap == null) {
+                Log.w(TAG, "Failed to load bitmap from URI")
+                return null
+            }
+
+            // Resize bitmap if too large
+            val resizedBitmap = resizeBitmapIfNeeded(bitmap)
+
+            // Convert to base64
+            val base64String = bitmapToBase64(resizedBitmap, Bitmap.CompressFormat.JPEG, JPEG_QUALITY)
+
+            if (resizedBitmap != bitmap) {
+                resizedBitmap.recycle()
+            }
+            bitmap.recycle()
+
+            Log.d(TAG, "Successfully encoded custom wallpaper to base64 (${base64String?.length ?: 0} chars)")
+            return base64String
+
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting custom wallpaper as base64: ${e.message}")
+            return null
+        }
+    }
+
+    /**
      * Check if the app has the required permissions to access wallpaper
      */
     private fun hasWallpaperPermissions(context: Context): Boolean {
@@ -150,6 +187,20 @@ object WallpaperUtil {
             Base64.encodeToString(byteArray, Base64.NO_WRAP)
         } catch (e: Exception) {
             Log.e(TAG, "Error converting bitmap to base64: ${e.message}")
+            null
+        }
+    }
+
+    /**
+     * Load Bitmap from URI
+     */
+    private fun loadBitmapFromUri(uri: Uri, context: Context): Bitmap? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error loading bitmap from URI: ${e.message}")
             null
         }
     }
