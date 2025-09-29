@@ -147,6 +147,42 @@ object PermissionUtil {
     fun hasWallpaperAccess(): Boolean {
         return hasManageExternalStoragePermission()
     }
+    /**
+     * Check if gallery/image access permission is granted
+     * READ_MEDIA_IMAGES for API 33+, READ_EXTERNAL_STORAGE for lower
+     */
+    fun hasReadMediaImagesPermission(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_MEDIA_IMAGES
+            ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            ) == PackageManager.PERMISSION_GRANTED
+        }
+    }
+
+    /**
+     * Check if gallery/image access permission is required for this Android version
+     */
+    fun isReadMediaImagesPermissionRequired(): Boolean {
+        return true // Required on all versions now
+    }
+
+    /**
+     * Get the correct gallery/image access permission based on API level
+     */
+    fun getGalleryPermission(): String {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            Manifest.permission.READ_MEDIA_IMAGES
+        } else {
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        }
+    }
+
 
     fun getAllMissingPermissions(context: Context): List<String> {
         val missing = mutableListOf<String>()
@@ -169,6 +205,11 @@ object PermissionUtil {
         // Check wallpaper access permission (optional)
         if (!hasWallpaperAccess()) {
             missing.add("Wallpaper Access")
+        }
+
+        // Check gallery access permission (optional)
+        if (isReadMediaImagesPermissionRequired() && !hasReadMediaImagesPermission(context)) {
+            missing.add("Gallery Access")
         }
 
         return missing
@@ -207,6 +248,11 @@ object PermissionUtil {
         // Wallpaper access is optional for wallpaper sync feature
         if (!hasWallpaperAccess()) {
             optional.add("Wallpaper Access")
+        }
+
+        // Gallery access is optional for image sync feature
+        if (isReadMediaImagesPermissionRequired() && !hasReadMediaImagesPermission(context)) {
+            optional.add("Gallery Access")
         }
 
         return optional

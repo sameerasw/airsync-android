@@ -1,5 +1,6 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
+import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -44,6 +45,7 @@ import com.sameerasw.airsync.utils.DeviceInfoUtil
 import com.sameerasw.airsync.utils.JsonUtil
 import com.sameerasw.airsync.utils.TestNotificationUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
+import com.sameerasw.airsync.utils.WallpaperUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -58,9 +60,16 @@ import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCa
 // Removed QrScannerRow; functionality moved to FAB
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
+import com.sameerasw.airsync.presentation.ui.components.cards.WallpaperSyncCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.AboutDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
+import com.sameerasw.airsync.utils.PermissionUtil
 import org.json.JSONObject
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.PickVisualMedia
+import androidx.activity.result.PickVisualMediaRequest
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -91,6 +100,22 @@ fun AirSyncMainScreen(
     val deviceInfo by viewModel.deviceInfo.collectAsState()
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = PickVisualMedia()
+    ) { uri: Uri? ->
+        uri?.let {
+            val result = WallpaperUtil.getCustomWallpaperAsBase64(uri, context)
+            viewModel.setCustomWallpaperBase64(result)
+            viewModel.updateDeviceName(deviceInfo.name)
+        }
+    }
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            imagePickerLauncher.launch(null)
+        }
+    }
     val connectScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
     var fabVisible by remember { mutableStateOf(true) }
@@ -435,6 +460,17 @@ fun AirSyncMainScreen(
                             )
                         }
                     }
+
+                    WallpaperSyncCard(
+                        onPickImage = {
+                            if (PermissionUtil.hasReadMediaImagesPermission(context)) {
+                                imagePickerLauncher.launch(PickVisualMediaRequest(PickVisualMedia.ImageOnly))
+                            } else {
+                                permissionLauncher.launch(PermissionUtil.getGalleryPermission())
+                            }
+                        },
+                        onSync = { viewModel.updateDeviceName(deviceInfo.name) }
+                    )
 
                         Spacer(modifier = Modifier.height(24.dp))
                     }
