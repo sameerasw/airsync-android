@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.sameerasw.airsync.ui.theme.minCornerRadius
+import com.sameerasw.airsync.ui.theme.ExtraCornerRadius
 
 @Composable
 fun WallpaperSyncCard(
@@ -23,12 +23,7 @@ fun WallpaperSyncCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(
-            topStart = minCornerRadius,
-            topEnd = minCornerRadius,
-            bottomStart = minCornerRadius,
-            bottomEnd = minCornerRadius
-        ),
+        shape = RoundedCornerShape(ExtraCornerRadius),
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
