@@ -101,6 +101,9 @@ class PermissionsActivity : ComponentActivity() {
                         onRequestPhonePermission = {
                             requestPhonePermission()
                         },
+                        onRequestAnswerCallPermission = {
+                            requestAnswerCallPermission()
+                        },
                         refreshTrigger = refreshCounter
                     )
                 }
@@ -135,6 +138,18 @@ class PermissionsActivity : ComponentActivity() {
     private fun requestPhonePermission() {
         if (!PermissionUtil.isPhoneStatePermissionGranted(this)) {
             phonePermissionLauncher.launch(Manifest.permission.READ_PHONE_STATE)
+        }
+    }
+
+    private val answerCallPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refreshUI() }
+
+    private fun requestAnswerCallPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (!PermissionUtil.isAnswerPhoneCallsPermissionGranted(this)) {
+                answerCallPermissionLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
+            }
         }
     }
 

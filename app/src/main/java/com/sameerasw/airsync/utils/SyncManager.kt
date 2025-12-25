@@ -216,10 +216,71 @@ object SyncManager {
                 // 3. Defer icon sync to macInfo handler to avoid unnecessary extraction
                 Log.d(TAG, "Deferring app icon sync until macInfo arrives (to compare package lists first)")
 
+                // 4. Proactively sync data for messages, call logs, and health
+                delay(500)
+                syncDataToMac(context)
+
                 Log.d(TAG, "Initial sync sequence completed (handshake depends on macInfo)")
 
             } catch (e: Exception) {
                 Log.e(TAG, "Error in initial sync: ${e.message}")
+            }
+        }
+    }
+
+    /**
+     * Proactively sync messages, call logs, and health data to macOS
+     */
+    fun syncDataToMac(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                if (!WebSocketUtil.isConnected()) {
+                    Log.w(TAG, "Not connected, skipping data sync")
+                    return@launch
+                }
+
+                Log.d(TAG, "Starting proactive data sync to macOS...")
+
+                // Sync SMS threads
+                if (SmsUtil.hasPermissions(context)) {
+                    val threads = SmsUtil.getAllThreads(context, 50)
+                    if (threads.isNotEmpty()) {
+                        val json = JsonUtil.createSmsThreadsJson(threads)
+                        if (WebSocketUtil.sendMessage(json)) {
+                            Log.d(TAG, "✓ Synced ${threads.size} SMS threads to macOS")
+                        }
+                    }
+                }
+
+                delay(200)
+
+                // Sync call logs
+                if (CallLogUtil.hasPermissions(context)) {
+                    val callLogs = CallLogUtil.getCallLogs(context, 100)
+                    if (callLogs.isNotEmpty()) {
+                        val json = JsonUtil.createCallLogsJson(callLogs)
+                        if (WebSocketUtil.sendMessage(json)) {
+                            Log.d(TAG, "✓ Synced ${callLogs.size} call logs to macOS")
+                        }
+                    }
+                }
+
+                delay(200)
+
+                // Sync health data
+                if (HealthConnectUtil.isAvailable(context) && HealthConnectUtil.hasPermissions(context)) {
+                    val summary = HealthConnectUtil.getSummaryForDate(context, System.currentTimeMillis())
+                    if (summary != null) {
+                        val json = JsonUtil.createHealthSummaryJson(summary)
+                        if (WebSocketUtil.sendMessage(json)) {
+                            Log.d(TAG, "✓ Synced health summary to macOS")
+                        }
+                    }
+                }
+
+                Log.d(TAG, "Proactive data sync completed")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in proactive data sync: ${e.message}")
             }
         }
     }

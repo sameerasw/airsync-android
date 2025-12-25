@@ -62,13 +62,33 @@ class ContactLookupHelper(private val context: Context) {
     }
 
     /**
-     * Get device's country code from locale
+     * Get device's country code from SIM card or locale
      */
     private fun getDeviceCountryCode(): String {
         return try {
-            context.resources.configuration.locale.country.takeIf { it.isNotEmpty() } ?: "US"
+            // First try to get country from SIM card (most accurate for phone numbers)
+            val telephonyManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? android.telephony.TelephonyManager
+            val simCountry = telephonyManager?.simCountryIso?.uppercase()
+            if (!simCountry.isNullOrEmpty()) {
+                return simCountry
+            }
+            
+            // Fallback to network country
+            val networkCountry = telephonyManager?.networkCountryIso?.uppercase()
+            if (!networkCountry.isNullOrEmpty()) {
+                return networkCountry
+            }
+            
+            // Fallback to device locale
+            context.resources.configuration.locales[0].country.takeIf { it.isNotEmpty() } ?: "US"
         } catch (e: Exception) {
-            "US"  // Fallback
+            // Final fallback - try deprecated locale method
+            try {
+                @Suppress("DEPRECATION")
+                context.resources.configuration.locale.country.takeIf { it.isNotEmpty() } ?: "US"
+            } catch (e2: Exception) {
+                "US"
+            }
         }
     }
 

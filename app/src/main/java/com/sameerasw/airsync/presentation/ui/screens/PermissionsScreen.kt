@@ -26,6 +26,7 @@ fun PermissionsScreen(
     onRequestCallLogPermission: (() -> Unit)? = null,
     onRequestContactsPermission: (() -> Unit)? = null,
     onRequestPhonePermission: (() -> Unit)? = null,
+    onRequestAnswerCallPermission: (() -> Unit)? = null,
     refreshTrigger: Int = 0
 ) {
     val context = LocalContext.current
@@ -199,6 +200,15 @@ fun PermissionsScreen(
                                             isCritical = false
                                         )
                                     }
+
+                                    "Answer Calls" -> {
+                                        PermissionButton(
+                                            permissionName = permission,
+                                            description = "Enables ending calls from Mac",
+                                            onExplainClick = { showDialog = PermissionType.ANSWER_PHONE_CALLS },
+                                            isCritical = false
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -236,6 +246,9 @@ fun PermissionsScreen(
                     }
                     PermissionType.PHONE -> {
                         onRequestPhonePermission?.invoke()
+                    }
+                    PermissionType.ANSWER_PHONE_CALLS -> {
+                        onRequestAnswerCallPermission?.invoke()
                     }
                 }
             }

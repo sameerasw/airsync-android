@@ -26,6 +26,9 @@ data class UiState(
     val isContinueBrowsingEnabled: Boolean = true,
     val isSendNowPlayingEnabled: Boolean = true,
     val isKeepPreviousLinkEnabled: Boolean = true,
+    val showMirroringDialog: Boolean = false,
+    val mirroringWebSocketUrl: String? = null,
+    val mirroringOptions: MirroringOptions? = null,
     val isSmartspacerShowWhenDisconnected: Boolean = false,
     val isMacMediaControlsEnabled: Boolean = true,
     // Mac device status

@@ -54,6 +54,7 @@ import kotlinx.coroutines.launch
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
+import com.sameerasw.airsync.presentation.ui.components.cards.IncomingFileTransferCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.AboutDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
@@ -75,6 +76,8 @@ fun AirSyncMainScreen(
     isPlus: Boolean = false,
     symmetricKey: String? = null,
     onNavigateToApps: () -> Unit = {},
+    onNavigateToHealth: () -> Unit = {},
+    onNavigateToFileTransfer: () -> Unit = {},
     showAboutDialog: Boolean = false,
     onDismissAbout: () -> Unit = {}
 ) {
@@ -586,6 +589,9 @@ fun AirSyncMainScreen(
                                 uiState = uiState,
                             )
                         }
+                        
+                        // Incoming File Transfer Card - shows when receiving files
+                        IncomingFileTransferCard()
 
                         RoundedCardContainer{
                             AnimatedVisibility(
@@ -682,7 +688,9 @@ fun AirSyncMainScreen(
                                 pendingExportJson = json
                                 createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                             },
-                            onImport = { openDocLauncher.launch(arrayOf("application/json")) }
+                            onImport = { openDocLauncher.launch(arrayOf("application/json")) },
+                            onNavigateToHealth = onNavigateToHealth,
+                            onNavigateToFileTransfer = onNavigateToFileTransfer
                         )
                     }
                 }
@@ -703,7 +711,9 @@ fun AirSyncMainScreen(
                             pendingExportJson = json
                             createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                         },
-                        onImport = { openDocLauncher.launch(arrayOf("application/json")) }
+                        onImport = { openDocLauncher.launch(arrayOf("application/json")) },
+                        onNavigateToHealth = onNavigateToHealth,
+                        onNavigateToFileTransfer = onNavigateToFileTransfer
                     )
                 }
             }

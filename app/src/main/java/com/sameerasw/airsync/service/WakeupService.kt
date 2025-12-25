@@ -301,7 +301,7 @@ class WakeupService : Service() {
 
     private suspend fun processWakeupRequest(macIp: String, macPort: Int, macName: String) {
         try {
-            Log.i(TAG, "Processing wake-up request from $macName at $macIp:$macPort")
+            Log.i(TAG, "📞 Received wake-up request from $macName at $macIp:$macPort")
 
             // Validate that we have the necessary information
             if (macIp.isEmpty()) {
@@ -313,7 +313,7 @@ class WakeupService : Service() {
 
             // Check if we already have a connection
             if (WebSocketUtil.isConnected()) {
-                Log.d(TAG, "Already connected, ignoring wake-up request")
+                Log.d(TAG, "Already connected, sending acknowledgment")
                 return
             }
 
@@ -359,8 +359,8 @@ class WakeupService : Service() {
                 dataStoreManager.saveLastConnectedDevice(connectedDevice)
             }
 
-            // Attempt to connect to the Mac
-            Log.d(TAG, "Attempting to connect to Mac at $macIp:$macPort")
+            // Attempt to connect to the Mac - NO CHECKING, JUST CONNECT
+            Log.d(TAG, "🚀 Connecting to Mac at $macIp:$macPort (no pre-check)")
             
             WebSocketUtil.connect(
                 context = this@WakeupService,
@@ -370,7 +370,7 @@ class WakeupService : Service() {
                 manualAttempt = false, // This is an automated response to wake-up
                 onConnectionStatus = { connected ->
                     if (connected) {
-                        Log.i(TAG, "Successfully connected to Mac after wake-up request")
+                        Log.i(TAG, "✅ Successfully connected to Mac after wake-up request")
                         // Update last connected timestamp
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
@@ -380,11 +380,11 @@ class WakeupService : Service() {
                             }
                         }
                     } else {
-                        Log.w(TAG, "Failed to connect to Mac after wake-up request")
+                        Log.w(TAG, "❌ Failed to connect to Mac after wake-up request")
                     }
                 },
                 onHandshakeTimeout = {
-                    Log.w(TAG, "Handshake timeout during wake-up connection attempt")
+                    Log.w(TAG, "⏱️ Handshake timeout during wake-up connection attempt")
                     WebSocketUtil.disconnect(this@WakeupService)
                 }
             )

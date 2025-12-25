@@ -30,7 +30,6 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlinx.coroutines.Job
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ClipboardScreen(
     clipboardHistory: List<ClipboardEntry>,

@@ -766,4 +766,19 @@ class DataStoreManager(private val context: Context) {
             preferences[DEVICE_ID] ?: ""
         }
     }
+    
+    // Mirror permission storage for auto-approve
+    private val MIRROR_PERMISSION_GRANTED = booleanPreferencesKey("mirror_permission_granted")
+    
+    suspend fun setMirrorPermission(granted: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[MIRROR_PERMISSION_GRANTED] = granted
+        }
+    }
+    
+    fun hasMirrorPermission(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[MIRROR_PERMISSION_GRANTED] ?: false
+        }
+    }
 }

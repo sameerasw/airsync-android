@@ -164,4 +164,125 @@ object NotificationUtil {
             android.util.Log.w("NotificationUtil", "Failed to clear continue-browsing notifications: ${e.message}")
         }
     }
+
+    /**
+     * Show file transfer notification with progress
+     */
+    fun showFileTransferNotification(context: Context, transferId: String, fileName: String, progress: Float) {
+        createFileChannel(context)
+        val notifId = transferId.hashCode()
+        val manager = NotificationManagerCompat.from(context)
+        
+        val progressPercent = (progress * 100).toInt()
+        
+        val builder = NotificationCompat.Builder(context, FILE_CHANNEL_ID)
+            .setContentTitle("Receiving: $fileName")
+            .setContentText("$progressPercent%")
+            .setSmallIcon(android.R.drawable.stat_sys_download)
+            .setProgress(100, progressPercent, false)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+        
+        try {
+            manager.notify(notifId, builder.build())
+        } catch (e: SecurityException) {
+            android.util.Log.w("NotificationUtil", "Failed to show file transfer notification: ${e.message}")
+        }
+    }
+
+    /**
+     * Update file transfer progress
+     */
+    fun updateFileTransferProgress(context: Context, transferId: String, fileName: String, progress: Float) {
+        showFileTransferNotification(context, transferId, fileName, progress)
+    }
+
+    /**
+     * Show file transfer complete notification
+     */
+    fun showFileTransferComplete(context: Context, transferId: String, fileUri: Uri) {
+        createFileChannel(context)
+        val notifId = transferId.hashCode()
+        val manager = NotificationManagerCompat.from(context)
+        
+        // Cancel progress notification
+        manager.cancel(notifId)
+        
+        val openIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(fileUri, context.contentResolver.getType(fileUri))
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        val openPending = PendingIntent.getActivity(
+            context,
+            notifId,
+            openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        
+        val builder = NotificationCompat.Builder(context, FILE_CHANNEL_ID)
+            .setContentTitle("File received")
+            .setContentText("Saved to Downloads")
+            .setSmallIcon(android.R.drawable.stat_sys_download_done)
+            .setAutoCancel(true)
+            .setContentIntent(openPending)
+            .addAction(android.R.drawable.ic_menu_view, "Open", openPending)
+        
+        try {
+            manager.notify(notifId + 1, builder.build())
+        } catch (e: SecurityException) {
+            android.util.Log.w("NotificationUtil", "Failed to show file transfer complete notification: ${e.message}")
+        }
+    }
+
+    /**
+     * Show file transfer error notification
+     */
+    fun showFileTransferError(context: Context, transferId: String, errorMessage: String) {
+        createFileChannel(context)
+        val notifId = transferId.hashCode()
+        val manager = NotificationManagerCompat.from(context)
+        
+        // Cancel progress notification
+        manager.cancel(notifId)
+        
+        val builder = NotificationCompat.Builder(context, FILE_CHANNEL_ID)
+            .setContentTitle("File transfer failed")
+            .setContentText(errorMessage)
+            .setSmallIcon(android.R.drawable.stat_notify_error)
+            .setAutoCancel(true)
+        
+        try {
+            manager.notify(notifId + 1, builder.build())
+        } catch (e: SecurityException) {
+            android.util.Log.w("NotificationUtil", "Failed to show file transfer error notification: ${e.message}")
+        }
+    }
+    
+    /**
+     * Cancel a notification by ID
+     */
+    fun cancelNotification(context: Context, notifId: Int) {
+        try {
+            val manager = NotificationManagerCompat.from(context)
+            manager.cancel(notifId)
+        } catch (e: Exception) {
+            android.util.Log.w("NotificationUtil", "Failed to cancel notification: ${e.message}")
+        }
+    }
+    
+    /**
+     * Cancel all file transfer notifications
+     */
+    fun cancelAllFileTransferNotifications(context: Context) {
+        try {
+            val nm = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            nm.activeNotifications?.forEach { sbn ->
+                if (sbn.notification.channelId == FILE_CHANNEL_ID) {
+                    nm.cancel(sbn.id)
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("NotificationUtil", "Failed to cancel file transfer notifications: ${e.message}")
+        }
+    }
 }

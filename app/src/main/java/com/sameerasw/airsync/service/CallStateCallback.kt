@@ -120,6 +120,7 @@ class CallStateListener(private val context: Context) {
 
     /**
      * Send a call event to the Mac app via WebSocket with all details
+     * Only sends if WebSocket is connected to Mac
      */
     private suspend fun sendCallEvent(
         context: Context,
@@ -127,6 +128,12 @@ class CallStateListener(private val context: Context) {
         direction: String,
         phoneNumber: String?
     ) {
+        // Only send call events when connected to Mac
+        if (!WebSocketUtil.isConnected()) {
+            Log.d(TAG, "Skipping call event - not connected to Mac (state: $state)")
+            return
+        }
+        
         try {
             val displayNumber = phoneNumber?.takeIf { it.isNotBlank() } ?: "Unknown"
             

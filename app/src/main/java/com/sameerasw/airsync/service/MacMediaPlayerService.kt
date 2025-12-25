@@ -303,12 +303,9 @@ class MacMediaPlayerService : Service() {
 
     private fun sendMacMediaControl(action: String) {
         try {
-            // Check if we should send media control to prevent feedback loop
-            if (!WebSocketMessageHandler.shouldSendMediaControl()) {
-                Log.d(TAG, "Skipping media control '$action' - currently receiving playing media from Mac")
-                return
-            }
-
+            // Always send user-initiated control commands (play/pause/next/previous/stop)
+            // The shouldSendMediaControl check is only for preventing duplicate state updates,
+            // not for blocking user controls
             val controlJson = """{"type":"macMediaControl","data":{"action":"$action"}}"""
             com.sameerasw.airsync.utils.WebSocketUtil.sendMessage(controlJson)
             Log.d(TAG, "Sent Mac media control: $action")

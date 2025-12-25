@@ -15,6 +15,7 @@ import android.os.Build
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
@@ -33,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.LifecycleOwner
+import com.google.common.util.concurrent.ListenableFuture
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
@@ -103,7 +106,6 @@ class QRScannerActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @SuppressLint("UnsafeOptInUsageError")
 @Composable
 private fun QRScannerScreen(
@@ -164,7 +166,7 @@ private fun QRScannerScreen(
                 .align(Alignment.Center),
             contentAlignment = Alignment.Center
         ) {
-            LoadingIndicator(modifier = Modifier.scale(2f))
+            CircularProgressIndicator(modifier = Modifier.scale(2f))
         }
 
         // Back button overlay on top-left
@@ -217,7 +219,7 @@ fun QrCodeScannerView(
         modifier = modifier,
         factory = { ctx ->
             val previewView = PreviewView(ctx)
-            val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+            val cameraProviderFuture: ListenableFuture<ProcessCameraProvider> = ProcessCameraProvider.getInstance(ctx)
 
             cameraProviderFuture.addListener({
                 try {
@@ -225,7 +227,7 @@ fun QrCodeScannerView(
                     Log.d("QrScanner", "Camera provider obtained")
 
                     @Suppress("DEPRECATION")
-                    val preview = androidx.camera.core.Preview.Builder()
+                    val preview = Preview.Builder()
                         .setTargetResolution(android.util.Size(1280, 720))
                         .build()
                     preview.setSurfaceProvider(previewView.surfaceProvider)
@@ -265,7 +267,7 @@ fun QrCodeScannerView(
                             .build()
 
                         cameraProvider.bindToLifecycle(
-                            ctx as androidx.lifecycle.LifecycleOwner,
+                            ctx as LifecycleOwner,
                             cameraSelector,
                             preview,
                             analysis

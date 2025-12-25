@@ -1,11 +1,11 @@
-import org.gradle.api.JavaVersion.VERSION_11
 import org.gradle.api.JavaVersion.VERSION_17
 
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
+    alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
 }
 
 android {
@@ -32,14 +32,17 @@ android {
         }
     }
     compileOptions {
-        sourceCompatibility = VERSION_11
+        sourceCompatibility = VERSION_17
         targetCompatibility = VERSION_17
-    }
-    kotlinOptions {
-        jvmTarget = "17"
     }
     buildFeatures {
         compose = true
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
 
@@ -55,53 +58,62 @@ dependencies {
     implementation(libs.androidx.material3)
 
     // Smartspacer SDK
-    implementation("com.kieronquinn.smartspacer:sdk-plugin:1.1")
+    implementation(libs.sdk.plugin)
 
     // Material Components (XML themes: Theme.Material3.*)
-    implementation("com.google.android.material:material:1.12.0")
+    implementation(libs.material)
 
     // Android 12+ SplashScreen API with backward compatibility attributes
-    implementation("androidx.core:core-splashscreen:1.0.1")
+    implementation(libs.androidx.core.splashscreen)
 
-    implementation ("androidx.compose.material3:material3:1.5.0-alpha03")
-    implementation("androidx.compose.material:material-icons-core:1.7.8")
-    implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
 
     // DataStore for state persistence
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
-    implementation("androidx.datastore:datastore-core:1.1.1")
+    implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.datastore.core)
 
     // ViewModel and state handling
-    implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.4")
-    implementation("androidx.compose.runtime:runtime-livedata:1.7.0")
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
+    implementation(libs.androidx.compose.runtime.livedata)
 
     // Navigation Compose
-    implementation("androidx.navigation:navigation-compose:2.7.6")
+    implementation(libs.androidx.navigation.compose)
 
     // WebSocket support
-    implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation(libs.okhttp)
 
     // JSON parsing for GitHub API
-    implementation("com.google.code.gson:gson:2.10.1")
+    implementation(libs.gson)
 
     // Media session support for Mac media player
-    implementation("androidx.media:media:1.7.0")
+    implementation(libs.androidx.media)
+
+    // Health Connect SDK
+    implementation(libs.androidx.connect.client)
+
+    // DocumentFile for folder access
+    implementation(libs.androidx.documentfile)
 
     implementation(libs.ui.graphics)
     implementation(libs.androidx.foundation)
 
-
     // CameraX for QR scanning
-    implementation("androidx.camera:camera-core:1.4.0")
-    implementation("androidx.camera:camera-camera2:1.4.0")
-    implementation("androidx.camera:camera-lifecycle:1.4.0")
-    implementation("androidx.camera:camera-view:1.4.0")
-    implementation("androidx.camera:camera-mlkit-vision:1.4.0")
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.mlkit.vision)
+    
+    // Guava for ListenableFuture (required by CameraX)
+    implementation(libs.guava)
+    implementation(libs.androidx.concurrent.futures)
 
     // Room database for call history
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
     // Phone number normalization
     implementation(libs.libphonenumber)
@@ -109,9 +121,8 @@ dependencies {
     // Coroutines for async operations
     implementation(libs.kotlinx.coroutines.android)
 
-
     // ML Kit barcode scanner (QR code only)
-    implementation("com.google.mlkit:barcode-scanning:17.3.0")
+    implementation(libs.barcode.scanning)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
