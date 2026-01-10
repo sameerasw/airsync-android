@@ -270,8 +270,7 @@ fun ClipboardScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 36.dp, topEnd = 36.dp, bottomStart = 0.dp, bottomEnd = 0.dp),
-                color = MaterialTheme.colorScheme.surfaceContainer
+                shape = RoundedCornerShape(36.dp),
             ) {
                 Row(
                     modifier = Modifier

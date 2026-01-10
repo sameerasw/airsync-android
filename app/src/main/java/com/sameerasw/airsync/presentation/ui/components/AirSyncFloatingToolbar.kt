@@ -40,20 +40,11 @@ fun AirSyncFloatingToolbar(
     onTabSelected: (Int) -> Unit,
     scrollBehavior: FloatingToolbarScrollBehavior
 ) {
-    var expanded by remember { mutableStateOf(true) }
     var interactionCount by remember { mutableStateOf(0) }
 
     // Track which tab was just selected for bump animation
     var bumpingTab by remember { mutableIntStateOf(-1) }
     var bumpKey by remember { mutableIntStateOf(0) }
-
-    // Auto-collapse after 5 seconds
-    LaunchedEffect(expanded, interactionCount, currentPage) {
-        if (expanded) {
-            delay(5000)
-            expanded = false
-        }
-    }
 
     // Reset bump animation after delay
     LaunchedEffect(bumpKey) {
@@ -63,28 +54,9 @@ fun AirSyncFloatingToolbar(
         }
     }
 
-    // Expand when the page changes (e.g., via swipe)
-    LaunchedEffect(currentPage) {
-        if (!expanded) expanded = true
-    }
-
-    // Animated values for bouncy feel
-    val toolbarScale by animateFloatAsState(
-        targetValue = if (expanded) 1f else 0.9f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
-        ),
-        label = "toolbar_scale"
-    )
-
     HorizontalFloatingToolbar(
-        modifier = modifier
-            .graphicsLayer {
-                scaleX = toolbarScale
-                scaleY = toolbarScale
-            },
-        expanded = expanded,
+        modifier = modifier,
+        expanded = true,
         scrollBehavior = scrollBehavior,
         colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         content = {
@@ -98,8 +70,7 @@ fun AirSyncFloatingToolbar(
                     targetValue = when {
                         isBumping -> 1.28f // Subtle bump animation when selected
                         isSelected -> 1.2f
-                        expanded -> 1.2f
-                        else -> 0f // Scale down to 0 when collapsed
+                        else -> 1.0f // Normal scale
                     },
                     animationSpec = spring(
                         dampingRatio = if (isBumping) Spring.DampingRatioMediumBouncy else Spring.DampingRatioLowBouncy,
@@ -109,75 +80,51 @@ fun AirSyncFloatingToolbar(
                 )
 
                 // Animate alpha for smooth fade
-                val itemAlpha by animateFloatAsState(
-                    targetValue = if (expanded || isSelected) 1f else 0f,
-                    animationSpec = tween(durationMillis = 200),
-                    label = "item_alpha_$index"
-                )
+                val itemAlpha = 1f
 
                 // Animate width for spacing
-                val itemWidth by animateDpAsState(
-                    targetValue = if (expanded || isSelected) 48.dp else 0.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioLowBouncy,
-                        stiffness = Spring.StiffnessLow
-                    ),
-                    label = "item_width_$index"
-                )
+                val itemWidth = 48.dp
 
                 // Animate spacer width
-                val spacerWidth by animateDpAsState(
-                    targetValue = if (expanded && index < tabs.size - 1) 16.dp else 0.dp,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioNoBouncy,
-                        stiffness = Spring.StiffnessMediumLow
-                    ),
-                    label = "spacer_width_$index"
-                )
+                val spacerWidth = if (index < tabs.size - 1) 16.dp else 0.dp
 
-                // Always render the button, but animate its visibility
-                if (itemWidth > 0.dp || isSelected) {
-                    IconButton(
-                        onClick = {
-                            interactionCount++
-                            if (!expanded) {
-                                expanded = true
-                            } else {
-                                bumpingTab = index
-                                bumpKey++ 
-                                onTabSelected(index)
-                            }
+                // Always render the button
+                IconButton(
+                    onClick = {
+                        interactionCount++
+                        bumpingTab = index
+                        bumpKey++ 
+                        onTabSelected(index)
+                    },
+                    modifier = Modifier
+                        .width(itemWidth)
+                        .height(48.dp)
+                        .graphicsLayer {
+                            scaleX = itemScale
+                            scaleY = itemScale
+                            alpha = itemAlpha
                         },
-                        modifier = Modifier
-                            .width(itemWidth)
-                            .height(48.dp)
-                            .graphicsLayer {
-                                scaleX = itemScale
-                                scaleY = itemScale
-                                alpha = itemAlpha
-                            },
-                        colors = if (isSelected) {
-                            IconButtonDefaults.filledTonalIconButtonColors()
+                    colors = if (isSelected) {
+                        IconButtonDefaults.filledTonalIconButtonColors()
+                    } else {
+                        IconButtonDefaults.iconButtonColors()
+                    }
+                ) {
+                    Icon(
+                        imageVector = tab.icon,
+                        contentDescription = tab.title,
+                        tint = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
                         } else {
-                            IconButtonDefaults.iconButtonColors()
-                        }
-                    ) {
-                        Icon(
-                            imageVector = tab.icon,
-                            contentDescription = tab.title,
-                            tint = if (isSelected) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.background
-                            },
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                            MaterialTheme.colorScheme.background
+                        },
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-                    // Animated spacing between buttons
-                    if (index < tabs.size - 1) {
-                        Spacer(modifier = Modifier.width(spacerWidth))
-                    }
+                // Spacing between buttons
+                if (index < tabs.size - 1) {
+                    Spacer(modifier = Modifier.width(spacerWidth))
                 }
             }
         }
