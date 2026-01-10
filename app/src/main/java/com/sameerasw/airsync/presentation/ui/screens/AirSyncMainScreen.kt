@@ -67,7 +67,6 @@ import kotlinx.coroutines.launch
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
-import com.sameerasw.airsync.presentation.ui.components.dialogs.AboutDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import org.json.JSONObject
@@ -77,6 +76,7 @@ import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import com.sameerasw.airsync.presentation.ui.components.sheets.AboutBottomSheet
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -794,9 +794,9 @@ fun AirSyncMainScreen(
         )
     }
 
-    // About Dialog - controlled by parent via showAboutDialog
+    // About Bottom Sheet - controlled by parent via showAboutDialog
     if (showAboutDialog) {
-        AboutDialog(
+        AboutBottomSheet(
             onDismissRequest = onDismissAbout,
             onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
         )
