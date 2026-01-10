@@ -77,6 +77,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
 import com.sameerasw.airsync.presentation.ui.components.sheets.AboutBottomSheet
+import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
@@ -94,6 +95,8 @@ fun AirSyncMainScreen(
     onNavigateToApps: () -> Unit = {},
     showAboutDialog: Boolean = false,
     onDismissAbout: () -> Unit = {},
+    showHelpSheet: Boolean = false,
+    onDismissHelp: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -509,7 +512,7 @@ fun AirSyncMainScreen(
         val tabs = remember(uiState.isConnected) {
             if (uiState.isConnected) {
                 listOf(
-                    AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
+                    AirSyncTab("Connect", Icons.Outlined.Phonelink, 0),
                     AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
                     AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
                     AirSyncTab("Settings", Icons.Filled.Settings, 3)
@@ -799,6 +802,13 @@ fun AirSyncMainScreen(
         AboutBottomSheet(
             onDismissRequest = onDismissAbout,
             onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
+        )
+    }
+
+    // Help & Support Bottom Sheet
+    if (showHelpSheet) {
+        HelpSupportBottomSheet(
+            onDismissRequest = onDismissHelp
         )
     }
 }

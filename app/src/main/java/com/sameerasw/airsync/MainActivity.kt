@@ -43,6 +43,8 @@ import androidx.core.animation.doOnEnd
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import android.widget.ImageView
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.HelpOutline
 
 object AdbDiscoveryHolder {
     private var discovery: AdbMdnsDiscovery? = null
@@ -303,6 +305,7 @@ class MainActivity : ComponentActivity() {
             AirSyncTheme {
                 val navController = rememberNavController()
                 var showAboutDialog by remember { mutableStateOf(false) }
+                var showHelpSheet by remember { mutableStateOf(false) }
                 val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
                 var topBarTitle by remember { mutableStateOf("AirSync") }
 
@@ -337,6 +340,12 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
+                                IconButton(onClick = { showHelpSheet = true }) {
+                                    Icon(
+                                        imageVector = androidx.compose.material.icons.Icons.Rounded.HelpOutline,
+                                        contentDescription = "Help"
+                                    )
+                                }
                                 IconButton(onClick = { showAboutDialog = true }) {
                                     Icon(
                                         painter = painterResource(id = R.drawable.outline_info_24),
@@ -363,6 +372,8 @@ class MainActivity : ComponentActivity() {
                                 symmetricKey = symmetricKey,
                                 showAboutDialog = showAboutDialog,
                                 onDismissAbout = { showAboutDialog = false },
+                                showHelpSheet = showHelpSheet,
+                                onDismissHelp = { showHelpSheet = false },
                                 onTitleChange = { topBarTitle = it }
                             )
                         }
