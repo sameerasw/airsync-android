@@ -144,7 +144,7 @@ fun AboutBottomSheet(
                     outlined = true
                 )
             }
-            
+
             Spacer(modifier = Modifier.height(0.dp))
 
             Text(

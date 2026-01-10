@@ -15,6 +15,7 @@ import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,7 +58,10 @@ fun AirSyncFloatingToolbar(
         expanded = true,
         floatingActionButton = floatingActionButton,
         scrollBehavior = scrollBehavior,
-        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(
+            toolbarContentColor = MaterialTheme.colorScheme.onPrimary,
+            toolbarContainerColor = MaterialTheme.colorScheme.primary
+        ),
         content = {
             // FIXED ORDER LOOP to prevent shifting
             tabs.forEachIndexed { index, tab ->
@@ -87,9 +91,15 @@ fun AirSyncFloatingToolbar(
                             alpha = itemAlpha
                         },
                     colors = if (isSelected) {
-                        IconButtonDefaults.filledIconButtonColors()
+                        IconButtonDefaults.filledIconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary,
+                            containerColor = MaterialTheme.colorScheme.background
+                        )
                     } else {
-                        IconButtonDefaults.iconButtonColors()
+                        IconButtonDefaults.iconButtonColors(
+                            contentColor = MaterialTheme.colorScheme.background,
+                            containerColor = MaterialTheme.colorScheme.primary
+                        )
                     }
                 ) {
                     Icon(
