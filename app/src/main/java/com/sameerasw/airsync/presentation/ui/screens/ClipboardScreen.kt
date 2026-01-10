@@ -305,9 +305,6 @@ fun ClipboardScreen(
                             if (inputText.isNotBlank()) {
                                 onSendText(inputText)
                                 inputText = ""
-                            } else {
-                                // Clear history when input is empty
-                                onClearHistory()
                             }
                         },
                         modifier = Modifier
@@ -316,19 +313,15 @@ fun ClipboardScreen(
                                 color = MaterialTheme.colorScheme.background,
                                 shape = CircleShape
                             ),
-                        enabled = inputText.isNotBlank() || clipboardHistory.isNotEmpty()
+                        enabled = inputText.isNotBlank()
                     ) {
                         Icon(
-                            imageVector = if (inputText.isNotBlank()) {
-                                Icons.AutoMirrored.Rounded.Send
-                            } else {
-                                Icons.Rounded.Delete
-                            },
-                            contentDescription = if (inputText.isNotBlank()) "Send" else "Clear history",
+                            imageVector = Icons.AutoMirrored.Rounded.Send,
+                            contentDescription = "Send",
                             tint = if (inputText.isNotBlank()) {
                                 MaterialTheme.colorScheme.primary
                             } else {
-                                MaterialTheme.colorScheme.error
+                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                             }
                         )
                     }

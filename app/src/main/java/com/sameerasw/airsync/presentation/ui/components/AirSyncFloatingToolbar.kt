@@ -57,7 +57,7 @@ fun AirSyncFloatingToolbar(
         expanded = true,
         floatingActionButton = floatingActionButton,
         scrollBehavior = scrollBehavior,
-        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
+        colors = FloatingToolbarDefaults.standardFloatingToolbarColors(),
         content = {
             // FIXED ORDER LOOP to prevent shifting
             tabs.forEachIndexed { index, tab ->
@@ -87,7 +87,7 @@ fun AirSyncFloatingToolbar(
                             alpha = itemAlpha
                         },
                     colors = if (isSelected) {
-                        IconButtonDefaults.filledTonalIconButtonColors()
+                        IconButtonDefaults.filledIconButtonColors()
                     } else {
                         IconButtonDefaults.iconButtonColors()
                     }

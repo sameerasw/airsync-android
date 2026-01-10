@@ -33,6 +33,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Gamepad
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.Phonelink
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.QrCodeScanner
@@ -41,6 +42,8 @@ import androidx.compose.material.icons.outlined.Phonelink
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.rounded.ContentPaste
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.FloatingToolbarDefaults
@@ -113,6 +116,7 @@ fun AirSyncMainScreen(
     }
     var fabVisible by remember { mutableStateOf(true) }
     var fabExpanded by remember { mutableStateOf(true) }
+    var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
 
     // For export/import flow
@@ -602,7 +606,9 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 100.dp)
+                                    .padding(bottom = 100.dp),
+                                showKeyboard = showKeyboard,
+                                onDismissKeyboard = { showKeyboard = false }
                             )
                         } else {
                             // When disconnected: page 1 = Settings
@@ -687,17 +693,37 @@ fun AirSyncMainScreen(
                     FloatingToolbarDefaults.StandardFloatingActionButton(
                         onClick = {
                             HapticUtil.performClick(haptics)
-                            if (uiState.isConnected) {
-                                disconnect()
-                            } else {
-                                launchScanner(context)
+                            when (pagerState.currentPage) {
+                                1 -> { // Remote Tab
+                                    showKeyboard = !showKeyboard
+                                }
+                                2 -> { // Clipboard Tab
+                                    viewModel.clearClipboardHistory()
+                                }
+                                else -> { // Connect (0) or Settings (3)
+                                    if (uiState.isConnected) {
+                                        disconnect()
+                                    } else {
+                                        launchScanner(context)
+                                    }
+                                }
                             }
                         }
                     ) {
-                        if (uiState.isConnected) {
-                            Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
-                        } else {
-                            Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
+                        when (pagerState.currentPage) {
+                            1 -> { // Remote Tab
+                                Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
+                            }
+                            2 -> { // Clipboard Tab
+                                Icon(Icons.Rounded.Delete, contentDescription = "Clear History")
+                            }
+                            else -> { // Connect (0) or Settings (3)
+                                if (uiState.isConnected) {
+                                    Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
+                                } else {
+                                    Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
+                                }
+                            }
                         }
                     }
                 }

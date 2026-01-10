@@ -80,7 +80,9 @@ import org.json.JSONArray
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RemoteControlScreen(
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    showKeyboard: Boolean,
+    onDismissKeyboard: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
@@ -140,7 +142,7 @@ fun RemoteControlScreen(
         HapticUtil.performLightTick(haptics)
     }
 
-    var showKeyboard by remember { mutableStateOf(false) }
+
     var isMouseMode by remember { mutableStateOf(false) }
     var activeModifiers by remember { mutableStateOf(setOf<String>()) }
 
@@ -256,7 +258,7 @@ fun RemoteControlScreen(
 
     if (showKeyboard) {
         KeyboardInputSheet(
-            onDismiss = { showKeyboard = false },
+            onDismiss = onDismissKeyboard,
             onType = handleType,
             onKeyPress = handleKeyPress,
             onClearModifiers = handleClearModifiers,
@@ -624,12 +626,7 @@ fun RemoteControlScreen(
                 )
             }
 
-            OutlinedButton(
-                onClick = { showKeyboard = true },
-                modifier = Modifier.weight(1f)
-            ) {
-                Icon(Icons.Default.Keyboard, "Keyboard")
-            }
+
         }
     }
 }
