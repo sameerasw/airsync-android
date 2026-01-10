@@ -90,7 +90,8 @@ fun AirSyncMainScreen(
     symmetricKey: String? = null,
     onNavigateToApps: () -> Unit = {},
     showAboutDialog: Boolean = false,
-    onDismissAbout: () -> Unit = {}
+    onDismissAbout: () -> Unit = {},
+    onTitleChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
 
@@ -473,21 +474,6 @@ fun AirSyncMainScreen(
         }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = Modifier
-            .fillMaxSize()
-            .fillMaxSize()
-            .nestedScroll(exitAlwaysScrollBehavior),
-
-    ) { innerPadding ->
-        // Track page changes for haptic feedback on swipe
-        LaunchedEffect(pagerState.currentPage) {
-            snapshotFlow { pagerState.currentPage }.collect { _ ->
-                HapticUtil.performLightTick(haptics)
-            }
-        }
-        
         // Define tabs
         val tabs = remember(uiState.isConnected) {
             if (uiState.isConnected) {
@@ -504,6 +490,30 @@ fun AirSyncMainScreen(
                 )
             }
         }
+
+        // Update title based on current tab
+        LaunchedEffect(pagerState.currentPage, tabs) {
+            val currentTab = tabs.getOrNull(pagerState.currentPage)
+            if (currentTab != null) {
+                val title = if (currentTab.title == "Connect") "AirSync" else currentTab.title
+                onTitleChange(title)
+            }
+        }
+
+        Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            modifier = Modifier
+                .fillMaxSize()
+                .fillMaxSize()
+                .nestedScroll(exitAlwaysScrollBehavior),
+
+        ) { innerPadding ->
+            // Track page changes for haptic feedback on swipe
+            LaunchedEffect(pagerState.currentPage) {
+                snapshotFlow { pagerState.currentPage }.collect { _ ->
+                    HapticUtil.performLightTick(haptics)
+                }
+            }
 
         Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(

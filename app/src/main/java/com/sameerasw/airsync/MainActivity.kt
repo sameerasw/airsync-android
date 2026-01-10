@@ -304,6 +304,7 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 var showAboutDialog by remember { mutableStateOf(false) }
                 val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+                var topBarTitle by remember { mutableStateOf("AirSync") }
 
                 Scaffold(
                     modifier = Modifier
@@ -313,7 +314,7 @@ class MainActivity : ComponentActivity() {
                     topBar = {
                         LargeTopAppBar(
                             title = {
-                                Row {
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                     // Dynamic icon based on last connected device category
                                     val ctx = androidx.compose.ui.platform.LocalContext.current
                                     val ds = remember(ctx) { DataStoreManager(ctx) }
@@ -328,7 +329,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "AirSync",
+                                        topBarTitle,
                                         style = MaterialTheme.typography.titleLarge,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
@@ -361,7 +362,8 @@ class MainActivity : ComponentActivity() {
                                 isPlus = isPlus,
                                 symmetricKey = symmetricKey,
                                 showAboutDialog = showAboutDialog,
-                                onDismissAbout = { showAboutDialog = false }
+                                onDismissAbout = { showAboutDialog = false },
+                                onTitleChange = { topBarTitle = it }
                             )
                         }
                     }
