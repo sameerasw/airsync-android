@@ -557,9 +557,11 @@ object WebSocketMessageHandler {
                         "macInfo: App list changed (new=${newOnAndroid.size}, missing=${missingOnAndroid.size}); syncing full list of ${androidPackages.size} apps"
                     )
                     // Send the full current Android list so desktop can add new and remove missing
-                    SyncManager.sendOptimizedAppIcons(context, androidPackages)
+                    SyncManager.sendOptimizedAppIcons(context, androidPackages, fetchIcons = true)
                 } else {
-                    Log.d(TAG, "macInfo: No app list changes; skipping icon extraction")
+                    Log.d(TAG, "macInfo: No app list changes; skipping icon extraction but syncing metadata")
+                    // Sync metadata (enabled/disabled states) without re-sending heavy icon data
+                    SyncManager.sendOptimizedAppIcons(context, androidPackages, fetchIcons = false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error handling macInfo: ${e.message}")

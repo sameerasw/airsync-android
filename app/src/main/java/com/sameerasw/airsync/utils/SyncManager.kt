@@ -414,7 +414,7 @@ object SyncManager {
     /**
      * Send optimized app icons for a subset of packages (triggered by macInfo)
      */
-    fun sendOptimizedAppIcons(context: Context, packageNames: List<String>) {
+    fun sendOptimizedAppIcons(context: Context, packageNames: List<String>, fetchIcons: Boolean = true) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 if (!WebSocketUtil.isConnected()) {
@@ -429,6 +429,10 @@ object SyncManager {
 
                 val pm = context.packageManager
                 val apps = mutableListOf<com.sameerasw.airsync.domain.model.NotificationApp>()
+                
+                val ds = DataStoreManager(context)
+                val savedApps = ds.getNotificationApps().first()
+                val savedAppsMap = savedApps.associateBy { it.packageName }
 
                 packageNames.forEach { pkg ->
                     try {
@@ -436,11 +440,15 @@ object SyncManager {
                         val appName = pm.getApplicationLabel(ai).toString()
                         val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
                                 (ai.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+                        
+                        // Use saved preference if available, default to true
+                        val isEnabled = savedAppsMap[pkg]?.isEnabled ?: true
+                        
                         apps.add(
                             com.sameerasw.airsync.domain.model.NotificationApp(
                                 packageName = pkg,
                                 appName = appName,
-                                isEnabled = true,
+                                isEnabled = isEnabled,
                                 isSystemApp = isSystem,
                                 lastUpdated = System.currentTimeMillis()
                             )
@@ -455,16 +463,23 @@ object SyncManager {
                     return@launch
                 }
 
-                // Extract icons only for required packages
-                val iconMap = AppIconUtil.getAppIconsAsBase64(context, apps.map { it.packageName })
-                if (iconMap.isEmpty()) {
+                // Extract icons only if requested
+                val iconMap = if (fetchIcons) {
+                    AppIconUtil.getAppIconsAsBase64(context, apps.map { it.packageName })
+                } else {
+                    Log.d(TAG, "Skipping icon extraction (metadata sync only)")
+                    emptyMap()
+                }
+
+                // If verifying icons, we need them. But for metadata sync, empty map is fine.
+                if (fetchIcons && iconMap.isEmpty()) {
                     Log.w(TAG, "Icon extraction returned empty for optimized sync")
                     return@launch
                 }
 
                 val appIconsJson = JsonUtil.createAppIconsJson(apps, iconMap)
                 if (WebSocketUtil.sendMessage(appIconsJson)) {
-                    Log.d(TAG, "✅ Optimized app icons sent: ${iconMap.size}")
+                    Log.d(TAG, "✅ Optimized app icons sent: ${apps.size} apps (icons included: $fetchIcons)")
                 } else {
                     Log.e(TAG, "Failed to send optimized app icons")
                 }
