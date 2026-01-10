@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
@@ -93,6 +94,10 @@ fun SettingsView(
         Spacer(modifier = Modifier.height(0.dp))
 
             RoundedCardContainer {
+                DefaultTabCard(
+                    currentDefaultTab = uiState.defaultTab,
+                    onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
+                )
                 PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
                 QuickSettingsTipCard(
                     isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(context)

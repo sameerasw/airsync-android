@@ -181,4 +181,12 @@ class AirSyncRepositoryImpl(
     override fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return dataStoreManager.getMacMediaControlsEnabled()
     }
+
+    override suspend fun setDefaultTab(tab: String) {
+        dataStoreManager.setDefaultTab(tab)
+    }
+
+    override fun getDefaultTab(): Flow<String> {
+        return dataStoreManager.getDefaultTab()
+    }
 }

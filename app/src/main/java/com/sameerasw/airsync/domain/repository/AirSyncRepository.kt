@@ -78,4 +78,8 @@ interface AirSyncRepository {
     // Mac Media controls
     suspend fun setMacMediaControlsEnabled(enabled: Boolean)
     fun getMacMediaControlsEnabled(): Flow<Boolean>
+
+    // Default tab settings
+    suspend fun setDefaultTab(tab: String)
+    fun getDefaultTab(): Flow<String>
 }

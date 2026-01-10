@@ -28,9 +28,6 @@ fun QuickSettingsTipCard(
             .fillMaxWidth()
             .padding(top = 0.dp),
         shape = MaterialTheme.shapes.extraSmall,
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
-        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(

@@ -35,5 +35,6 @@ data class UiState(
     val authFailureMessage: String = "",
     // Clipboard history
     val isClipboardHistoryEnabled: Boolean = true,
-    val clipboardHistory: List<ClipboardEntry> = emptyList()
+    val clipboardHistory: List<ClipboardEntry> = emptyList(),
+    val defaultTab: String = "dynamic"
 )

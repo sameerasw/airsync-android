@@ -77,6 +77,9 @@ import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -111,6 +114,7 @@ fun AirSyncMainScreen(
     val connectScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
+    var hasAppliedInitialTab by remember { mutableStateOf(false) }
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
@@ -119,6 +123,33 @@ fun AirSyncMainScreen(
     var fabExpanded by remember { mutableStateOf(true) }
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
+
+    // Initial tab navigation logic
+    LaunchedEffect(Unit) {
+        if (!hasAppliedInitialTab) {
+            // Wait up to 2 seconds for initial connection (e.g. auto-reconnect on start)
+            withTimeoutOrNull(2000) {
+                snapshotFlow { uiState.isConnected }.filter { it }.first()
+            }
+
+            if (uiState.isConnected) {
+                val targetPage = when (uiState.defaultTab) {
+                    "connect" -> 0
+                    "remote" -> 1
+                    "clipboard" -> 2
+                    "dynamic" -> {
+                        // Check if music is playing on Mac
+                        if (uiState.macDeviceStatus?.music?.isPlaying == true) 1 else 2
+                    }
+                    else -> 0
+                }
+                if (targetPage > 0 && targetPage < (if (uiState.isConnected) 4 else 2)) {
+                    pagerState.scrollToPage(targetPage)
+                }
+            }
+            hasAppliedInitialTab = true
+        }
+    }
 
     // For export/import flow
     var pendingExportJson by remember { mutableStateOf<String?>(null) }

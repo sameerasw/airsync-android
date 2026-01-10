@@ -63,6 +63,7 @@ class DataStoreManager(private val context: Context) {
         private val EXPAND_NETWORKING_ENABLED = booleanPreferencesKey("expand_networking_enabled")
         // Mac Media controls toggle (for user-initiated proof for Play Store)
         private val MAC_MEDIA_CONTROLS_ENABLED = booleanPreferencesKey("mac_media_controls_enabled")
+        private val DEFAULT_TAB = stringPreferencesKey("default_tab")
 
         // Call monitoring preferences
         private val CALL_SYNC_ENABLED = booleanPreferencesKey("call_sync_enabled")
@@ -263,6 +264,18 @@ class DataStoreManager(private val context: Context) {
     fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { prefs ->
             prefs[MAC_MEDIA_CONTROLS_ENABLED] ?: true // Default to true
+        }
+    }
+
+    suspend fun setDefaultTab(tab: String) {
+        context.dataStore.edit { prefs ->
+            prefs[DEFAULT_TAB] = tab
+        }
+    }
+
+    fun getDefaultTab(): Flow<String> {
+        return context.dataStore.data.map { prefs ->
+            prefs[DEFAULT_TAB] ?: "dynamic"
         }
     }
 

@@ -39,7 +39,7 @@ fun PermissionsCard(
             containerColor = if (missingPermissionsCount > 0)
                 MaterialTheme.colorScheme.errorContainer
             else
-                MaterialTheme.colorScheme.surfaceContainerHigh
+                MaterialTheme.colorScheme.surfaceContainerHighest
         )
     ) {
         Row(

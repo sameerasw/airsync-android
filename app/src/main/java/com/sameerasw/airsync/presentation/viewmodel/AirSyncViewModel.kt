@@ -186,6 +186,7 @@ class AirSyncViewModel(
             val isSmartspacerShowWhenDisconnected = repository.getSmartspacerShowWhenDisconnected().first()
             val isMacMediaControlsEnabled = repository.getMacMediaControlsEnabled().first()
             val isClipboardHistoryEnabled = repository.getClipboardHistoryEnabled().first()
+            val defaultTab = repository.getDefaultTab().first()
 
             // Get device info
             val deviceName = savedDeviceName.ifEmpty {
@@ -231,7 +232,8 @@ class AirSyncViewModel(
                 isSendNowPlayingEnabled = isSendNowPlayingEnabled,
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
-                isClipboardHistoryEnabled = isClipboardHistoryEnabled
+                isClipboardHistoryEnabled = isClipboardHistoryEnabled,
+                defaultTab = defaultTab
             )
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
@@ -724,6 +726,13 @@ class AirSyncViewModel(
 
     fun setIsNotesRoleHeld(held: Boolean) {
         _isNotesRoleHeld.value = held
+    }
+
+    fun setDefaultTab(tab: String) {
+        _uiState.value = _uiState.value.copy(defaultTab = tab)
+        viewModelScope.launch {
+            repository.setDefaultTab(tab)
+        }
     }
 
 }
