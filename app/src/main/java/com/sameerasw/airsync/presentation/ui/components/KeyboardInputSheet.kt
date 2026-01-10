@@ -9,8 +9,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.rounded.Keyboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +29,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.res.painterResource
+import com.sameerasw.airsync.R
 
 enum class ShiftState {
     OFF,
@@ -40,7 +46,8 @@ data class KeyboardModifiers(
     val shift: ModifierStatus = ModifierStatus(),
     val ctrl: ModifierStatus = ModifierStatus(),
     val option: ModifierStatus = ModifierStatus(),
-    val command: ModifierStatus = ModifierStatus()
+    val command: ModifierStatus = ModifierStatus(),
+    val fn: ModifierStatus = ModifierStatus()
 )
 
 object MacKeycodes {
@@ -61,6 +68,11 @@ object MacKeycodes {
     const val BACKSPACE = 51
     const val ESCAPE = 53
     const val SPACE = 49
+    const val FN = 63
+    const val LEFT = 123
+    const val RIGHT = 124
+    const val DOWN = 125
+    const val UP = 126
 }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
@@ -86,8 +98,18 @@ fun KeyboardInputSheet(
                 .navigationBarsPadding()
                 .imePadding()
         ) {
+            // Shared rows visible in both modes
+            NavigationRow(onKeyPress = { onKeyPress(it, isSystemKeyboard) })
+            Spacer(modifier = Modifier.height(4.dp))
+            ModifierRow(
+                modifiers = modifiers,
+                onToggleModifier = onToggleModifier,
+                onKeyPress = { onKeyPress(it, isSystemKeyboard) }
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+
             if (isSystemKeyboard) {
-                // Header is visible in System Keyboard mode
+                // System Keyboard mode
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -108,14 +130,11 @@ fun KeyboardInputSheet(
                 
                 SystemInputArea(onType, onKeyPress)
             } else {
-                // Custom/AirSync Keyboard - Headless (header hidden)
-                // Switched via Spacebar long-press
+                // Custom/AirSync Keyboard
                 CustomKeyboard(
                     onType = { onType(it, false) },
                     onKeyPress = { onKeyPress(it, false) },
                     onSwitchToSystem = { isSystemKeyboard = true },
-                    modifiers = modifiers,
-                    onToggleModifier = onToggleModifier
                 )
             }
         }
@@ -168,9 +187,7 @@ private fun SystemInputArea(
 private fun CustomKeyboard(
     onType: (String) -> Unit,
     onKeyPress: (Int) -> Unit,
-    onSwitchToSystem: () -> Unit,
-    modifiers: KeyboardModifiers,
-    onToggleModifier: (String) -> Unit
+    onSwitchToSystem: () -> Unit
 ) {
     val view = LocalView.current
     fun performLightHaptic() {
@@ -211,56 +228,7 @@ private fun CustomKeyboard(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
-        // Modifier Row
-        ButtonGroup(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-            content = {
-                val modifierList = listOf(
-                    Triple("shift", "⇧", modifiers.shift),
-                    Triple("ctrl", "⌃", modifiers.ctrl),
-                    Triple("option", "⌥", modifiers.option),
-                    Triple("command", "⌘", modifiers.command)
-                )
-                
-                modifierList.forEach { (type, symbol, status) ->
-                    val interaction = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .animateWidth(interaction)
-                            .clip(RoundedCornerShape(24.dp))
-                            .background(
-                                if (status.active) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceContainerHighest
-                            )
-                            .combinedClickable(
-                                onClick = {
-                                    performLightHaptic()
-                                    onToggleModifier(type)
-                                },
-                                interactionSource = interaction,
-                                indication = null
-                            ),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Text(
-                                text = symbol,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                color = if (status.active) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-                    }
-                }
-            }
-        )
+        // Shared rows (Arrows and Modifiers) are now managed in KeyboardInputSheet
 
         // Dedicated Number Row
         ButtonGroup(
@@ -285,6 +253,7 @@ private fun CustomKeyboard(
                         interactionSource = numInteraction,
                         colors = IconButtonDefaults.iconButtonVibrantColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -326,6 +295,7 @@ private fun CustomKeyboard(
                         interactionSource = row1Interaction,
                         colors = IconButtonDefaults.iconButtonVibrantColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -336,6 +306,7 @@ private fun CustomKeyboard(
                             text = displayLabel,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -368,6 +339,7 @@ private fun CustomKeyboard(
                         interactionSource = row2Interaction,
                         colors = IconButtonDefaults.iconButtonVibrantColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -378,6 +350,7 @@ private fun CustomKeyboard(
                             text = displayLabel,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -451,6 +424,7 @@ private fun CustomKeyboard(
                         interactionSource = row3Interaction,
                         colors = IconButtonDefaults.iconButtonVibrantColors(
                             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier
                             .weight(1f)
@@ -461,6 +435,7 @@ private fun CustomKeyboard(
                             text = displayLabel,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
@@ -484,7 +459,8 @@ private fun CustomKeyboard(
                     Icon(
                         Icons.AutoMirrored.Filled.Backspace,
                         contentDescription = "Backspace",
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -518,6 +494,7 @@ private fun CustomKeyboard(
                         text = if (isSymbols) "ABC" else "?#/",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -546,7 +523,7 @@ private fun CustomKeyboard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.Default.Keyboard,
+                        Icons.Rounded.Keyboard,
                         contentDescription = "Keyboard",
                         modifier = Modifier
                             .size(24.dp)
@@ -571,7 +548,8 @@ private fun CustomKeyboard(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardReturn,
                         contentDescription = "Return",
-                        modifier = Modifier.size(24.dp)
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             }
@@ -580,3 +558,151 @@ private fun CustomKeyboard(
 }
 
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun NavigationRow(onKeyPress: (Int) -> Unit) {
+    val view = LocalView.current
+    fun performLightHaptic() {
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+
+    ButtonGroup(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        content = {
+            val navKeys = listOf(
+                Triple("LEFT", Icons.AutoMirrored.Filled.KeyboardArrowLeft, MacKeycodes.LEFT),
+                Triple("DOWN", Icons.Default.KeyboardArrowDown, MacKeycodes.DOWN),
+                Triple("UP", Icons.Default.KeyboardArrowUp, MacKeycodes.UP),
+                Triple("RIGHT", Icons.AutoMirrored.Filled.KeyboardArrowRight, MacKeycodes.RIGHT)
+            )
+
+            navKeys.forEach { (name, icon, keycode) ->
+                val interaction = remember { MutableInteractionSource() }
+                FilledTonalIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        onKeyPress(keycode)
+                    },
+                    interactionSource = interaction,
+                    colors = IconButtonDefaults.iconButtonVibrantColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .animateWidth(interaction),
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = name,
+                        modifier = Modifier.size(28.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ModifierRow(
+    modifiers: KeyboardModifiers,
+    onToggleModifier: (String) -> Unit,
+    onKeyPress: (Int) -> Unit
+) {
+    val view = LocalView.current
+    fun performLightHaptic() {
+        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+    }
+
+    ButtonGroup(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .padding(horizontal = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        content = {
+            // Esc key
+            val escInteraction = remember { MutableInteractionSource() }
+            FilledTonalIconButton(
+                onClick = {
+                    performLightHaptic()
+                    onKeyPress(MacKeycodes.ESCAPE)
+                },
+                interactionSource = escInteraction,
+                colors = IconButtonDefaults.iconButtonVibrantColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .weight(1.2f)
+                    .fillMaxHeight()
+                    .animateWidth(escInteraction),
+            ) {
+                Text(
+                    "esc",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+
+            val modifierList = listOf(
+                Triple("fn", "fn", modifiers.fn),
+                Triple("shift", R.drawable.key_shift, modifiers.shift),
+                Triple("ctrl", R.drawable.key_control, modifiers.ctrl),
+                Triple("option", R.drawable.key_option, modifiers.option),
+                Triple("command", R.drawable.key_command, modifiers.command)
+            )
+            
+            modifierList.forEach { (type, iconOrText, status) ->
+                val interaction = remember { MutableInteractionSource() }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .animateWidth(interaction)
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(
+                            if (status.active) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                        .combinedClickable(
+                            onClick = {
+                                performLightHaptic()
+                                onToggleModifier(type)
+                            },
+                            interactionSource = interaction,
+                            indication = null
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (iconOrText is Int) {
+                            Icon(
+                                painter = painterResource(id = iconOrText),
+                                contentDescription = type,
+                                modifier = Modifier.size(24.dp),
+                                tint = if (status.active) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface
+                            )
+                        } else {
+                            Text(
+                                text = iconOrText.toString(),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = if (status.active) MaterialTheme.colorScheme.onPrimary
+                                        else MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    )
+}

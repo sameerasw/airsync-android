@@ -132,7 +132,8 @@ fun RemoteControlScreen(
             shift = ModifierStatus(activeModifiers.contains("shift")),
             ctrl = ModifierStatus(activeModifiers.contains("ctrl")),
             option = ModifierStatus(activeModifiers.contains("option")),
-            command = ModifierStatus(activeModifiers.contains("command"))
+            command = ModifierStatus(activeModifiers.contains("command")),
+            fn = ModifierStatus(activeModifiers.contains("fn"))
         )
     }
 
