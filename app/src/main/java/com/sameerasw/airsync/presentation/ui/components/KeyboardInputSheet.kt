@@ -1,18 +1,16 @@
 package com.sameerasw.airsync.presentation.ui.components
 
 import android.view.HapticFeedbackConstants
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
+import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,12 +19,12 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 
 enum class ShiftState {
     OFF,
@@ -34,7 +32,7 @@ enum class ShiftState {
     LOCKED
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun KeyboardInputSheet(
     onDismiss: () -> Unit,
@@ -123,11 +121,12 @@ private fun SystemInputArea(
                 .alpha(0f)
                 .height(1.dp)
                 .focusRequester(focusRequester),
-            keyboardOptions = KeyboardOptions(autoCorrect = false)
+            keyboardOptions = KeyboardOptions(autoCorrectEnabled = false)
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CustomKeyboard(
     onType: (String) -> Unit,
@@ -174,161 +173,300 @@ private fun CustomKeyboard(
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         // Dedicated Number Row
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            numberRow.forEach { char ->
-                KeyboardKey(char, weight = 1f, onClick = {
-                    performLightHaptic()
-                    onType(char)
-                })
-            }
-        }
-        
-        // Row 1
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            currentRow1.forEach { char ->
-                val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
-                KeyboardKey(displayLabel, weight = 1f, onClick = {
-                    performLightHaptic()
-                    onType(displayLabel)
-                    if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
-                })
-            }
-        }
-        
-        // Row 2
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            if (!isSymbols) Spacer(modifier = Modifier.weight(0.5f)) // Indent for letters
-            currentRow2.forEach { char ->
-                val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
-                KeyboardKey(displayLabel, weight = 1f, onClick = {
-                    performLightHaptic()
-                    onType(displayLabel)
-                    if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
-                })
-            }
-            if (!isSymbols) Spacer(modifier = Modifier.weight(0.5f))
-        }
-        
-        // Row 3 (with Shift/Backspace logic)
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Shift Key - Only show if not in symbols mode
-            if (!isSymbols) {
-                KeyboardKey(
-                    icon = Icons.Default.ArrowUpward, 
-                    weight = 1.5f,
-                    highlight = shiftState != ShiftState.OFF,
-                    highlightColor = if (shiftState == ShiftState.LOCKED) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary,
-                    onClick = { 
-                        performLightHaptic()
-                        shiftState = if (shiftState == ShiftState.OFF) ShiftState.ON else ShiftState.OFF
-                    },
-                    onLongClick = {
-                        performHeavyHaptic()
-                        shiftState = ShiftState.LOCKED
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = {
+                numberRow.forEach { char ->
+                    val numInteraction = remember { MutableInteractionSource() }
+                    FilledTonalIconButton(
+                        onClick = {
+                            performLightHaptic()
+                            onType(char)
+                        },
+                        interactionSource = numInteraction,
+                        colors = IconButtonDefaults.iconButtonVibrantColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .animateWidth(numInteraction),
+                    ) {
+                        Text(
+                            text = char,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
                     }
-                )
-            } else {
-                 // Spacing balance for symbols mode
-                 Spacer(modifier = Modifier.weight(0.5f))
-            }
-            
-            currentRow3.forEach { char ->
-                val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
-                KeyboardKey(displayLabel, weight = 1f, onClick = {
-                    performLightHaptic()
-                    onType(displayLabel)
-                    if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
-                })
-            }
-            
-            // Backspace Key
-            KeyboardKey(
-                icon = Icons.Default.Backspace, 
-                weight = 1.5f,
-                onClick = {
-                    performLightHaptic()
-                    onKeyPress(51) // Delete
                 }
-            )
-        }
-        
+            }
+        )
+
+        // Row 1
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = {
+                currentRow1.forEach { char ->
+                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val row1Interaction = remember { MutableInteractionSource() }
+                    FilledTonalIconButton(
+                        onClick = {
+                            performLightHaptic()
+                            onType(displayLabel)
+                            if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
+                        },
+                        interactionSource = row1Interaction,
+                        colors = IconButtonDefaults.iconButtonVibrantColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .animateWidth(row1Interaction),
+                    ) {
+                        Text(
+                            text = displayLabel,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+            }
+        )
+
+        // Row 2
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = {
+                if (!isSymbols) Spacer(modifier = Modifier.weight(0.5f)) // Indent for letters
+                currentRow2.forEach { char ->
+                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val row2Interaction = remember { MutableInteractionSource() }
+                    FilledTonalIconButton(
+                        onClick = {
+                            performLightHaptic()
+                            onType(displayLabel)
+                            if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
+                        },
+                        interactionSource = row2Interaction,
+                        colors = IconButtonDefaults.iconButtonVibrantColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .animateWidth(row2Interaction),
+                    ) {
+                        Text(
+                            text = displayLabel,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+                if (!isSymbols) Spacer(modifier = Modifier.weight(0.5f))
+            }
+        )
+
+        // Row 3 (with Shift/Backspace logic)
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = {
+                // Shift Key - Only show if not in symbols mode
+                if (!isSymbols) {
+                    val shiftInteraction = remember { MutableInteractionSource() }
+
+                    Box(
+                        modifier = Modifier
+                            .weight(1.5f)
+                            .fillMaxHeight()
+                            .animateWidth(shiftInteraction)
+                            .combinedClickable(
+                                onClick = {
+                                    performLightHaptic()
+                                    shiftState = if (shiftState == ShiftState.OFF) ShiftState.ON else ShiftState.OFF
+                                },
+                                onLongClick = {
+                                    performHeavyHaptic()
+                                    shiftState = ShiftState.LOCKED
+                                },
+                                interactionSource = shiftInteraction,
+                                indication = null
+                            )
+                            .clip(RoundedCornerShape(24.dp))
+                            .background(
+                                if (shiftState != ShiftState.OFF) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.surfaceContainerHighest
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.ArrowUpward,
+                            contentDescription = "Shift",
+                            modifier = Modifier.size(24.dp),
+                            tint = if (shiftState != ShiftState.OFF) MaterialTheme.colorScheme.onPrimary
+                                else MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                } else {
+                     // Spacing balance for symbols mode
+                     Spacer(modifier = Modifier.weight(0.5f))
+                }
+
+                currentRow3.forEach { char ->
+                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val row3Interaction = remember { MutableInteractionSource() }
+                    FilledTonalIconButton(
+                        onClick = {
+                            performLightHaptic()
+                            onType(displayLabel)
+                            if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
+                        },
+                        interactionSource = row3Interaction,
+                        colors = IconButtonDefaults.iconButtonVibrantColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        ),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .animateWidth(row3Interaction),
+                    ) {
+                        Text(
+                            text = displayLabel,
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Medium,
+                        )
+                    }
+                }
+
+                // Backspace Key
+                val backspaceInteraction = remember { MutableInteractionSource() }
+                FilledTonalIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        onKeyPress(51) // Delete
+                    },
+                    interactionSource = backspaceInteraction,
+                    colors = IconButtonDefaults.iconButtonVibrantColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .fillMaxHeight()
+                        .animateWidth(backspaceInteraction),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.Backspace,
+                        contentDescription = "Backspace",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        )
+
         // Row 4 (Sym, Space, Return)
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            // Symbols Toggle
-            KeyboardKey(
-                label = if (isSymbols) "ABC" else "?#/", 
-                weight = 1.5f, 
-                onClick = {
-                    performLightHaptic()
-                    isSymbols = !isSymbols
-                 }
-            )
-            
-            // Space
-            KeyboardKey(
-                label = " ", 
-                weight = 4f, 
-                onClick = {
-                    performLightHaptic()
-                    onType(" ")
-                },
-                onLongClick = {
-                    performHeavyHaptic()
-                    onSwitchToSystem()
+        ButtonGroup(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(68.dp)
+                .padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            content = {
+                // Symbols Toggle
+                val symInteraction = remember { MutableInteractionSource() }
+                FilledTonalIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        isSymbols = !isSymbols
+                    },
+                    interactionSource = symInteraction,
+                    colors = IconButtonDefaults.iconButtonVibrantColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    ),
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .fillMaxHeight()
+                        .animateWidth(symInteraction),
+                ) {
+                    Text(
+                        text = if (isSymbols) "ABC" else "?#/",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
-            )
-            
-            // Return
-            KeyboardKey(
-                icon = Icons.AutoMirrored.Filled.KeyboardReturn,
-                weight = 1.5f, 
-                highlight = true,
-                onClick = {
-                    performLightHaptic()
-                    onKeyPress(36) // Return
+
+                // Space
+                val spaceInteraction = remember { MutableInteractionSource() }
+
+                Box(
+                    modifier = Modifier
+                        .weight(4f)
+                        .fillMaxHeight()
+                        .animateWidth(spaceInteraction)
+                        .combinedClickable(
+                            onClick = {
+                                performLightHaptic()
+                                onType(" ")
+                            },
+                            onLongClick = {
+                                performHeavyHaptic()
+                                onSwitchToSystem()
+                            },
+                            interactionSource = spaceInteraction,
+                            indication = null
+                        )
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.Keyboard,
+                        contentDescription = "Keyboard",
+                        modifier = Modifier
+                            .size(24.dp)
+                            .alpha(0.4f),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                 }
-            )
-        }
+
+                // Return
+                val returnInteraction = remember { MutableInteractionSource() }
+                FilledIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        onKeyPress(36) // Return
+                    },
+                    interactionSource = returnInteraction,
+                    modifier = Modifier
+                        .weight(1.5f)
+                        .fillMaxHeight()
+                        .animateWidth(returnInteraction),
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Filled.KeyboardReturn,
+                        contentDescription = "Return",
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+            }
+        )
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun RowScope.KeyboardKey(
-    label: String? = null,
-    icon: ImageVector? = null,
-    weight: Float = 1f,
-    highlight: Boolean = false,
-    highlightColor: Color = MaterialTheme.colorScheme.primary,
-    onClick: () -> Unit,
-    onLongClick: (() -> Unit)? = null
-) {
-    Box(
-        modifier = Modifier
-            .weight(weight)
-            .height(64.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(if (highlight) highlightColor else MaterialTheme.colorScheme.surfaceContainerHighest)
-            .combinedClickable(
-                onClick = onClick,
-                onLongClick = onLongClick
-            ),
-        contentAlignment = Alignment.Center
-    ) {
-        if (icon != null) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = if (highlight) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.size(24.dp)
-            )
-        } else if (label != null) {
-            Text(
-                text = label, 
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Medium,
-                color = if (highlight) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
-            )
-        }
-    }
-}
+
