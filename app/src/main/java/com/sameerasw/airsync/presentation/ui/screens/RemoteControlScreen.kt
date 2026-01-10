@@ -19,6 +19,8 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material.icons.filled.Keyboard
+import androidx.compose.material.icons.filled.Mouse
+import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -50,6 +52,10 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -62,9 +68,11 @@ import androidx.compose.ui.composed
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
 import com.sameerasw.airsync.presentation.ui.components.KeyboardInputSheet
 import com.sameerasw.airsync.presentation.ui.components.KeyboardModifiers
 import com.sameerasw.airsync.presentation.ui.components.ModifierStatus
+import kotlinx.coroutines.delay
 import org.json.JSONArray
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
@@ -126,7 +134,12 @@ fun RemoteControlScreen(
         }
     }
 
+    fun performLightHaptic() {
+        HapticUtil.performLightTick(haptics)
+    }
+
     var showKeyboard by remember { mutableStateOf(false) }
+    var isMouseMode by remember { mutableStateOf(false) }
     var activeModifiers by remember { mutableStateOf(setOf<String>()) }
 
     val modifiers = remember(activeModifiers) {
@@ -370,47 +383,171 @@ fun RemoteControlScreen(
             }
         }
 
-        // D-Pad and Navigation
-        Box(
-            modifier = Modifier
-                .size(240.dp)
-                .background(MaterialTheme.colorScheme.surfaceContainerLow, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            // Up
-            RemoteButton(
-                onClick = { sendRemoteAction("arrow_up") },
-                icon = Icons.Default.ArrowUpward,
-                modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
-            )
-            
-            // Down
-            RemoteButton(
-                onClick = { sendRemoteAction("arrow_down") },
-                icon = Icons.Default.ArrowDownward,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
-            )
-            
-            // Left
-            RemoteButton(
-                onClick = { sendRemoteAction("arrow_left") },
-                icon = Icons.Default.ArrowBack,
-                modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
-            )
-            
-            // Right
-            RemoteButton(
-                onClick = { sendRemoteAction("arrow_right") },
-                icon = Icons.Default.ArrowForward,
-                modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
-            )
-            
-            // Center (OK/Enter)
-            FilledTonalIconButton(
-                onClick = { sendRemoteAction("enter") },
-                modifier = Modifier.size(64.dp)
+        if (isMouseMode) {
+            // Trackpad Area
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .padding(vertical = 16.dp)
+                    .pointerInput(isMouseMode) {
+                        if (!isMouseMode) return@pointerInput
+                        
+                        awaitEachGesture {
+                            val firstDown = awaitFirstDown()
+                            var totalMoved = 0f
+                            var totalHapticDistance = 0f
+                            var lastPosition = firstDown.position
+                            var isTwoFinger = false
+                            
+                            val dragThreshold = 10f
+                            val hapticInterval = 25f
+
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val pointers = event.changes
+                                
+                                if (pointers.size >= 2) {
+                                    isTwoFinger = true
+                                    val change1 = pointers[0]
+                                    val change2 = pointers[1]
+                                    
+                                    val currentCenter = (change1.position + change2.position) / 2f
+                                    val prevCenter = (change1.previousPosition + change2.previousPosition) / 2f
+                                    val scrollDelta = currentCenter - prevCenter
+                                    val scrollDist = scrollDelta.getDistance()
+                                    
+                                    if (scrollDist > 0.5f) {
+                                        totalMoved += scrollDist
+                                        totalHapticDistance += scrollDist
+                                        if (totalHapticDistance > hapticInterval) {
+                                            performLightHaptic()
+                                            totalHapticDistance = 0f
+                                        }
+                                        
+                                        sendRemoteAction(
+                                            "mouse_scroll",
+                                            extras = mapOf(
+                                                "dx" to scrollDelta.x.toDouble() * 2.0,
+                                                "dy" to scrollDelta.y.toDouble() * 2.0
+                                            ),
+                                            performHaptic = false
+                                        )
+                                    }
+                                    pointers.forEach { it.consume() }
+                                } else if (pointers.size == 1) {
+                                    val change = pointers[0]
+                                    if (change.pressed) {
+                                        val delta = change.position - lastPosition
+                                        val dist = delta.getDistance()
+                                        lastPosition = change.position
+                                        
+                                        if (!isTwoFinger) {
+                                            if (dist > 0.1f) {
+                                                totalMoved += dist
+                                                totalHapticDistance += dist
+                                                if (totalHapticDistance > hapticInterval) {
+                                                    performLightHaptic()
+                                                    totalHapticDistance = 0f
+                                                }
+                                                
+                                                sendRemoteAction(
+                                                    "mouse_move",
+                                                    extras = mapOf(
+                                                        "dx" to (delta.x * 1.8f).toDouble(),
+                                                        "dy" to (delta.y * 1.8f).toDouble()
+                                                    ),
+                                                    performHaptic = false
+                                                )
+                                            }
+                                        }
+                                        change.consume()
+                                    } else {
+                                        // Finger lifted
+                                        if (isTwoFinger) {
+                                            if (totalMoved < 30f) {
+                                                performLightHaptic()
+                                                sendRemoteAction("mouse_click", extras = mapOf("button" to "right", "isDown" to true))
+                                                scope.launch {
+                                                    delay(50)
+                                                    sendRemoteAction("mouse_click", extras = mapOf("button" to "right", "isDown" to false))
+                                                }
+                                            }
+                                        } else {
+                                            if (totalMoved < dragThreshold) {
+                                                // CLICK
+                                                performLightHaptic()
+                                                sendRemoteAction("mouse_click", extras = mapOf("button" to "left", "isDown" to true))
+                                                scope.launch {
+                                                    delay(50)
+                                                    sendRemoteAction("mouse_click", extras = mapOf("button" to "left", "isDown" to false))
+                                                }
+                                            }
+                                        }
+                                        break
+                                    }
+                                } else {
+                                    break
+                                }
+                            }
+                        }
+                    },
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
             ) {
-                Icon(Icons.Default.Circle, "Enter", modifier = Modifier.size(24.dp))
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.rounded_drag_click_24),
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp).alpha(0.1f),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        } else {
+            // D-Pad and Navigation
+            Box(
+                modifier = Modifier
+                    .size(240.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerLow, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                // Up
+                RemoteButton(
+                    onClick = { sendRemoteAction("arrow_up") },
+                    icon = Icons.Default.ArrowUpward,
+                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                )
+                
+                // Down
+                RemoteButton(
+                    onClick = { sendRemoteAction("arrow_down") },
+                    icon = Icons.Default.ArrowDownward,
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+                )
+                
+                // Left
+                RemoteButton(
+                    onClick = { sendRemoteAction("arrow_left") },
+                    icon = Icons.Default.ArrowBack,
+                    modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
+                )
+                
+                // Right
+                RemoteButton(
+                    onClick = { sendRemoteAction("arrow_right") },
+                    icon = Icons.Default.ArrowForward,
+                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
+                )
+                
+                // Center (OK/Enter)
+                FilledTonalIconButton(
+                    onClick = { sendRemoteAction("enter") },
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Icon(Icons.Default.Circle, "Enter", modifier = Modifier.size(24.dp))
+                }
             }
         }
 
@@ -432,6 +569,17 @@ fun RemoteControlScreen(
                modifier = Modifier.weight(1f)
            ) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
+            }
+            // Mouse Toggle
+            OutlinedButton(
+                onClick = { isMouseMode = !isMouseMode },
+                modifier = Modifier.weight(1f),
+            ) {
+                Icon(
+                    painter = if (isMouseMode) painterResource(id = R.drawable.rounded_drag_click_24) else painterResource(id = R.drawable.rounded_gamepad_circle_up_24),
+                    contentDescription = if (isMouseMode) "Touchpad Mode" else "Mouse Mode",
+                    modifier = Modifier.size(20.dp)
+                )
             }
 
             OutlinedButton(
