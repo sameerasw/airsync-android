@@ -43,6 +43,14 @@ import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
+import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.zIndex
+import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
+import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
@@ -63,10 +71,11 @@ import org.json.JSONObject
 import kotlinx.coroutines.Job
 import java.net.URLDecoder
 import androidx.core.net.toUri
+import androidx.navigation.compose.rememberNavController
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AirSyncMainScreen(
     modifier: Modifier = Modifier,
@@ -108,7 +117,11 @@ fun AirSyncMainScreen(
 
     // For export/import flow
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
-    
+
+    val navController = rememberNavController()
+    var showAboutDialogState by remember { mutableStateOf(false) }
+    val exitAlwaysScrollBehavior = FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
+
     fun connect() {
         // Check if critical permissions are missing
         val criticalPermissions = com.sameerasw.airsync.utils.PermissionUtil.getCriticalMissingPermissions(context)
@@ -458,6 +471,10 @@ fun AirSyncMainScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = Modifier
+            .fillMaxSize()
+            .fillMaxSize()
+            .nestedScroll(exitAlwaysScrollBehavior),
         floatingActionButton = {
             // Only show FAB on Connect tab (index 0)
             if (pagerState.currentPage == 0) {
@@ -483,71 +500,6 @@ fun AirSyncMainScreen(
                     )
                 }
             }
-        },
-        bottomBar = {
-            // Dynamic tab list - only include Clipboard when connected
-            val items = if (uiState.isConnected) {
-                listOf("Connect", "Remote", "Clipboard", "Settings")
-            } else {
-                listOf("Connect", "Settings")
-            }
-            val selectedIcons = if (uiState.isConnected) {
-                listOf(Icons.Filled.Phonelink, Icons.Filled.Gamepad, Icons.Filled.ContentPaste, Icons.Filled.Settings)
-            } else {
-                listOf(Icons.Filled.Phonelink, Icons.Filled.Settings)
-            }
-            val unselectedIcons = if (uiState.isConnected) {
-                listOf(Icons.Outlined.Phonelink, Icons.Outlined.Gamepad, Icons.Rounded.ContentPaste, Icons.Outlined.Settings)
-            } else {
-                listOf(Icons.Outlined.Phonelink, Icons.Outlined.Settings)
-            }
-            NavigationBar(
-                windowInsets = NavigationBarDefaults.windowInsets
-            ) {
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        icon = {
-                            val selected = pagerState.currentPage == index
-                            val iconOffset by animateDpAsState(targetValue = if (selected) 0.dp else 2.dp, label = "NavIconOffset")
-
-                            // Show badge on Settings tab if there are missing permissions
-                            if (item == "Settings") {
-                                BadgedBox(
-                                    badge = {
-                                        if (uiState.missingPermissions.isNotEmpty()) {
-                                            Badge() // Show dot without number
-                                        }
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = if (selected) selectedIcons[index] else unselectedIcons[index],
-                                        contentDescription = item,
-                                        modifier = Modifier.offset(y = iconOffset)
-                                    )
-                                }
-                            } else {
-                                Icon(
-                                    imageVector = if (selected) selectedIcons[index] else unselectedIcons[index],
-                                    contentDescription = item,
-                                    modifier = Modifier.offset(y = iconOffset)
-                                )
-                            }
-                        },
-                        label = {
-                            val selected = pagerState.currentPage == index
-                            val alpha by animateFloatAsState(targetValue = if (selected) 1f else 0f, label = "NavLabelAlpha")
-                            // Keep label space reserved (alwaysShowLabel=true) and fade it in/out to avoid icon jumps
-                            Text(item, modifier = Modifier.alpha(alpha))
-                        },
-                        alwaysShowLabel = true,
-                        selected = pagerState.currentPage == index,
-                        onClick = {
-                            HapticUtil.performLightTick(haptics)
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        }
-                    )
-                }
-            }
         }
     ) { innerPadding ->
         // Track page changes for haptic feedback on swipe
@@ -556,115 +508,176 @@ fun AirSyncMainScreen(
                 HapticUtil.performLightTick(haptics)
             }
         }
+        
+        // Define tabs
+        val tabs = remember(uiState.isConnected) {
+            if (uiState.isConnected) {
+                listOf(
+                    AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
+                    AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
+                    AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
+                    AirSyncTab("Settings", Icons.Filled.Settings, 3)
+                )
+            } else {
+                listOf(
+                     AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
+                     AirSyncTab("Settings", Icons.Filled.Settings, 1)
+                )
+            }
+        }
 
-        HorizontalPager(
-            modifier = modifier.fillMaxSize(),
-            state = pagerState
-        ) { page ->
-            when (page) {
-                0 -> {
-                    // Connect tab content
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = innerPadding.calculateBottomPadding())
-                            .verticalScroll(connectScrollState)
-                            .padding(horizontal = 16.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-
-                        Spacer(modifier = Modifier.height(0.dp))
-
-                        RoundedCardContainer {
-
-                            // Connection Status Card
-                            ConnectionStatusCard(
-                                isConnected = uiState.isConnected,
-                                isConnecting = uiState.isConnecting,
-                                onDisconnect = { disconnect() },
-                                connectedDevice = uiState.lastConnectedDevice,
-                                lastConnected = uiState.lastConnectedDevice != null,
-                                uiState = uiState,
-                            )
-                        }
-
-                        RoundedCardContainer{
-                            AnimatedVisibility(
-                                visible = !uiState.isConnected,
-                                enter = expandVertically() + fadeIn(),
-                                exit = shrinkVertically() + fadeOut()
-                            ) {
-                                Column {
-                                    ManualConnectionCard(
-                                        isConnected = uiState.isConnected,
-                                        lastConnected = uiState.lastConnectedDevice != null,
-                                        uiState = uiState,
-                                        onIpChange = { viewModel.updateIpAddress(it) },
-                                        onPortChange = { viewModel.updatePort(it) },
-                                        onPcNameChange = { viewModel.updateManualPcName(it) },
-                                        onIsPlusChange = { viewModel.updateManualIsPlus(it) },
-                                        onSymmetricKeyChange = { viewModel.updateSymmetricKey(it) },
-                                        onConnect = { viewModel.prepareForManualConnection() },
-                                        onQrScanClick = { launchScanner(context) }
-                                    )
-                                }
-                            }
-
-                            // Last Connected Device Section
-                            AnimatedVisibility(
-                                visible = !uiState.isConnected && uiState.lastConnectedDevice != null,
-                                enter = expandVertically() + fadeIn(),
-                                exit = shrinkVertically() + fadeOut()
-                            ) {
-                                uiState.lastConnectedDevice?.let { device ->
-                                    LastConnectedDeviceCard(
-                                        device = device,
-                                        isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
-                                        onToggleAutoReconnect = { enabled ->
-                                            viewModel.setAutoReconnectEnabled(
-                                                enabled
-                                            )
-                                        },
-                                        onQuickConnect = {
-                                            // Check if we can use network-aware connection first
-                                            val networkAwareDevice =
-                                                viewModel.getNetworkAwareLastConnectedDevice()
-                                            if (networkAwareDevice != null) {
-                                                // Use network-aware device IP for current network
-                                                viewModel.updateIpAddress(networkAwareDevice.ipAddress)
-                                                viewModel.updatePort(networkAwareDevice.port)
-                                                connect()
-                                            } else {
-                                                // Fallback to legacy stored device
-                                                viewModel.updateIpAddress(device.ipAddress)
-                                                viewModel.updatePort(device.port)
-                                                viewModel.updateSymmetricKey(device.symmetricKey)
-                                                connect()
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
-                    }
-                }
-                1 -> {
-                    if (uiState.isConnected) {
-                        // When connected: page 1 = Remote
-                        RemoteControlScreen(
+        Box(modifier = Modifier.fillMaxSize()) {
+            HorizontalPager(
+                modifier = modifier.fillMaxSize(),
+                state = pagerState
+            ) { page ->
+                when (page) {
+                    0 -> {
+                        // Connect tab content
+                        Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = innerPadding.calculateBottomPadding())
-                        )
-                    } else {
-                        // When disconnected: page 1 = Settings
+                                .padding(bottom = 0.dp)
+                                .verticalScroll(connectScrollState)
+                                .padding(horizontal = 16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(24.dp)
+                        ) {
+    
+                            Spacer(modifier = Modifier.height(0.dp))
+    
+                            RoundedCardContainer {
+    
+                                // Connection Status Card
+                                ConnectionStatusCard(
+                                    isConnected = uiState.isConnected,
+                                    isConnecting = uiState.isConnecting,
+                                    onDisconnect = { disconnect() },
+                                    connectedDevice = uiState.lastConnectedDevice,
+                                    lastConnected = uiState.lastConnectedDevice != null,
+                                    uiState = uiState,
+                                )
+                            }
+    
+                            RoundedCardContainer{
+                                AnimatedVisibility(
+                                    visible = !uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column {
+                                        ManualConnectionCard(
+                                            isConnected = uiState.isConnected,
+                                            lastConnected = uiState.lastConnectedDevice != null,
+                                            uiState = uiState,
+                                            onIpChange = { viewModel.updateIpAddress(it) },
+                                            onPortChange = { viewModel.updatePort(it) },
+                                            onPcNameChange = { viewModel.updateManualPcName(it) },
+                                            onIsPlusChange = { viewModel.updateManualIsPlus(it) },
+                                            onSymmetricKeyChange = { viewModel.updateSymmetricKey(it) },
+                                            onConnect = { viewModel.prepareForManualConnection() },
+                                            onQrScanClick = { launchScanner(context) }
+                                        )
+                                    }
+                                }
+    
+                                // Last Connected Device Section
+                                AnimatedVisibility(
+                                    visible = !uiState.isConnected && uiState.lastConnectedDevice != null,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    uiState.lastConnectedDevice?.let { device ->
+                                        LastConnectedDeviceCard(
+                                            device = device,
+                                            isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
+                                            onToggleAutoReconnect = { enabled ->
+                                                viewModel.setAutoReconnectEnabled(
+                                                    enabled
+                                                )
+                                            },
+                                            onQuickConnect = {
+                                                // Check if we can use network-aware connection first
+                                                val networkAwareDevice =
+                                                    viewModel.getNetworkAwareLastConnectedDevice()
+                                                if (networkAwareDevice != null) {
+                                                    // Use network-aware device IP for current network
+                                                    viewModel.updateIpAddress(networkAwareDevice.ipAddress)
+                                                    viewModel.updatePort(networkAwareDevice.port)
+                                                    connect()
+                                                } else {
+                                                    // Fallback to legacy stored device
+                                                    viewModel.updateIpAddress(device.ipAddress)
+                                                    viewModel.updatePort(device.port)
+                                                    viewModel.updateSymmetricKey(device.symmetricKey)
+                                                    connect()
+                                                }
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+    
+                            Spacer(modifier = Modifier.height(24.dp))
+                        }
+                    }
+                    1 -> {
+                        if (uiState.isConnected) {
+                            // When connected: page 1 = Remote
+                            RemoteControlScreen(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 100.dp)
+                            )
+                        } else {
+                            // When disconnected: page 1 = Settings
+                            SettingsView(
+                                modifier = Modifier.fillMaxSize(),
+                                context = context,
+                                innerPaddingBottom = 0.dp,
+                                uiState = uiState,
+                                deviceInfo = deviceInfo,
+                                versionName = versionName,
+                                viewModel = viewModel,
+                                scrollState = settingsScrollState,
+                                scope = scope,
+                                onSendMessage = { message -> sendMessage(message) },
+                                onExport = { json ->
+                                    pendingExportJson = json
+                                    createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
+                                },
+                                onImport = { openDocLauncher.launch(arrayOf("application/json")) }
+                            )
+                        }
+                    }
+                    2 -> {
+                        if (uiState.isConnected) {
+                            // When connected: page 2 = Clipboard
+                            ClipboardScreen(
+                                clipboardHistory = uiState.clipboardHistory,
+                                isConnected = true,
+                                onSendText = { text ->
+                                    viewModel.addClipboardEntry(text, isFromPc = false)
+                                    val clipboardJson = JsonUtil.createClipboardUpdateJson(text)
+                                    WebSocketUtil.sendMessage(clipboardJson)
+                                },
+                                onClearHistory = { viewModel.clearClipboardHistory() },
+                                isHistoryEnabled = uiState.isClipboardHistoryEnabled,
+                                onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 100.dp)
+                            )
+                        } else {
+                            Box(Modifier.fillMaxSize())
+                        }
+                    }
+                    3 -> {
+                        // Page 3 only exists when connected = Settings tab
                         SettingsView(
                             modifier = Modifier.fillMaxSize(),
                             context = context,
-                            innerPaddingBottom = innerPadding.calculateBottomPadding(),
+                            innerPaddingBottom = 0.dp,
                             uiState = uiState,
                             deviceInfo = deviceInfo,
                             versionName = versionName,
@@ -680,49 +693,22 @@ fun AirSyncMainScreen(
                         )
                     }
                 }
-                2 -> {
-                    if (uiState.isConnected) {
-                        // When connected: page 2 = Clipboard
-                        ClipboardScreen(
-                            clipboardHistory = uiState.clipboardHistory,
-                            isConnected = true,
-                            onSendText = { text ->
-                                viewModel.addClipboardEntry(text, isFromPc = false)
-                                val clipboardJson = JsonUtil.createClipboardUpdateJson(text)
-                                WebSocketUtil.sendMessage(clipboardJson)
-                            },
-                            onClearHistory = { viewModel.clearClipboardHistory() },
-                            isHistoryEnabled = uiState.isClipboardHistoryEnabled,
-                            onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(bottom = innerPadding.calculateBottomPadding())
-                        )
-                    } else {
-                        Box(Modifier.fillMaxSize())
-                    }
-                }
-                3 -> {
-                    // Page 3 only exists when connected = Settings tab
-                    SettingsView(
-                        modifier = Modifier.fillMaxSize(),
-                        context = context,
-                        innerPaddingBottom = innerPadding.calculateBottomPadding(),
-                        uiState = uiState,
-                        deviceInfo = deviceInfo,
-                        versionName = versionName,
-                        viewModel = viewModel,
-                        scrollState = settingsScrollState,
-                        scope = scope,
-                        onSendMessage = { message -> sendMessage(message) },
-                        onExport = { json ->
-                            pendingExportJson = json
-                            createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
-                        },
-                        onImport = { openDocLauncher.launch(arrayOf("application/json")) }
-                    )
-                }
             }
+
+            AirSyncFloatingToolbar(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = -ScreenOffset - 12.dp)
+                    .zIndex(1f),
+                currentPage = pagerState.currentPage,
+                tabs = tabs,
+                onTabSelected = { index ->
+                    scope.launch {
+                        pagerState.animateScrollToPage(index)
+                    }
+                },
+                scrollBehavior = exitAlwaysScrollBehavior
+            )
         }
     }
 
