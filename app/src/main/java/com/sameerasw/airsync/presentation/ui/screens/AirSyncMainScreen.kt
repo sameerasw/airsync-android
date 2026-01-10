@@ -475,32 +475,7 @@ fun AirSyncMainScreen(
             .fillMaxSize()
             .fillMaxSize()
             .nestedScroll(exitAlwaysScrollBehavior),
-        floatingActionButton = {
-            // Only show FAB on Connect tab (index 0)
-            if (pagerState.currentPage == 0) {
-                AnimatedVisibility(visible = fabVisible, enter = scaleIn(), exit = scaleOut()) {
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            if (uiState.isConnected) {
-                                disconnect()
-                            } else {
-                                launchScanner(context)
-                            }
-                        },
-                        icon = {
-                            if (uiState.isConnected) {
-                                Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
-                            } else {
-                                Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
-                            }
-                        },
-                        text = { Text(text = if (uiState.isConnected) "Disconnect" else "Scan to connect") },
-                        expanded = fabExpanded
-                    )
-                }
-            }
-        }
+
     ) { innerPadding ->
         // Track page changes for haptic feedback on swipe
         LaunchedEffect(pagerState.currentPage) {
@@ -707,7 +682,25 @@ fun AirSyncMainScreen(
                         pagerState.animateScrollToPage(index)
                     }
                 },
-                scrollBehavior = exitAlwaysScrollBehavior
+                scrollBehavior = exitAlwaysScrollBehavior,
+                floatingActionButton = {
+                    FloatingToolbarDefaults.StandardFloatingActionButton(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            if (uiState.isConnected) {
+                                disconnect()
+                            } else {
+                                launchScanner(context)
+                            }
+                        }
+                    ) {
+                        if (uiState.isConnected) {
+                            Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
+                        } else {
+                            Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
+                        }
+                    }
+                }
             )
         }
     }

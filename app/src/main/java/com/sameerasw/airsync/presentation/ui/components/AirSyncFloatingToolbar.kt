@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarScrollBehavior
 import androidx.compose.material3.HorizontalFloatingToolbar
 import androidx.compose.material3.Icon
@@ -34,7 +35,8 @@ fun AirSyncFloatingToolbar(
     currentPage: Int,
     tabs: List<AirSyncTab>,
     onTabSelected: (Int) -> Unit,
-    scrollBehavior: FloatingToolbarScrollBehavior
+    scrollBehavior: FloatingToolbarScrollBehavior,
+    floatingActionButton: @Composable () -> Unit = {}
 ) {
     var interactionCount by remember { mutableStateOf(0) }
 
@@ -53,26 +55,13 @@ fun AirSyncFloatingToolbar(
     HorizontalFloatingToolbar(
         modifier = modifier,
         expanded = true,
+        floatingActionButton = floatingActionButton,
         scrollBehavior = scrollBehavior,
+        colors = FloatingToolbarDefaults.vibrantFloatingToolbarColors(),
         content = {
             // FIXED ORDER LOOP to prevent shifting
             tabs.forEachIndexed { index, tab ->
                 val isSelected = currentPage == index
-                val isBumping = bumpingTab == index
-
-                // Animate scale for non-selected tabs when collapsing/expanding
-                val itemScale by animateFloatAsState(
-                    targetValue = when {
-                        isBumping -> 1.28f // Subtle bump animation when selected
-                        isSelected -> 1.2f
-                        else -> 1.0f // Normal scale
-                    },
-                    animationSpec = spring(
-                        dampingRatio = if (isBumping) Spring.DampingRatioMediumBouncy else Spring.DampingRatioLowBouncy,
-                        stiffness = if (isBumping) Spring.StiffnessHigh else Spring.StiffnessLow
-                    ),
-                    label = "item_scale_$index"
-                )
 
                 // Animate alpha for smooth fade
                 val itemAlpha = 1f
@@ -87,16 +76,14 @@ fun AirSyncFloatingToolbar(
                 IconButton(
                     onClick = {
                         interactionCount++
-                        bumpingTab = index
-                        bumpKey++ 
                         onTabSelected(index)
                     },
                     modifier = Modifier
                         .width(itemWidth)
                         .height(48.dp)
                         .graphicsLayer {
-                            scaleX = itemScale
-                            scaleY = itemScale
+                            scaleX = 1f
+                            scaleY = 1f
                             alpha = itemAlpha
                         },
                     colors = if (isSelected) {
