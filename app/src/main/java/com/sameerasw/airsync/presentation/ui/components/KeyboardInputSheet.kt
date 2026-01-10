@@ -2,6 +2,7 @@ package com.sameerasw.airsync.presentation.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -99,7 +100,10 @@ fun KeyboardInputSheet(
                 .imePadding()
         ) {
             // Shared rows visible in both modes
-            NavigationRow(onKeyPress = { onKeyPress(it, isSystemKeyboard) })
+            NavigationRow(
+                onKeyPress = { onKeyPress(it, isSystemKeyboard) },
+                onToggleKeyboard = { isSystemKeyboard = !isSystemKeyboard }
+            )
             Spacer(modifier = Modifier.height(4.dp))
             ModifierRow(
                 modifiers = modifiers,
@@ -110,24 +114,6 @@ fun KeyboardInputSheet(
 
             if (isSystemKeyboard) {
                 // System Keyboard mode
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 0.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "System Keyboard",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    TextButton(onClick = { isSystemKeyboard = false }) {
-                        Text("Use AirSync")
-                    }
-                }
-                
                 SystemInputArea(onType, onKeyPress)
             } else {
                 // Custom/AirSync Keyboard
@@ -175,7 +161,7 @@ private fun SystemInputArea(
             modifier = Modifier
                 .fillMaxWidth()
                 .alpha(0f)
-                .height(1.dp)
+                .height(0.dp)
                 .focusRequester(focusRequester),
             keyboardOptions = KeyboardOptions(autoCorrectEnabled = false)
         )
@@ -506,14 +492,10 @@ private fun CustomKeyboard(
                         .weight(4f)
                         .fillMaxHeight()
                         .animateWidth(spaceInteraction)
-                        .combinedClickable(
+                        .clickable(
                             onClick = {
                                 performLightHaptic()
                                 onKeyPress(MacKeycodes.SPACE)
-                            },
-                            onLongClick = {
-                                performHeavyHaptic()
-                                onSwitchToSystem()
                             },
                             interactionSource = spaceInteraction,
                             indication = null
@@ -548,8 +530,7 @@ private fun CustomKeyboard(
                     Icon(
                         Icons.AutoMirrored.Filled.KeyboardReturn,
                         contentDescription = "Return",
-                        modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -560,7 +541,10 @@ private fun CustomKeyboard(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun NavigationRow(onKeyPress: (Int) -> Unit) {
+private fun NavigationRow(
+    onKeyPress: (Int) -> Unit,
+    onToggleKeyboard: () -> Unit
+) {
     val view = LocalView.current
     fun performLightHaptic() {
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
@@ -580,6 +564,31 @@ private fun NavigationRow(onKeyPress: (Int) -> Unit) {
                 Triple("RIGHT", Icons.AutoMirrored.Filled.KeyboardArrowRight, MacKeycodes.RIGHT)
             )
 
+            // Keyboard Toggle Button
+            val kbInteraction = remember { MutableInteractionSource() }
+            FilledTonalIconButton(
+                onClick = {
+                    performLightHaptic()
+                    onToggleKeyboard()
+                },
+                interactionSource = kbInteraction,
+                colors = IconButtonDefaults.iconButtonVibrantColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                ),
+                modifier = Modifier
+                    .weight(0.5f)
+                    .fillMaxHeight()
+                    .animateWidth(kbInteraction),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Keyboard,
+                    contentDescription = "Switch Keyboard",
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                )
+            }
+            
             navKeys.forEach { (name, icon, keycode) ->
                 val interaction = remember { MutableInteractionSource() }
                 FilledTonalIconButton(
@@ -605,6 +614,7 @@ private fun NavigationRow(onKeyPress: (Int) -> Unit) {
                     )
                 }
             }
+
         }
     )
 }
