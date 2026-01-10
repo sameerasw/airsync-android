@@ -1,6 +1,7 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.filled.Shuffle
+import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -56,6 +58,9 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.composed
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import com.sameerasw.airsync.presentation.ui.components.KeyboardInputSheet
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -88,10 +93,12 @@ fun RemoteControlScreen(
         }
     }
 
-    fun sendRemoteAction(action: String, value: Any? = null) {
+    fun sendRemoteAction(action: String, value: Any? = null, extras: Map<String, Any> = emptyMap(), performHaptic: Boolean = true) {
         scope.launch {
             try {
-                HapticUtil.performClick(haptics)
+                if (performHaptic) {
+                    HapticUtil.performClick(haptics)
+                }
                 val json = JSONObject()
                 json.put("type", "remoteControl")
                 val data = JSONObject()
@@ -99,12 +106,47 @@ fun RemoteControlScreen(
                 if (value != null) {
                     data.put("value", value)
                 }
+                extras.forEach { (k, v) ->
+                    data.put(k, v)
+                }
                 json.put("data", data)
                 WebSocketUtil.sendMessage(json.toString())
             } catch (e: Exception) {
                 e.printStackTrace()
             }
         }
+    }
+
+    var showKeyboard by remember { mutableStateOf(false) }
+
+    // Memoize the callbacks to prevent unnecessary recompositions in KeyboardInputSheet
+    val handleType = remember(scope) {
+        { text: String, fromSystem: Boolean ->
+            sendRemoteAction(
+                "type",
+                extras = mapOf("text" to text),
+                performHaptic = !fromSystem
+            )
+        }
+    }
+
+    val handleKeyPress = remember(scope) {
+        { code: Int, fromSystem: Boolean ->
+            sendRemoteAction(
+                "keypress",
+                extras = mapOf("keycode" to code),
+                performHaptic = !fromSystem
+            )
+        }
+    }
+
+
+    if (showKeyboard) {
+        KeyboardInputSheet(
+            onDismiss = { showKeyboard = false },
+            onType = handleType,
+            onKeyPress = handleKeyPress
+        )
     }
 
     Column(
@@ -186,8 +228,8 @@ fun RemoteControlScreen(
                                 .fillMaxWidth()
                                 .height(60.dp)
                                 .padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ){
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            content = {
                             // Previous Button
                             val prevInteraction = remember { MutableInteractionSource() }
                             FilledTonalIconButton(
@@ -243,6 +285,7 @@ fun RemoteControlScreen(
                                 )
                             }
                         }
+                        )
                     }
                 }
             }
@@ -333,16 +376,29 @@ fun RemoteControlScreen(
         // Extra Keys
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            OutlinedButton(onClick = { sendRemoteAction("escape") }) {
+            OutlinedButton(
+                onClick = { sendRemoteAction("escape") },
+                modifier = Modifier.weight(1f)
+            ) {
                 Text("Esc")
             }
             
-           OutlinedButton(onClick = { sendRemoteAction("space") }) {
+           OutlinedButton(
+               onClick = { sendRemoteAction("space") },
+               modifier = Modifier.weight(1f)
+           ) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Space")
+            }
+            
+            // Keyboard Toggle
+            FilledTonalIconButton(
+                onClick = { showKeyboard = true },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(Icons.Default.Keyboard, "Keyboard")
             }
         }
     }
