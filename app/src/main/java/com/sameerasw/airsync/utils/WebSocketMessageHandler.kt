@@ -27,6 +27,13 @@ object WebSocketMessageHandler {
         Log.d(TAG, "Clipboard entry callback ${if (callback != null) "registered" else "unregistered"}")
     }
 
+    // Callback for volume updates (0-100)
+    private var onMacVolumeReceived: ((Int) -> Unit)? = null
+
+    fun setOnMacVolumeCallback(callback: ((Int) -> Unit)?) {
+        onMacVolumeReceived = callback
+    }
+
     /**
      * Handle incoming WebSocket messages from Mac
      */
@@ -50,6 +57,7 @@ object WebSocketMessageHandler {
                 "disconnectRequest" -> handleDisconnectRequest(context)
                 "toggleAppNotif" -> handleToggleAppNotification(context, data)
                 "toggleNowPlaying" -> handleToggleNowPlaying(context, data)
+                "macVolume" -> handleMacVolume(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
@@ -308,7 +316,7 @@ object WebSocketMessageHandler {
 
             // We accept either "name" or legacy "action" for action name
             val actionName = data.optString("name", data.optString("action", "")).ifEmpty { "" }
-            val replyText = data.optString("text", "")
+            val replyText = data.optString("text")
 
             if (actionName.isEmpty()) {
                 sendNotificationActionResponse(notificationId, actionName, false, "No action name provided")
@@ -683,6 +691,19 @@ object WebSocketMessageHandler {
                 val resp = JsonUtil.createToggleNowPlayingResponse(false, null, "Error: ${e.message}")
                 WebSocketUtil.sendMessage(resp)
             }
+        }
+    }
+
+    private fun handleMacVolume(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val volume = data.optInt("volume", -1)
+            if (volume >= 0) {
+                Log.d(TAG, "Received Mac volume update: $volume")
+                onMacVolumeReceived?.invoke(volume)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling macVolume: ${e.message}")
         }
     }
 }

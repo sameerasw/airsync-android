@@ -32,12 +32,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
+import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Phonelink
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.LinkOff
 import androidx.compose.material.icons.outlined.Phonelink
 import androidx.compose.material.icons.outlined.Settings
+import androidx.compose.material.icons.outlined.Gamepad
 import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
@@ -96,7 +98,7 @@ fun AirSyncMainScreen(
     val connectScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 3 else 2 })
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
@@ -485,17 +487,17 @@ fun AirSyncMainScreen(
         bottomBar = {
             // Dynamic tab list - only include Clipboard when connected
             val items = if (uiState.isConnected) {
-                listOf("Connect", "Clipboard", "Settings")
+                listOf("Connect", "Remote", "Clipboard", "Settings")
             } else {
                 listOf("Connect", "Settings")
             }
             val selectedIcons = if (uiState.isConnected) {
-                listOf(Icons.Filled.Phonelink, Icons.Filled.ContentPaste, Icons.Filled.Settings)
+                listOf(Icons.Filled.Phonelink, Icons.Filled.Gamepad, Icons.Filled.ContentPaste, Icons.Filled.Settings)
             } else {
                 listOf(Icons.Filled.Phonelink, Icons.Filled.Settings)
             }
             val unselectedIcons = if (uiState.isConnected) {
-                listOf(Icons.Outlined.Phonelink, Icons.Rounded.ContentPaste, Icons.Outlined.Settings)
+                listOf(Icons.Outlined.Phonelink, Icons.Outlined.Gamepad, Icons.Rounded.ContentPaste, Icons.Outlined.Settings)
             } else {
                 listOf(Icons.Outlined.Phonelink, Icons.Outlined.Settings)
             }
@@ -651,16 +653,8 @@ fun AirSyncMainScreen(
                 }
                 1 -> {
                     if (uiState.isConnected) {
-                        // When connected: page 1 = Clipboard
-                        ClipboardScreen(
-                            clipboardHistory = uiState.clipboardHistory,
-                            isConnected = true,
-                            onSendText = { text ->
-                                viewModel.addClipboardEntry(text, isFromPc = false)
-                                val clipboardJson = JsonUtil.createClipboardUpdateJson(text)
-                                WebSocketUtil.sendMessage(clipboardJson)
-                            },
-                            onClearHistory = { viewModel.clearClipboardHistory() },
+                        // When connected: page 1 = Remote
+                        RemoteControlScreen(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(bottom = innerPadding.calculateBottomPadding())
@@ -687,7 +681,27 @@ fun AirSyncMainScreen(
                     }
                 }
                 2 -> {
-                    // Page 2 only exists when connected = Settings tab
+                    if (uiState.isConnected) {
+                        // When connected: page 2 = Clipboard
+                        ClipboardScreen(
+                            clipboardHistory = uiState.clipboardHistory,
+                            isConnected = true,
+                            onSendText = { text ->
+                                viewModel.addClipboardEntry(text, isFromPc = false)
+                                val clipboardJson = JsonUtil.createClipboardUpdateJson(text)
+                                WebSocketUtil.sendMessage(clipboardJson)
+                            },
+                            onClearHistory = { viewModel.clearClipboardHistory() },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = innerPadding.calculateBottomPadding())
+                        )
+                    } else {
+                        Box(Modifier.fillMaxSize())
+                    }
+                }
+                3 -> {
+                    // Page 3 only exists when connected = Settings tab
                     SettingsView(
                         modifier = Modifier.fillMaxSize(),
                         context = context,
