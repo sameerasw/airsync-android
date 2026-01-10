@@ -538,9 +538,8 @@ fun AirSyncMainScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             modifier = Modifier
                 .fillMaxSize()
-                .fillMaxSize()
                 .nestedScroll(exitAlwaysScrollBehavior),
-
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ) { innerPadding ->
             // Track page changes for haptic feedback on swipe
             LaunchedEffect(pagerState.currentPage) {

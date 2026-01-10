@@ -313,9 +313,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                     topBar = {
                         LargeTopAppBar(
+                            colors = TopAppBarDefaults.largeTopAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp),
                             title = {
                                 Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                     // Dynamic icon based on last connected device category
@@ -340,16 +346,31 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { showHelpSheet = true }) {
+                                IconButton(
+                                    onClick = { showHelpSheet = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceBright
+                                    ),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
                                     Icon(
                                         imageVector = androidx.compose.material.icons.Icons.Rounded.HelpOutline,
-                                        contentDescription = "Help"
+                                        contentDescription = "Help",
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
-                                IconButton(onClick = { showAboutDialog = true }) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { showAboutDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceBright
+                                    ),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.outline_info_24),
-                                        contentDescription = "About"
+                                        painter = painterResource(id = R.drawable.rounded_info_24),
+                                        contentDescription = "About",
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
                             },

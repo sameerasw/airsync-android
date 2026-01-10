@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import android.content.ClipDescription
 import android.view.DragEvent
 import android.util.Log
+import androidx.compose.ui.graphics.Color
 import com.sameerasw.airsync.domain.model.ClipboardEntry
 import com.sameerasw.airsync.utils.HapticUtil
 import java.text.SimpleDateFormat
@@ -94,8 +95,7 @@ fun ClipboardScreen(
 
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
@@ -186,7 +186,7 @@ fun ClipboardScreen(
                                 .padding(24.dp)
                                 .widthIn(max = 280.dp),
                             shape = RoundedCornerShape(32.dp),
-                            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                            color = MaterialTheme.colorScheme.surfaceContainerHighest,
                             tonalElevation = 2.dp
                         ) {
                             Column(
@@ -271,6 +271,7 @@ fun ClipboardScreen(
                 modifier = Modifier
                     .fillMaxWidth(),
                 shape = RoundedCornerShape(36.dp),
+                color = MaterialTheme.colorScheme.surfaceContainer
             ) {
                 Row(
                     modifier = Modifier
