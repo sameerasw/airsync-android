@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.filled.Shuffle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,8 +46,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ButtonGroupDefaults
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.composed
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun RemoteControlScreen(
     modifier: Modifier = Modifier
@@ -129,13 +140,13 @@ fun RemoteControlScreen(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
+                                .background(MaterialTheme.colorScheme.background.copy(alpha = 0.45f))
                         )
                     }
                     Column(
                         modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                        verticalArrangement = Arrangement.spacedBy(32.dp)
                     ) {
                         // Album Art (Foreground) & Info
                         Column(
@@ -166,58 +177,69 @@ fun RemoteControlScreen(
                             }
                         }
 
-                        // Media Controls
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        // ButtonGroup
+                        val isBuffering = false // Placeholder
+                        val playWhenReady = true // Placeholder
+
+                        ButtonGroup(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(60.dp)
+                                .padding(horizontal = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ){
+                            // Previous Button
+                            val prevInteraction = remember { MutableInteractionSource() }
                             FilledTonalIconButton(
                                 onClick = { sendRemoteAction("media_prev") },
-                                modifier = Modifier.size(56.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = if (albumArtBitmap != null) Color.White.copy(
-                                        alpha = 0.2f
-                                    ) else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                                interactionSource = prevInteraction,
+                                modifier = Modifier
+                                    .weight(0.7f)
+                                    .fillMaxHeight()
+                                    .animateWidth(prevInteraction),
                             ) {
                                 Icon(
                                     Icons.Rounded.SkipPrevious,
-                                    "Previous",
-                                    modifier = Modifier.size(32.dp)
+                                    contentDescription = "Previous",
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
 
+                            // Play/Pause Button
+                            val playInteraction = remember { MutableInteractionSource() }
                             FilledIconButton(
                                 onClick = { sendRemoteAction("media_play_pause") },
-                                modifier = Modifier.size(72.dp),
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                                    contentColor = if (albumArtBitmap != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
-                                )
+                                interactionSource = playInteraction,
+                                modifier = Modifier
+                                    .weight(1.5f)
+                                    .fillMaxHeight()
+                                    .animateWidth(playInteraction)
                             ) {
-                                Icon(
-                                    imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                    contentDescription = "Play/Pause",
-                                    modifier = Modifier.size(40.dp)
-                                )
+                                if (isBuffering && playWhenReady && !(musicInfo?.isPlaying == true)) {
+                                    LoadingIndicator()
+                                } else {
+                                    Icon(
+                                        imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                        contentDescription = if (musicInfo?.isPlaying == true) "Pause" else "Play",
+                                        modifier = Modifier.size(48.dp)
+                                    )
+                                }
                             }
 
+                            // Next Button
+                            val nextInteraction = remember { MutableInteractionSource() }
                             FilledTonalIconButton(
                                 onClick = { sendRemoteAction("media_next") },
-                                modifier = Modifier.size(56.dp),
-                                colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                    containerColor = if (albumArtBitmap != null) Color.White.copy(
-                                        alpha = 0.2f
-                                    ) else MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
-                                )
+                                interactionSource = nextInteraction,
+                                modifier = Modifier
+                                    .weight(0.7f)
+                                    .fillMaxHeight()
+                                    .animateWidth(nextInteraction),
                             ) {
                                 Icon(
                                     Icons.Rounded.SkipNext,
-                                    "Next",
-                                    modifier = Modifier.size(32.dp)
+                                    contentDescription = "Next",
+                                    modifier = Modifier.size(36.dp)
                                 )
                             }
                         }
@@ -238,7 +260,7 @@ fun RemoteControlScreen(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
                         IconButton(onClick = {
-                            sendRemoteAction("toggleMute")
+                            sendRemoteAction("vol_mute")
                             isMuted = !isMuted
                         }) {
                             Icon(
@@ -343,3 +365,4 @@ fun RemoteButton(
         Icon(icon, contentDescription = null)
     }
 }
+
