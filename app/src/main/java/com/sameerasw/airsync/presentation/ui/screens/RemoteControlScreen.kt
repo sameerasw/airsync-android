@@ -68,10 +68,12 @@ import androidx.compose.ui.composed
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import com.sameerasw.airsync.presentation.ui.components.KeyboardInputSheet
 import com.sameerasw.airsync.presentation.ui.components.KeyboardModifiers
 import com.sameerasw.airsync.presentation.ui.components.ModifierStatus
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import org.json.JSONArray
 
@@ -141,6 +143,62 @@ fun RemoteControlScreen(
     var showKeyboard by remember { mutableStateOf(false) }
     var isMouseMode by remember { mutableStateOf(false) }
     var activeModifiers by remember { mutableStateOf(setOf<String>()) }
+
+    val moveChannel = remember { Channel<Offset>(Channel.UNLIMITED) }
+    val scrollChannel = remember { Channel<Offset>(Channel.UNLIMITED) }
+    
+    // movement batching at 100Hz with smoothing
+    LaunchedEffect(isMouseMode) {
+        if (!isMouseMode) return@LaunchedEffect
+        
+        var pendingMove = Offset.Zero
+        var pendingScroll = Offset.Zero
+        var lastSentMove = Offset.Zero
+        val smoothing = 0.7f // 0-1, higher = smoother but more lag
+        
+        while (true) {
+            delay(10)
+            
+            // Conserving moves
+            while (true) {
+                val poll = moveChannel.tryReceive().getOrNull() ?: break
+                pendingMove += poll
+            }
+            if (pendingMove != Offset.Zero) {
+                // Apply subtle smoothing (Low-pass filter)
+                val smoothedX = pendingMove.x * (1f - smoothing) + lastSentMove.x * smoothing
+                val smoothedY = pendingMove.y * (1f - smoothing) + lastSentMove.y * smoothing
+                
+                sendRemoteAction(
+                    "mouse_move",
+                    extras = mapOf(
+                        "dx" to smoothedX.toDouble(),
+                        "dy" to smoothedY.toDouble()
+                    ),
+                    performHaptic = false
+                )
+                lastSentMove = Offset(smoothedX.toFloat(), smoothedY.toFloat())
+                pendingMove = Offset.Zero
+            }
+            
+            // Conserving scrolls
+            while (true) {
+                val poll = scrollChannel.tryReceive().getOrNull() ?: break
+                pendingScroll += poll
+            }
+            if (pendingScroll != Offset.Zero) {
+                sendRemoteAction(
+                    "mouse_scroll",
+                    extras = mapOf(
+                        "dx" to pendingScroll.x.toDouble(),
+                        "dy" to pendingScroll.y.toDouble()
+                    ),
+                    performHaptic = false
+                )
+                pendingScroll = Offset.Zero
+            }
+        }
+    }
 
     val modifiers = remember(activeModifiers) {
         KeyboardModifiers(
@@ -417,23 +475,15 @@ fun RemoteControlScreen(
                                     val scrollDelta = currentCenter - prevCenter
                                     val scrollDist = scrollDelta.getDistance()
                                     
-                                    if (scrollDist > 0.5f) {
-                                        totalMoved += scrollDist
-                                        totalHapticDistance += scrollDist
-                                        if (totalHapticDistance > hapticInterval) {
-                                            performLightHaptic()
-                                            totalHapticDistance = 0f
+                                        if (scrollDist > 0.5f) {
+                                            totalMoved += scrollDist
+                                            totalHapticDistance += scrollDist
+                                            if (totalHapticDistance > hapticInterval) {
+                                                performLightHaptic()
+                                                totalHapticDistance = 0f
+                                            }
+                                            scrollChannel.trySend(scrollDelta * 2f)
                                         }
-                                        
-                                        sendRemoteAction(
-                                            "mouse_scroll",
-                                            extras = mapOf(
-                                                "dx" to scrollDelta.x.toDouble() * 2.0,
-                                                "dy" to scrollDelta.y.toDouble() * 2.0
-                                            ),
-                                            performHaptic = false
-                                        )
-                                    }
                                     pointers.forEach { it.consume() }
                                 } else if (pointers.size == 1) {
                                     val change = pointers[0]
@@ -450,15 +500,7 @@ fun RemoteControlScreen(
                                                     performLightHaptic()
                                                     totalHapticDistance = 0f
                                                 }
-                                                
-                                                sendRemoteAction(
-                                                    "mouse_move",
-                                                    extras = mapOf(
-                                                        "dx" to (delta.x * 1.8f).toDouble(),
-                                                        "dy" to (delta.y * 1.8f).toDouble()
-                                                    ),
-                                                    performHaptic = false
-                                                )
+                                                moveChannel.trySend(delta * 1.8f)
                                             }
                                         }
                                         change.consume()
