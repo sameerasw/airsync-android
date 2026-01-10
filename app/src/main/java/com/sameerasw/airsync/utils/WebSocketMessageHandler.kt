@@ -34,6 +34,13 @@ object WebSocketMessageHandler {
         onMacVolumeReceived = callback
     }
 
+    // Callback for modifier status updates
+    private var onModifierStatusReceived: ((JSONObject) -> Unit)? = null
+
+    fun setOnModifierStatusCallback(callback: ((JSONObject) -> Unit)?) {
+        onModifierStatusReceived = callback
+    }
+
     /**
      * Handle incoming WebSocket messages from Mac
      */
@@ -58,6 +65,7 @@ object WebSocketMessageHandler {
                 "toggleAppNotif" -> handleToggleAppNotification(context, data)
                 "toggleNowPlaying" -> handleToggleNowPlaying(context, data)
                 "macVolume" -> handleMacVolume(data)
+                "modifierStatus" -> handleModifierStatus(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
@@ -704,6 +712,16 @@ object WebSocketMessageHandler {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling macVolume: ${e.message}")
+        }
+    }
+
+    private fun handleModifierStatus(data: JSONObject?) {
+        try {
+            if (data == null) return
+            Log.d(TAG, "Received modifier status update: $data")
+            onModifierStatusReceived?.invoke(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling modifierStatus: ${e.message}")
         }
     }
 }

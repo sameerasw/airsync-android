@@ -61,6 +61,9 @@ import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import com.sameerasw.airsync.presentation.ui.components.KeyboardInputSheet
+import com.sameerasw.airsync.presentation.ui.components.KeyboardModifiers
+import com.sameerasw.airsync.presentation.ui.components.ModifierStatus
+import org.json.JSONArray
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -97,7 +100,7 @@ fun RemoteControlScreen(
         scope.launch {
             try {
                 if (performHaptic) {
-                    HapticUtil.performClick(haptics)
+                    HapticUtil.performLightTick(haptics)
                 }
                 val json = JSONObject()
                 json.put("type", "remoteControl")
@@ -107,7 +110,11 @@ fun RemoteControlScreen(
                     data.put("value", value)
                 }
                 extras.forEach { (k, v) ->
-                    data.put(k, v)
+                    if (v is List<*>) {
+                        data.put(k, JSONArray(v))
+                    } else {
+                        data.put(k, v)
+                    }
                 }
                 json.put("data", data)
                 WebSocketUtil.sendMessage(json.toString())
@@ -118,25 +125,51 @@ fun RemoteControlScreen(
     }
 
     var showKeyboard by remember { mutableStateOf(false) }
+    var activeModifiers by remember { mutableStateOf(setOf<String>()) }
+
+    val modifiers = remember(activeModifiers) {
+        KeyboardModifiers(
+            shift = ModifierStatus(activeModifiers.contains("shift")),
+            ctrl = ModifierStatus(activeModifiers.contains("ctrl")),
+            option = ModifierStatus(activeModifiers.contains("option")),
+            command = ModifierStatus(activeModifiers.contains("command"))
+        )
+    }
 
     // Memoize the callbacks to prevent unnecessary recompositions in KeyboardInputSheet
-    val handleType = remember(scope) {
+    val handleType = remember(scope, activeModifiers) {
         { text: String, fromSystem: Boolean ->
             sendRemoteAction(
                 "type",
-                extras = mapOf("text" to text),
+                extras = mapOf(
+                    "text" to text,
+                    "modifiers" to activeModifiers.toList()
+                ),
                 performHaptic = !fromSystem
             )
         }
     }
 
-    val handleKeyPress = remember(scope) {
+    val handleKeyPress = remember(scope, activeModifiers) {
         { code: Int, fromSystem: Boolean ->
             sendRemoteAction(
                 "keypress",
-                extras = mapOf("keycode" to code),
+                extras = mapOf(
+                    "keycode" to code,
+                    "modifiers" to activeModifiers.toList()
+                ),
                 performHaptic = !fromSystem
             )
+        }
+    }
+
+    val handleToggleModifier = remember {
+        { modifier: String ->
+            activeModifiers = if (activeModifiers.contains(modifier)) {
+                activeModifiers - modifier
+            } else {
+                activeModifiers + modifier
+            }
         }
     }
 
@@ -145,7 +178,9 @@ fun RemoteControlScreen(
         KeyboardInputSheet(
             onDismiss = { showKeyboard = false },
             onType = handleType,
-            onKeyPress = handleKeyPress
+            onKeyPress = handleKeyPress,
+            modifiers = modifiers,
+            onToggleModifier = handleToggleModifier
         )
     }
 
