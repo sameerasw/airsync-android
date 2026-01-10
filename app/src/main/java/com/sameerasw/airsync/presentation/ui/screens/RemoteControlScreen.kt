@@ -3,20 +3,17 @@ package com.sameerasw.airsync.presentation.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.KeyboardReturn
 import androidx.compose.material.icons.filled.SpaceBar
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.*
@@ -24,15 +21,29 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.utils.HapticUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
 import com.sameerasw.airsync.utils.WebSocketMessageHandler
+import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import android.graphics.BitmapFactory
+import android.util.Base64
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.rounded.Pause
+import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 
 @Composable
 fun RemoteControlScreen(
@@ -40,10 +51,27 @@ fun RemoteControlScreen(
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     
     // Volume state (0-100)
     var volume by remember { mutableFloatStateOf(50f) }
     var isMuted by remember { mutableStateOf(false) }
+
+    // Observe Mac Status
+    val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
+    val musicInfo = macStatus?.music
+    
+    // Decode album art
+    val albumArtBitmap = remember(musicInfo?.albumArt) {
+        try {
+            if (!musicInfo?.albumArt.isNullOrEmpty()) {
+                val decodedBytes = Base64.decode(musicInfo?.albumArt, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
+            } else null
+        } catch (e: Exception) {
+            null
+        }
+    }
 
     // Listen for volume updates from Mac
     DisposableEffect(Unit) {
@@ -82,83 +110,164 @@ fun RemoteControlScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        
-        // Volume Control Section
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+
+
+        RoundedCardContainer {
+            // Now Playing Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
             ) {
-                Text(
-                    text = "Distinguish Volume",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                Box(
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    IconButton(onClick = { 
-                        sendRemoteAction("toggleMute")
-                        isMuted = !isMuted
-                    }) {
-                        Icon(
-                            imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                            contentDescription = "Mute"
+                    // Background Image (Album Art)
+                    if (albumArtBitmap != null) {
+                        androidx.compose.foundation.Image(
+                            bitmap = albumArtBitmap,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .matchParentSize()
+                                .blur(8.dp),
+                            contentScale = ContentScale.Crop
+                        )
+                        // Dark scrim for readability
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(MaterialTheme.colorScheme.primary)
                         )
                     }
-                    
-                    Slider(
-                        value = volume,
-                        onValueChange = { 
-                            volume = it
-                            sendRemoteAction("vol_set", it.toInt())
-                        },
-                        valueRange = 0f..100f,
-                        modifier = Modifier.weight(1f)
-                    )
-                    
-                    Text(
-                        text = "${volume.toInt()}%",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.width(40.dp)
-                    )
+                    Column(
+                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        // Album Art (Foreground) & Info
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Metadata
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = musicInfo?.title?.takeIf { it.isNotEmpty() }
+                                        ?: "Nothing Playing",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    color = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = musicInfo?.artist?.takeIf { it.isNotEmpty() }
+                                        ?: "from your Mac",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (albumArtBitmap != null) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+
+                        // Media Controls
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            FilledTonalIconButton(
+                                onClick = { sendRemoteAction("media_prev") },
+                                modifier = Modifier.size(56.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = if (albumArtBitmap != null) Color.White.copy(
+                                        alpha = 0.2f
+                                    ) else MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Rounded.SkipPrevious,
+                                    "Previous",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+
+                            FilledIconButton(
+                                onClick = { sendRemoteAction("media_play_pause") },
+                                modifier = Modifier.size(72.dp),
+                                colors = IconButtonDefaults.filledIconButtonColors(
+                                    containerColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
+                                    contentColor = if (albumArtBitmap != null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onPrimary
+                                )
+                            ) {
+                                Icon(
+                                    imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                    contentDescription = "Play/Pause",
+                                    modifier = Modifier.size(40.dp)
+                                )
+                            }
+
+                            FilledTonalIconButton(
+                                onClick = { sendRemoteAction("media_next") },
+                                modifier = Modifier.size(56.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = if (albumArtBitmap != null) Color.White.copy(
+                                        alpha = 0.2f
+                                    ) else MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            ) {
+                                Icon(
+                                    Icons.Rounded.SkipNext,
+                                    "Next",
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(4.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        IconButton(onClick = {
+                            sendRemoteAction("toggleMute")
+                            isMuted = !isMuted
+                        }) {
+                            Icon(
+                                imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                contentDescription = "Mute"
+                            )
+                        }
+
+                        Slider(
+                            value = volume,
+                            onValueChange = {
+                                volume = it
+                                sendRemoteAction("vol_set", it.toInt())
+                            },
+                            valueRange = 0f..100f,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
                 }
             }
         }
 
-        // Media Controls
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            FilledIconButton(
-                onClick = { sendRemoteAction("media_prev") },
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(Icons.Rounded.SkipPrevious, "Previous")
-            }
-            
-            FilledIconButton(
-                onClick = { sendRemoteAction("media_play_pause") },
-                modifier = Modifier.size(72.dp),
-                colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-            ) {
-                Icon(Icons.Rounded.PlayArrow, "Play/Pause", modifier = Modifier.size(32.dp), tint = MaterialTheme.colorScheme.onPrimaryContainer)
-            }
-            
-            FilledIconButton(
-                onClick = { sendRemoteAction("media_next") },
-                modifier = Modifier.size(56.dp)
-            ) {
-                Icon(Icons.Rounded.SkipNext, "Next")
-            }
-        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
