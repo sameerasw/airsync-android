@@ -4,9 +4,12 @@ import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import kotlinx.coroutines.delay
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
 import androidx.compose.material.icons.automirrored.filled.Backspace
@@ -30,6 +33,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.ui.res.painterResource
 import com.sameerasw.airsync.R
 
@@ -82,6 +86,7 @@ fun KeyboardInputSheet(
     onDismiss: () -> Unit,
     onType: (String, Boolean) -> Unit, // Boolean: isSystemKeyboard
     onKeyPress: (Int, Boolean) -> Unit, // Boolean: isSystemKeyboard
+    onClearModifiers: () -> Unit = {},
     modifiers: KeyboardModifiers = KeyboardModifiers(),
     onToggleModifier: (String) -> Unit = {}
 ) {
@@ -102,13 +107,17 @@ fun KeyboardInputSheet(
             // Shared rows visible in both modes
             NavigationRow(
                 onKeyPress = { onKeyPress(it, isSystemKeyboard) },
+                onClearModifiers = { if (!isSystemKeyboard) onClearModifiers() },
                 onToggleKeyboard = { isSystemKeyboard = !isSystemKeyboard }
             )
             Spacer(modifier = Modifier.height(4.dp))
             ModifierRow(
                 modifiers = modifiers,
                 onToggleModifier = onToggleModifier,
-                onKeyPress = { onKeyPress(it, isSystemKeyboard) }
+                onKeyPress = { 
+                    onKeyPress(it, isSystemKeyboard)
+                    if (!isSystemKeyboard) onClearModifiers()
+                }
             )
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -120,6 +129,7 @@ fun KeyboardInputSheet(
                 CustomKeyboard(
                     onType = { onType(it, false) },
                     onKeyPress = { onKeyPress(it, false) },
+                    onClearModifiers = onClearModifiers,
                     onSwitchToSystem = { isSystemKeyboard = true },
                 )
             }
@@ -173,6 +183,7 @@ private fun SystemInputArea(
 private fun CustomKeyboard(
     onType: (String) -> Unit,
     onKeyPress: (Int) -> Unit,
+    onClearModifiers: () -> Unit,
     onSwitchToSystem: () -> Unit
 ) {
     val view = LocalView.current
@@ -235,6 +246,7 @@ private fun CustomKeyboard(
                             } else {
                                 onType(char)
                             }
+                            onClearModifiers()
                         },
                         interactionSource = numInteraction,
                         colors = IconButtonDefaults.iconButtonVibrantColors(
@@ -276,6 +288,7 @@ private fun CustomKeyboard(
                             } else {
                                 onType(displayLabel)
                             }
+                            onClearModifiers()
                             if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
                         },
                         interactionSource = row1Interaction,
@@ -320,6 +333,7 @@ private fun CustomKeyboard(
                             } else {
                                 onType(displayLabel)
                             }
+                            onClearModifiers()
                             if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
                         },
                         interactionSource = row2Interaction,
@@ -405,6 +419,7 @@ private fun CustomKeyboard(
                             } else {
                                 onType(displayLabel)
                             }
+                            onClearModifiers()
                             if (shiftState == ShiftState.ON) shiftState = ShiftState.OFF
                         },
                         interactionSource = row3Interaction,
@@ -428,19 +443,44 @@ private fun CustomKeyboard(
 
                 // Backspace Key
                 val backspaceInteraction = remember { MutableInteractionSource() }
-                FilledTonalIconButton(
-                    onClick = {
-                        performLightHaptic()
-                        onKeyPress(MacKeycodes.BACKSPACE)
-                    },
-                    interactionSource = backspaceInteraction,
-                    colors = IconButtonDefaults.iconButtonVibrantColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
+                var delAccumulatedDx by remember { mutableStateOf(0f) }
+                val delSweepThreshold = 25f
+
+                Box(
                     modifier = Modifier
                         .weight(1.5f)
                         .fillMaxHeight()
-                        .animateWidth(backspaceInteraction),
+                        .animateWidth(backspaceInteraction)
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { delAccumulatedDx = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    delAccumulatedDx += dragAmount
+                                    // Moving left (negative dx) for delete
+                                    if (delAccumulatedDx <= -delSweepThreshold) {
+                                        val steps = (kotlin.math.abs(delAccumulatedDx) / delSweepThreshold).toInt()
+                                        repeat(steps) {
+                                            performLightHaptic()
+                                            onKeyPress(MacKeycodes.BACKSPACE)
+                                        }
+                                        delAccumulatedDx %= delSweepThreshold
+                                    }
+                                },
+                                onDragEnd = { onClearModifiers() }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { 
+                                    performLightHaptic()
+                                    onKeyPress(MacKeycodes.BACKSPACE)
+                                }
+                            )
+                        }
+                        .clip(RoundedCornerShape(24.dp))
+                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.Backspace,
@@ -486,20 +526,43 @@ private fun CustomKeyboard(
 
                 // Space
                 val spaceInteraction = remember { MutableInteractionSource() }
+                var accumulatedDx by remember { mutableStateOf(0f) }
+                val sweepThreshold = 25f // pixels per cursor move
 
                 Box(
                     modifier = Modifier
                         .weight(4f)
                         .fillMaxHeight()
                         .animateWidth(spaceInteraction)
-                        .clickable(
-                            onClick = {
-                                performLightHaptic()
-                                onKeyPress(MacKeycodes.SPACE)
-                            },
-                            interactionSource = spaceInteraction,
-                            indication = null
-                        )
+                        .pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { accumulatedDx = 0f },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    accumulatedDx += dragAmount
+                                    val absDx = kotlin.math.abs(accumulatedDx)
+                                    if (absDx >= sweepThreshold) {
+                                        val steps = (absDx / sweepThreshold).toInt()
+                                        val keycode = if (accumulatedDx > 0) MacKeycodes.RIGHT else MacKeycodes.LEFT
+                                        repeat(steps) {
+                                            performLightHaptic()
+                                            onKeyPress(keycode)
+                                        }
+                                        accumulatedDx %= sweepThreshold
+                                    }
+                                },
+                                onDragEnd = { onClearModifiers() }
+                            )
+                        }
+                        .pointerInput(Unit) {
+                            detectTapGestures(
+                                onTap = { 
+                                    performLightHaptic()
+                                    onKeyPress(MacKeycodes.SPACE)
+                                    onClearModifiers()
+                                }
+                            )
+                        }
                         .clip(RoundedCornerShape(24.dp))
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
@@ -520,6 +583,7 @@ private fun CustomKeyboard(
                     onClick = {
                         performLightHaptic()
                         onKeyPress(MacKeycodes.ENTER)
+                        onClearModifiers()
                     },
                     interactionSource = returnInteraction,
                     modifier = Modifier
@@ -543,6 +607,7 @@ private fun CustomKeyboard(
 @Composable
 private fun NavigationRow(
     onKeyPress: (Int) -> Unit,
+    onClearModifiers: () -> Unit = {},
     onToggleKeyboard: () -> Unit
 ) {
     val view = LocalView.current
@@ -573,7 +638,7 @@ private fun NavigationRow(
                 },
                 interactionSource = kbInteraction,
                 colors = IconButtonDefaults.iconButtonVibrantColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
@@ -591,14 +656,27 @@ private fun NavigationRow(
             
             navKeys.forEach { (name, icon, keycode) ->
                 val interaction = remember { MutableInteractionSource() }
-                FilledTonalIconButton(
-                    onClick = {
+                val isPressed by interaction.collectIsPressedAsState()
+                
+                LaunchedEffect(isPressed) {
+                    if (isPressed) {
                         performLightHaptic()
                         onKeyPress(keycode)
-                    },
+                        delay(500)
+                        while (isPressed) {
+                            performLightHaptic()
+                            onKeyPress(keycode)
+                            delay(100)
+                        }
+                        onClearModifiers()
+                    }
+                }
+
+                FilledTonalIconButton(
+                    onClick = { /* Handled by LaunchedEffect */ },
                     interactionSource = interaction,
                     colors = IconButtonDefaults.iconButtonVibrantColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                         contentColor = MaterialTheme.colorScheme.onSurface
                     ),
                     modifier = Modifier
@@ -647,7 +725,7 @@ private fun ModifierRow(
                 },
                 interactionSource = escInteraction,
                 colors = IconButtonDefaults.iconButtonVibrantColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
                     contentColor = MaterialTheme.colorScheme.onSurface
                 ),
                 modifier = Modifier
@@ -680,7 +758,7 @@ private fun ModifierRow(
                         .clip(RoundedCornerShape(24.dp))
                         .background(
                             if (status.active) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.surfaceContainerHighest
+                            else MaterialTheme.colorScheme.surfaceContainerLow
                         )
                         .combinedClickable(
                             onClick = {

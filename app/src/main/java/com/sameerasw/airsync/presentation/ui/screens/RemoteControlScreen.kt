@@ -174,12 +174,19 @@ fun RemoteControlScreen(
         }
     }
 
+    val handleClearModifiers = remember {
+        {
+            activeModifiers = emptySet()
+        }
+    }
+
 
     if (showKeyboard) {
         KeyboardInputSheet(
             onDismiss = { showKeyboard = false },
             onType = handleType,
             onKeyPress = handleKeyPress,
+            onClearModifiers = handleClearModifiers,
             modifiers = modifiers,
             onToggleModifier = handleToggleModifier
         )
