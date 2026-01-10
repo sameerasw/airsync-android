@@ -695,7 +695,12 @@ fun AirSyncMainScreen(
                 tabs = tabs,
                 onTabSelected = { index ->
                     scope.launch {
-                        pagerState.animateScrollToPage(index)
+                        val distance = kotlin.math.abs(index - pagerState.currentPage)
+                        if (distance == 1) {
+                            pagerState.animateScrollToPage(index)
+                        } else {
+                            pagerState.scrollToPage(index)
+                        }
                     }
                 },
                 scrollBehavior = exitAlwaysScrollBehavior,
