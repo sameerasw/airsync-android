@@ -49,9 +49,11 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -197,9 +199,8 @@ fun RemoteControlScreen(
             .fillMaxSize()
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
-
 
         RoundedCardContainer {
             // Now Playing Card
@@ -213,7 +214,7 @@ fun RemoteControlScreen(
                 ) {
                     // Background Image (Album Art)
                     if (albumArtBitmap != null) {
-                        androidx.compose.foundation.Image(
+                        Image(
                             bitmap = albumArtBitmap!!.asImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier
@@ -369,9 +370,6 @@ fun RemoteControlScreen(
             }
         }
 
-
-        Spacer(modifier = Modifier.height(16.dp))
-
         // D-Pad and Navigation
         Box(
             modifier = Modifier
@@ -435,11 +433,10 @@ fun RemoteControlScreen(
            ) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
             }
-            
-            // Keyboard Toggle
-            FilledTonalIconButton(
+
+            OutlinedButton(
                 onClick = { showKeyboard = true },
-                modifier = Modifier.size(48.dp)
+                modifier = Modifier.weight(1f)
             ) {
                 Icon(Icons.Default.Keyboard, "Keyboard")
             }

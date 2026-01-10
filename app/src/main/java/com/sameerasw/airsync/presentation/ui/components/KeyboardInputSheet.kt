@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.ui.res.painterResource
 import com.sameerasw.airsync.R
 
@@ -390,16 +391,16 @@ private fun CustomKeyboard(
                             .clip(RoundedCornerShape(24.dp))
                             .background(
                                 if (shiftState != ShiftState.OFF) MaterialTheme.colorScheme.primary
-                                else MaterialTheme.colorScheme.surfaceContainerHighest
+                                else MaterialTheme.colorScheme.surfaceTint
                             ),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.ArrowUpward,
+                            painter = painterResource(id = R.drawable.key_shift),
                             contentDescription = "Shift",
                             modifier = Modifier.size(24.dp),
                             tint = if (shiftState != ShiftState.OFF) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 } else {
@@ -472,21 +473,21 @@ private fun CustomKeyboard(
                         }
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onTap = { 
+                                onTap = {
                                     performLightHaptic()
                                     onKeyPress(MacKeycodes.BACKSPACE)
                                 }
                             )
                         }
                         .clip(RoundedCornerShape(24.dp))
-                        .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+                        .background(MaterialTheme.colorScheme.surfaceTint),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        Icons.AutoMirrored.Filled.Backspace,
+                        Icons.AutoMirrored.Rounded.Backspace,
                         contentDescription = "Backspace",
                         modifier = Modifier.size(24.dp),
-                        tint = MaterialTheme.colorScheme.onSurface
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
             }
@@ -502,17 +503,14 @@ private fun CustomKeyboard(
             content = {
                 // Symbols Toggle
                 val symInteraction = remember { MutableInteractionSource() }
-                FilledTonalIconButton(
+                FilledIconButton(
                     onClick = {
                         performLightHaptic()
                         isSymbols = !isSymbols
                     },
                     interactionSource = symInteraction,
-                    colors = IconButtonDefaults.iconButtonVibrantColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
-                    ),
                     modifier = Modifier
-                        .weight(1.5f)
+                        .weight(1.2f)
                         .fillMaxHeight()
                         .animateWidth(symInteraction),
                 ) {
@@ -520,7 +518,27 @@ private fun CustomKeyboard(
                         text = if (isSymbols) "ABC" else "?#/",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Medium,
-                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+
+                // Comma Key
+                val commaInteraction = remember { MutableInteractionSource() }
+                FilledIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        onType(",")
+                        onClearModifiers()
+                    },
+                    interactionSource = commaInteraction,
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .fillMaxHeight()
+                        .animateWidth(commaInteraction),
+                ) {
+                    Text(
+                        text = ",",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
 
@@ -531,7 +549,7 @@ private fun CustomKeyboard(
 
                 Box(
                     modifier = Modifier
-                        .weight(4f)
+                        .weight(3f)
                         .fillMaxHeight()
                         .animateWidth(spaceInteraction)
                         .pointerInput(Unit) {
@@ -556,7 +574,7 @@ private fun CustomKeyboard(
                         }
                         .pointerInput(Unit) {
                             detectTapGestures(
-                                onTap = { 
+                                onTap = {
                                     performLightHaptic()
                                     onKeyPress(MacKeycodes.SPACE)
                                     onClearModifiers()
@@ -567,13 +585,34 @@ private fun CustomKeyboard(
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        Icons.Rounded.Keyboard,
-                        contentDescription = "Keyboard",
-                        modifier = Modifier
-                            .size(24.dp)
-                            .alpha(0.4f),
-                        tint = MaterialTheme.colorScheme.onSurface
+//                    Icon(
+//                        Icons.Rounded.Keyboard,
+//                        contentDescription = "Keyboard",
+//                        modifier = Modifier
+//                            .size(24.dp)
+//                            .alpha(0.4f),
+//                        tint = MaterialTheme.colorScheme.onSurface
+//                    )
+                }
+
+                // Dot Key
+                val dotInteraction = remember { MutableInteractionSource() }
+                FilledIconButton(
+                    onClick = {
+                        performLightHaptic()
+                        onType(".")
+                        onClearModifiers()
+                    },
+                    interactionSource = dotInteraction,
+                    modifier = Modifier
+                        .weight(0.7f)
+                        .fillMaxHeight()
+                        .animateWidth(dotInteraction),
+                ) {
+                    Text(
+                        text = ".",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Medium,
                     )
                 }
 
