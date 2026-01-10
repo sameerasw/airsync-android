@@ -339,14 +339,10 @@ fun RemoteControlScreen(
                 Text("Esc")
             }
             
-            FilledTonalButton(onClick = { sendRemoteAction("space") }) {
+           OutlinedButton(onClick = { sendRemoteAction("space") }) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Space")
-            }
-            
-            OutlinedButton(onClick = { sendRemoteAction("backspace") }) {
-                Icon(Icons.Default.Backspace, "Backspace")
             }
         }
     }
