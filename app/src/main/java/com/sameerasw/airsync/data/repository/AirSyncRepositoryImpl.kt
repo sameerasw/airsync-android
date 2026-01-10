@@ -115,6 +115,14 @@ class AirSyncRepositoryImpl(
     override fun getClipboardSyncEnabled(): Flow<Boolean> {
         return dataStoreManager.getClipboardSyncEnabled()
     }
+    
+    override suspend fun setClipboardHistoryEnabled(enabled: Boolean) {
+        dataStoreManager.setClipboardHistoryEnabled(enabled)
+    }
+
+    override fun getClipboardHistoryEnabled(): Flow<Boolean> {
+        return dataStoreManager.getClipboardHistoryEnabled()
+    }
 
     override suspend fun setAutoReconnectEnabled(enabled: Boolean) {
         dataStoreManager.setAutoReconnectEnabled(enabled)

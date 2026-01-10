@@ -185,6 +185,7 @@ class AirSyncViewModel(
             val isKeepPreviousLinkEnabled = repository.getKeepPreviousLinkEnabled().first()
             val isSmartspacerShowWhenDisconnected = repository.getSmartspacerShowWhenDisconnected().first()
             val isMacMediaControlsEnabled = repository.getMacMediaControlsEnabled().first()
+            val isClipboardHistoryEnabled = repository.getClipboardHistoryEnabled().first()
 
             // Get device info
             val deviceName = savedDeviceName.ifEmpty {
@@ -229,7 +230,8 @@ class AirSyncViewModel(
                 isContinueBrowsingEnabled = isContinueBrowsingEnabled,
                 isSendNowPlayingEnabled = isSendNowPlayingEnabled,
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
-                isMacMediaControlsEnabled = isMacMediaControlsEnabled
+                isMacMediaControlsEnabled = isMacMediaControlsEnabled,
+                isClipboardHistoryEnabled = isClipboardHistoryEnabled
             )
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
@@ -427,6 +429,16 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isClipboardSyncEnabled = enabled)
         viewModelScope.launch {
             repository.setClipboardSyncEnabled(enabled)
+        }
+    }
+
+    fun setClipboardHistoryEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isClipboardHistoryEnabled = enabled)
+        viewModelScope.launch {
+            repository.setClipboardHistoryEnabled(enabled)
+            if (!enabled) {
+                clearClipboardHistory()
+            }
         }
     }
 
@@ -675,6 +687,8 @@ class AirSyncViewModel(
 
     // Clipboard history management
     fun addClipboardEntry(text: String, isFromPc: Boolean) {
+        if (!_uiState.value.isClipboardHistoryEnabled) return
+        
         val entry = com.sameerasw.airsync.domain.model.ClipboardEntry(
             id = java.util.UUID.randomUUID().toString(),
             text = text,

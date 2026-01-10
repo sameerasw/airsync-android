@@ -459,8 +459,8 @@ fun AirSyncMainScreen(
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         floatingActionButton = {
-            // Hide FAB on Clipboard tab
-            if (pagerState.currentPage != 1) {
+            // Only show FAB on Connect tab (index 0)
+            if (pagerState.currentPage == 0) {
                 AnimatedVisibility(visible = fabVisible, enter = scaleIn(), exit = scaleOut()) {
                     ExtendedFloatingActionButton(
                         onClick = {
@@ -692,6 +692,8 @@ fun AirSyncMainScreen(
                                 WebSocketUtil.sendMessage(clipboardJson)
                             },
                             onClearHistory = { viewModel.clearClipboardHistory() },
+                            isHistoryEnabled = uiState.isClipboardHistoryEnabled,
+                            onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                             modifier = Modifier
                                 .fillMaxSize()
                                 .padding(bottom = innerPadding.calculateBottomPadding())

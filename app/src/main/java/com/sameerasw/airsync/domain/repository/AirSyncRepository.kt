@@ -48,6 +48,9 @@ interface AirSyncRepository {
     suspend fun setClipboardSyncEnabled(enabled: Boolean)
     fun getClipboardSyncEnabled(): Flow<Boolean>
 
+    suspend fun setClipboardHistoryEnabled(enabled: Boolean)
+    fun getClipboardHistoryEnabled(): Flow<Boolean>
+
     // Auto reconnect settings
     suspend fun setAutoReconnectEnabled(enabled: Boolean)
     fun getAutoReconnectEnabled(): Flow<Boolean>

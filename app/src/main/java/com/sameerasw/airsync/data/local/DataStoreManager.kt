@@ -46,6 +46,7 @@ class DataStoreManager(private val context: Context) {
         private val NOTIFICATION_SYNC_ENABLED = booleanPreferencesKey("notification_sync_enabled")
         private val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
         private val CLIPBOARD_SYNC_ENABLED = booleanPreferencesKey("clipboard_sync_enabled")
+        private val CLIPBOARD_HISTORY_ENABLED = booleanPreferencesKey("clipboard_history_enabled")
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
         private val LAST_ICON_SYNC_DATE = stringPreferencesKey("last_icon_sync_date")
     private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
@@ -161,6 +162,18 @@ class DataStoreManager(private val context: Context) {
     fun getClipboardSyncEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[CLIPBOARD_SYNC_ENABLED] != false // Default to enabled
+        }
+    }
+
+    suspend fun setClipboardHistoryEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CLIPBOARD_HISTORY_ENABLED] = enabled
+        }
+    }
+
+    fun getClipboardHistoryEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[CLIPBOARD_HISTORY_ENABLED] != false // Default to enabled
         }
     }
 

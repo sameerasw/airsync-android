@@ -34,5 +34,6 @@ data class UiState(
     val showAuthFailureDialog: Boolean = false,
     val authFailureMessage: String = "",
     // Clipboard history
+    val isClipboardHistoryEnabled: Boolean = true,
     val clipboardHistory: List<ClipboardEntry> = emptyList()
 )
