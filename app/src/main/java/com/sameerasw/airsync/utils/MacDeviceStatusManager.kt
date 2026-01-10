@@ -26,7 +26,8 @@ object MacDeviceStatusManager {
     private val _macDeviceStatus = MutableStateFlow<MacDeviceStatus?>(null)
     val macDeviceStatus: StateFlow<MacDeviceStatus?> = _macDeviceStatus.asStateFlow()
 
-    private var currentAlbumArt: Bitmap? = null
+    private val _albumArt = MutableStateFlow<Bitmap?>(null)
+    val albumArt: StateFlow<Bitmap?> = _albumArt.asStateFlow()
 
     fun updateStatus(
         context: Context,
@@ -62,7 +63,8 @@ object MacDeviceStatusManager {
             _macDeviceStatus.value = status
 
             // Decode album art if available
-            currentAlbumArt = decodeAlbumArt(albumArt)
+            val bitmap = decodeAlbumArt(albumArt)
+            _albumArt.value = bitmap
 
             // Start/update or stop the Mac media player service based on media state and USER SETTING
             CoroutineScope(Dispatchers.IO).launch {
@@ -71,7 +73,7 @@ object MacDeviceStatusManager {
                 val isConnected = WebSocketUtil.isConnected()
 
                 if (isConnected && isMediaControlsEnabled && (title.isNotEmpty() || artist.isNotEmpty() || isPlaying)) {
-                    MacMediaPlayerService.startMacMedia(context, title, artist, isPlaying, currentAlbumArt)
+                    MacMediaPlayerService.startMacMedia(context, title, artist, isPlaying, bitmap)
                     Log.d(TAG, "Started/Updated Mac media player service")
                 } else {
                     MacMediaPlayerService.stopMacMedia(context)
@@ -107,7 +109,7 @@ object MacDeviceStatusManager {
 
     fun cleanup() {
         try {
-            currentAlbumArt = null
+            _albumArt.value = null
             _macDeviceStatus.value = null
             Log.d(TAG, "Mac device status cleaned up")
         } catch (e: Exception) {

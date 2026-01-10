@@ -43,6 +43,8 @@ import android.graphics.BitmapFactory
 import android.util.Base64
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Brush
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 
 @Composable
@@ -61,17 +63,8 @@ fun RemoteControlScreen(
     val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
     val musicInfo = macStatus?.music
     
-    // Decode album art
-    val albumArtBitmap = remember(musicInfo?.albumArt) {
-        try {
-            if (!musicInfo?.albumArt.isNullOrEmpty()) {
-                val decodedBytes = Base64.decode(musicInfo?.albumArt, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)?.asImageBitmap()
-            } else null
-        } catch (e: Exception) {
-            null
-        }
-    }
+    // Use the centrally managed bitmap flow
+    val albumArtBitmap by MacDeviceStatusManager.albumArt.collectAsState()
 
     // Listen for volume updates from Mac
     DisposableEffect(Unit) {
@@ -125,7 +118,7 @@ fun RemoteControlScreen(
                     // Background Image (Album Art)
                     if (albumArtBitmap != null) {
                         androidx.compose.foundation.Image(
-                            bitmap = albumArtBitmap,
+                            bitmap = albumArtBitmap!!.asImageBitmap(),
                             contentDescription = null,
                             modifier = Modifier
                                 .matchParentSize()
@@ -136,7 +129,7 @@ fun RemoteControlScreen(
                         Box(
                             modifier = Modifier
                                 .matchParentSize()
-                                .background(MaterialTheme.colorScheme.primary)
+                                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.45f))
                         )
                     }
                     Column(
