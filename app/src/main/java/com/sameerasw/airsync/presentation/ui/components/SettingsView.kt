@@ -156,6 +156,41 @@ fun SettingsView(
                     subtitle = "Show media controls when Mac is playing music"
                 )
 
+                // Essentials Bridge Toggle
+                val isEssentialsInstalled = try {
+                    context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+
+                if (isEssentialsInstalled) {
+                    SendNowPlayingCard(
+                        isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
+                        onToggleSendNowPlaying = { enabled: Boolean ->
+                            viewModel.setEssentialsConnectionEnabled(enabled)
+                        },
+                        title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
+                        subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
+                    )
+                } else {
+                    androidx.compose.material3.ListItem(
+                        headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
+                        supportingContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials_summary)) },
+                        trailingContent = {
+                            androidx.compose.material3.Button(
+                                onClick = {
+                                    val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest"))
+                                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                    context.startActivity(intent)
+                                }
+                            ) {
+                                Text("Download")
+                            }
+                        }
+                    )
+                }
+
                 ExpandNetworkingCard(context)
             }
 

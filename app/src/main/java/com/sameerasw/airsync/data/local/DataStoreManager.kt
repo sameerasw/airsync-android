@@ -63,7 +63,12 @@ class DataStoreManager(private val context: Context) {
         private val EXPAND_NETWORKING_ENABLED = booleanPreferencesKey("expand_networking_enabled")
         // Mac Media controls toggle (for user-initiated proof for Play Store)
         private val MAC_MEDIA_CONTROLS_ENABLED = booleanPreferencesKey("mac_media_controls_enabled")
+        
+        // Essentials Bridge
+        private val ESSENTIALS_CONNECTION_ENABLED = booleanPreferencesKey("essentials_connection_enabled")
+        
         private val DEFAULT_TAB = stringPreferencesKey("default_tab")
+
 
         // Call monitoring preferences
         private val CALL_SYNC_ENABLED = booleanPreferencesKey("call_sync_enabled")
@@ -790,6 +795,18 @@ class DataStoreManager(private val context: Context) {
     fun getDeviceId(): Flow<String> {
         return context.dataStore.data.map { preferences ->
             preferences[DEVICE_ID] ?: ""
+        }
+    }
+
+    suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[ESSENTIALS_CONNECTION_ENABLED] = enabled
+        }
+    }
+
+    fun getEssentialsConnectionEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { prefs ->
+            prefs[ESSENTIALS_CONNECTION_ENABLED] ?: false 
         }
     }
 }

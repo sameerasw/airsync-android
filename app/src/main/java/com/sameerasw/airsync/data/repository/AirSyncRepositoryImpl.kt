@@ -189,4 +189,12 @@ class AirSyncRepositoryImpl(
     override fun getDefaultTab(): Flow<String> {
         return dataStoreManager.getDefaultTab()
     }
+
+    override suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        dataStoreManager.setEssentialsConnectionEnabled(enabled)
+    }
+
+    override fun getEssentialsConnectionEnabled(): Flow<Boolean> {
+        return dataStoreManager.getEssentialsConnectionEnabled()
+    }
 }

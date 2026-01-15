@@ -114,8 +114,7 @@ class AirSyncViewModel(
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
     try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
 
-        // Clean up Mac media session
-        MacDeviceStatusManager.cleanup()
+        try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
         
         // Stop WakeupService when ViewModel is cleared
         appContext?.let { context ->
@@ -233,7 +232,8 @@ class AirSyncViewModel(
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
-                defaultTab = defaultTab
+                defaultTab = defaultTab,
+                isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             )
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
@@ -732,6 +732,17 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(defaultTab = tab)
         viewModelScope.launch {
             repository.setDefaultTab(tab)
+        }
+    }
+
+    fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isEssentialsConnectionEnabled = enabled)
+        viewModelScope.launch {
+            repository.setEssentialsConnectionEnabled(enabled)
+            // wait for next up[date to sync
+            if (enabled) {
+                // later: Trigger broadcast update immediately
+            }
         }
     }
 

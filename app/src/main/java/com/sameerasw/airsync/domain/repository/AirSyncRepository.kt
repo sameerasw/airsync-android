@@ -82,4 +82,8 @@ interface AirSyncRepository {
     // Default tab settings
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>
+
+    // Essentials Bridge
+    suspend fun setEssentialsConnectionEnabled(enabled: Boolean)
+    fun getEssentialsConnectionEnabled(): Flow<Boolean>
 }

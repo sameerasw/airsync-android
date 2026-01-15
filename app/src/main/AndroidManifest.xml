@@ -35,6 +35,11 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
+    <permission
+        android:name="com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE"
+        android:protectionLevel="signature" />
+    <uses-permission android:name="com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE" />
+
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -219,6 +224,15 @@
                 <action android:name="com.kieronquinn.app.smartspacer.REQUEST_TARGET_UPDATE" />
             </intent-filter>
         </receiver>
+
+        <receiver
+            android:name=".utils.EssentialsRequestReceiver"
+            android:exported="true"
+            android:permission="com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE">
+            <intent-filter>
+                <action android:name="com.sameerasw.airsync.action.REQUEST_MAC_BATTERY" />
+            </intent-filter>
+        </receiver>
     </application>
 
     <queries>
@@ -228,6 +242,7 @@
             <category android:name="android.intent.category.LAUNCHER" />
         </intent>
             <package android:name="com.google.ar.lens" />
+            <package android:name="com.sameerasw.essentials" />
     </queries>
 
 </manifest>

@@ -36,5 +36,6 @@ data class UiState(
     // Clipboard history
     val isClipboardHistoryEnabled: Boolean = true,
     val clipboardHistory: List<ClipboardEntry> = emptyList(),
-    val defaultTab: String = "dynamic"
+    val defaultTab: String = "dynamic",
+    val isEssentialsConnectionEnabled: Boolean = false
 )

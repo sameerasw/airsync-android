@@ -32,6 +32,7 @@ class AirSyncService : Service() {
         super.onCreate()
         Log.d(TAG, "AirSyncService created")
         createNotificationChannel()
+        com.sameerasw.airsync.utils.MacDeviceStatusManager.startMonitoring(this)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -106,6 +107,8 @@ class AirSyncService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "AirSyncService destroyed")
+        com.sameerasw.airsync.utils.MacDeviceStatusManager.stopMonitoring()
+        com.sameerasw.airsync.utils.MacDeviceStatusManager.cleanup(this)
         scope.coroutineContext.cancel()
         super.onDestroy()
     }
