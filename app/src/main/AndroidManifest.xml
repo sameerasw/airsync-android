@@ -35,9 +35,6 @@
     <uses-permission android:name="android.permission.READ_PHONE_STATE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
 
-    <permission
-        android:name="com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE"
-        android:protectionLevel="signature" />
     <uses-permission android:name="com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE" />
 
     <application
