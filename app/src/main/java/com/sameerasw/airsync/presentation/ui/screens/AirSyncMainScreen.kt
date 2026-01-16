@@ -538,7 +538,10 @@ fun AirSyncMainScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             modifier = Modifier
                 .fillMaxSize()
-                .nestedScroll(exitAlwaysScrollBehavior),
+                .nestedScroll(
+                    if (pagerState.currentPage != 2) exitAlwaysScrollBehavior
+                    else remember { object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {} }
+                ),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ) { innerPadding ->
             // Track page changes for haptic feedback on swipe
