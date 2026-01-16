@@ -114,8 +114,7 @@ class AirSyncViewModel(
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
     try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
 
-        // Clean up Mac media session
-        MacDeviceStatusManager.cleanup()
+        try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
         
         // Stop WakeupService when ViewModel is cleared
         appContext?.let { context ->
@@ -185,6 +184,8 @@ class AirSyncViewModel(
             val isKeepPreviousLinkEnabled = repository.getKeepPreviousLinkEnabled().first()
             val isSmartspacerShowWhenDisconnected = repository.getSmartspacerShowWhenDisconnected().first()
             val isMacMediaControlsEnabled = repository.getMacMediaControlsEnabled().first()
+            val isClipboardHistoryEnabled = repository.getClipboardHistoryEnabled().first()
+            val defaultTab = repository.getDefaultTab().first()
 
             // Get device info
             val deviceName = savedDeviceName.ifEmpty {
@@ -229,7 +230,10 @@ class AirSyncViewModel(
                 isContinueBrowsingEnabled = isContinueBrowsingEnabled,
                 isSendNowPlayingEnabled = isSendNowPlayingEnabled,
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
-                isMacMediaControlsEnabled = isMacMediaControlsEnabled
+                isMacMediaControlsEnabled = isMacMediaControlsEnabled,
+                isClipboardHistoryEnabled = isClipboardHistoryEnabled,
+                defaultTab = defaultTab,
+                isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             )
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
@@ -427,6 +431,16 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isClipboardSyncEnabled = enabled)
         viewModelScope.launch {
             repository.setClipboardSyncEnabled(enabled)
+        }
+    }
+
+    fun setClipboardHistoryEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isClipboardHistoryEnabled = enabled)
+        viewModelScope.launch {
+            repository.setClipboardHistoryEnabled(enabled)
+            if (!enabled) {
+                clearClipboardHistory()
+            }
         }
     }
 
@@ -675,6 +689,8 @@ class AirSyncViewModel(
 
     // Clipboard history management
     fun addClipboardEntry(text: String, isFromPc: Boolean) {
+        if (!_uiState.value.isClipboardHistoryEnabled) return
+        
         val entry = com.sameerasw.airsync.domain.model.ClipboardEntry(
             id = java.util.UUID.randomUUID().toString(),
             text = text,
@@ -710,6 +726,24 @@ class AirSyncViewModel(
 
     fun setIsNotesRoleHeld(held: Boolean) {
         _isNotesRoleHeld.value = held
+    }
+
+    fun setDefaultTab(tab: String) {
+        _uiState.value = _uiState.value.copy(defaultTab = tab)
+        viewModelScope.launch {
+            repository.setDefaultTab(tab)
+        }
+    }
+
+    fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isEssentialsConnectionEnabled = enabled)
+        viewModelScope.launch {
+            repository.setEssentialsConnectionEnabled(enabled)
+            // wait for next up[date to sync
+            if (enabled) {
+                // later: Trigger broadcast update immediately
+            }
+        }
     }
 
 }

@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
@@ -93,6 +94,10 @@ fun SettingsView(
         Spacer(modifier = Modifier.height(0.dp))
 
             RoundedCardContainer {
+                DefaultTabCard(
+                    currentDefaultTab = uiState.defaultTab,
+                    onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
+                )
                 PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
                 QuickSettingsTipCard(
                     isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(context)
@@ -150,6 +155,47 @@ fun SettingsView(
                     title = "Show Mac Media Controls",
                     subtitle = "Show media controls when Mac is playing music"
                 )
+
+                // Essentials Bridge Toggle
+                val isEssentialsInstalled = try {
+                    context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+
+                if (isEssentialsInstalled) {
+                    SendNowPlayingCard(
+                        isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
+                        onToggleSendNowPlaying = { enabled: Boolean ->
+                            viewModel.setEssentialsConnectionEnabled(enabled)
+                        },
+                        title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
+                        subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
+                    )
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraSmall,
+                    ) {
+                        androidx.compose.material3.ListItem(
+                            colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
+                            headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
+                            supportingContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials_summary)) },
+                            trailingContent = {
+                                androidx.compose.material3.Button(
+                                    onClick = {
+                                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest"))
+                                        intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text("Download")
+                                }
+                            }
+                        )
+                    }
+                }
 
                 ExpandNetworkingCard(context)
             }

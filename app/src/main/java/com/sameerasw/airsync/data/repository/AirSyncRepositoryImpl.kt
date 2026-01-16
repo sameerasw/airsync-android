@@ -115,6 +115,14 @@ class AirSyncRepositoryImpl(
     override fun getClipboardSyncEnabled(): Flow<Boolean> {
         return dataStoreManager.getClipboardSyncEnabled()
     }
+    
+    override suspend fun setClipboardHistoryEnabled(enabled: Boolean) {
+        dataStoreManager.setClipboardHistoryEnabled(enabled)
+    }
+
+    override fun getClipboardHistoryEnabled(): Flow<Boolean> {
+        return dataStoreManager.getClipboardHistoryEnabled()
+    }
 
     override suspend fun setAutoReconnectEnabled(enabled: Boolean) {
         dataStoreManager.setAutoReconnectEnabled(enabled)
@@ -172,5 +180,21 @@ class AirSyncRepositoryImpl(
 
     override fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return dataStoreManager.getMacMediaControlsEnabled()
+    }
+
+    override suspend fun setDefaultTab(tab: String) {
+        dataStoreManager.setDefaultTab(tab)
+    }
+
+    override fun getDefaultTab(): Flow<String> {
+        return dataStoreManager.getDefaultTab()
+    }
+
+    override suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        dataStoreManager.setEssentialsConnectionEnabled(enabled)
+    }
+
+    override fun getEssentialsConnectionEnabled(): Flow<Boolean> {
+        return dataStoreManager.getEssentialsConnectionEnabled()
     }
 }

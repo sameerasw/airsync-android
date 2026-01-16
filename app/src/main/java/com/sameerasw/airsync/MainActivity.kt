@@ -6,8 +6,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.SystemBarStyle
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -45,6 +43,8 @@ import androidx.core.animation.doOnEnd
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
 import android.widget.ImageView
+import androidx.compose.material.icons.automirrored.rounded.HelpOutline
+import androidx.compose.material.icons.rounded.HelpOutline
 
 object AdbDiscoveryHolder {
     private var discovery: AdbMdnsDiscovery? = null
@@ -305,17 +305,25 @@ class MainActivity : ComponentActivity() {
             AirSyncTheme {
                 val navController = rememberNavController()
                 var showAboutDialog by remember { mutableStateOf(false) }
+                var showHelpSheet by remember { mutableStateOf(false) }
                 val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+                var topBarTitle by remember { mutableStateOf("AirSync") }
 
                 Scaffold(
                     modifier = Modifier
                         .fillMaxSize()
                         .nestedScroll(scrollBehavior.nestedScrollConnection),
+                    containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
                     topBar = {
                         LargeTopAppBar(
+                            colors = TopAppBarDefaults.largeTopAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            ),
+                            modifier = Modifier.padding(horizontal = 8.dp),
                             title = {
-                                Row {
+                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
                                     // Dynamic icon based on last connected device category
                                     val ctx = androidx.compose.ui.platform.LocalContext.current
                                     val ds = remember(ctx) { DataStoreManager(ctx) }
@@ -330,7 +338,7 @@ class MainActivity : ComponentActivity() {
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        "AirSync",
+                                        topBarTitle,
                                         style = MaterialTheme.typography.titleLarge,
                                         color = MaterialTheme.colorScheme.primary,
                                         maxLines = 1,
@@ -338,10 +346,31 @@ class MainActivity : ComponentActivity() {
                                 }
                             },
                             actions = {
-                                IconButton(onClick = { showAboutDialog = true }) {
+                                IconButton(
+                                    onClick = { showHelpSheet = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceBright
+                                    ),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
                                     Icon(
-                                        painter = painterResource(id = R.drawable.outline_info_24),
-                                        contentDescription = "About"
+                                        imageVector = androidx.compose.material.icons.Icons.Rounded.HelpOutline,
+                                        contentDescription = "Help",
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(8.dp))
+                                IconButton(
+                                    onClick = { showAboutDialog = true },
+                                    colors = IconButtonDefaults.iconButtonColors(
+                                        containerColor = MaterialTheme.colorScheme.surfaceBright
+                                    ),
+                                    modifier = Modifier.size(48.dp)
+                                ) {
+                                    Icon(
+                                        painter = painterResource(id = R.drawable.rounded_info_24),
+                                        contentDescription = "About",
+                                        modifier = Modifier.size(32.dp)
                                     )
                                 }
                             },
@@ -363,7 +392,10 @@ class MainActivity : ComponentActivity() {
                                 isPlus = isPlus,
                                 symmetricKey = symmetricKey,
                                 showAboutDialog = showAboutDialog,
-                                onDismissAbout = { showAboutDialog = false }
+                                onDismissAbout = { showAboutDialog = false },
+                                showHelpSheet = showHelpSheet,
+                                onDismissHelp = { showHelpSheet = false },
+                                onTitleChange = { topBarTitle = it }
                             )
                         }
                     }

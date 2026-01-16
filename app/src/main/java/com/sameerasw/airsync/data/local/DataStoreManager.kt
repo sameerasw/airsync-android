@@ -46,6 +46,7 @@ class DataStoreManager(private val context: Context) {
         private val NOTIFICATION_SYNC_ENABLED = booleanPreferencesKey("notification_sync_enabled")
         private val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
         private val CLIPBOARD_SYNC_ENABLED = booleanPreferencesKey("clipboard_sync_enabled")
+        private val CLIPBOARD_HISTORY_ENABLED = booleanPreferencesKey("clipboard_history_enabled")
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
         private val LAST_ICON_SYNC_DATE = stringPreferencesKey("last_icon_sync_date")
     private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
@@ -62,6 +63,12 @@ class DataStoreManager(private val context: Context) {
         private val EXPAND_NETWORKING_ENABLED = booleanPreferencesKey("expand_networking_enabled")
         // Mac Media controls toggle (for user-initiated proof for Play Store)
         private val MAC_MEDIA_CONTROLS_ENABLED = booleanPreferencesKey("mac_media_controls_enabled")
+        
+        // Essentials Bridge
+        private val ESSENTIALS_CONNECTION_ENABLED = booleanPreferencesKey("essentials_connection_enabled")
+        
+        private val DEFAULT_TAB = stringPreferencesKey("default_tab")
+
 
         // Call monitoring preferences
         private val CALL_SYNC_ENABLED = booleanPreferencesKey("call_sync_enabled")
@@ -164,6 +171,18 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
+    suspend fun setClipboardHistoryEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[CLIPBOARD_HISTORY_ENABLED] = enabled
+        }
+    }
+
+    fun getClipboardHistoryEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[CLIPBOARD_HISTORY_ENABLED] != false // Default to enabled
+        }
+    }
+
     // Auto Reconnect toggle
     suspend fun setAutoReconnectEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
@@ -250,6 +269,18 @@ class DataStoreManager(private val context: Context) {
     fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { prefs ->
             prefs[MAC_MEDIA_CONTROLS_ENABLED] ?: true // Default to true
+        }
+    }
+
+    suspend fun setDefaultTab(tab: String) {
+        context.dataStore.edit { prefs ->
+            prefs[DEFAULT_TAB] = tab
+        }
+    }
+
+    fun getDefaultTab(): Flow<String> {
+        return context.dataStore.data.map { prefs ->
+            prefs[DEFAULT_TAB] ?: "dynamic"
         }
     }
 
@@ -764,6 +795,18 @@ class DataStoreManager(private val context: Context) {
     fun getDeviceId(): Flow<String> {
         return context.dataStore.data.map { preferences ->
             preferences[DEVICE_ID] ?: ""
+        }
+    }
+
+    suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[ESSENTIALS_CONNECTION_ENABLED] = enabled
+        }
+    }
+
+    fun getEssentialsConnectionEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { prefs ->
+            prefs[ESSENTIALS_CONNECTION_ENABLED] ?: false 
         }
     }
 }

@@ -26,7 +26,8 @@ object MacDeviceStatusManager {
     private val _macDeviceStatus = MutableStateFlow<MacDeviceStatus?>(null)
     val macDeviceStatus: StateFlow<MacDeviceStatus?> = _macDeviceStatus.asStateFlow()
 
-    private var currentAlbumArt: Bitmap? = null
+    private val _albumArt = MutableStateFlow<Bitmap?>(null)
+    val albumArt: StateFlow<Bitmap?> = _albumArt.asStateFlow()
 
     fun updateStatus(
         context: Context,
@@ -62,16 +63,18 @@ object MacDeviceStatusManager {
             _macDeviceStatus.value = status
 
             // Decode album art if available
-            currentAlbumArt = decodeAlbumArt(albumArt)
+            val bitmap = decodeAlbumArt(albumArt)
+            _albumArt.value = bitmap
 
             // Start/update or stop the Mac media player service based on media state and USER SETTING
             CoroutineScope(Dispatchers.IO).launch {
                 val ds = DataStoreManager(context)
                 val isMediaControlsEnabled = ds.getMacMediaControlsEnabled().first()
                 val isConnected = WebSocketUtil.isConnected()
+                val isEssentialsEnabled = ds.getEssentialsConnectionEnabled().first()
 
                 if (isConnected && isMediaControlsEnabled && (title.isNotEmpty() || artist.isNotEmpty() || isPlaying)) {
-                    MacMediaPlayerService.startMacMedia(context, title, artist, isPlaying, currentAlbumArt)
+                    MacMediaPlayerService.startMacMedia(context, title, artist, isPlaying, bitmap)
                     Log.d(TAG, "Started/Updated Mac media player service")
                 } else {
                     MacMediaPlayerService.stopMacMedia(context)
@@ -82,6 +85,11 @@ object MacDeviceStatusManager {
                     } else {
                         Log.d(TAG, "Stopped Mac media player service - no active media")
                     }
+                }
+
+                // Broadcast to Essentials if enabled
+                if (isEssentialsEnabled) {
+                    broadcastToEssentials(context, batteryLevel, isCharging, true)
                 }
             }
 
@@ -105,11 +113,90 @@ object MacDeviceStatusManager {
         }
     }
 
-    fun cleanup() {
+    private fun broadcastToEssentials(context: Context, level: Int, isCharging: Boolean, isConnected: Boolean) {
         try {
-            currentAlbumArt = null
+            val intent = android.content.Intent("com.sameerasw.essentials.action.UPDATE_MAC_BATTERY").apply {
+                putExtra("level", level)
+                putExtra("isCharging", isCharging)
+                putExtra("lastUpdated", System.currentTimeMillis())
+                putExtra("isConnected", isConnected)
+                setPackage("com.sameerasw.essentials")
+            }
+            context.sendBroadcast(intent, "com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE")
+            Log.d(TAG, "Broadcasted Mac status to Essentials (connected: $isConnected)")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error broadcasting to Essentials: ${e.message}")
+        }
+    }
+
+    private var connectionListener: ((Boolean) -> Unit)? = null
+
+    fun startMonitoring(context: Context) {
+        if (connectionListener != null) return // Already monitoring
+
+        Log.d(TAG, "Starting connection monitoring for MacDeviceStatusManager")
+        connectionListener = { isConnected ->
+            CoroutineScope(Dispatchers.IO).launch {
+                val ds = DataStoreManager(context)
+                val isEssentialsEnabled = ds.getEssentialsConnectionEnabled().first()
+                if (isEssentialsEnabled) {
+                    if (!isConnected) {
+                        broadcastToEssentials(context, -1, false, false)
+                    }
+                }
+            }
+        }
+        WebSocketUtil.registerConnectionStatusListener(connectionListener!!)
+    }
+
+    fun stopMonitoring() {
+        connectionListener?.let {
+            WebSocketUtil.unregisterConnectionStatusListener(it)
+        }
+        connectionListener = null
+    }
+
+    fun broadcastCurrentStatus(context: Context) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Check current state
+                val isConnected = WebSocketUtil.isConnected()
+                val currentStatus = _macDeviceStatus.value
+                
+                if (isConnected && currentStatus != null) {
+                    // Send actual data with connected = true
+                    broadcastToEssentials(
+                        context, 
+                        currentStatus.battery.level, 
+                        currentStatus.battery.isCharging, 
+                        true
+                    )
+                } else {
+                    // Send connected = false (no data needed, or stale)
+                    broadcastToEssentials(context, -1, false, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error broadcasting current status: ${e.message}")
+            }
+        }
+    }
+
+    fun cleanup(context: Context? = null) {
+        try {
+            _albumArt.value = null
             _macDeviceStatus.value = null
             Log.d(TAG, "Mac device status cleaned up")
+            
+            // If context is provided, broadcast disconnection to Essentials
+            if (context != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val ds = DataStoreManager(context)
+                    val isEssentialsEnabled = ds.getEssentialsConnectionEnabled().first()
+                    if (isEssentialsEnabled) {
+                        broadcastToEssentials(context, -1, false, false)
+                    }
+                }
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up: ${e.message}")
         }

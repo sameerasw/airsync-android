@@ -27,6 +27,20 @@ object WebSocketMessageHandler {
         Log.d(TAG, "Clipboard entry callback ${if (callback != null) "registered" else "unregistered"}")
     }
 
+    // Callback for volume updates (0-100)
+    private var onMacVolumeReceived: ((Int) -> Unit)? = null
+
+    fun setOnMacVolumeCallback(callback: ((Int) -> Unit)?) {
+        onMacVolumeReceived = callback
+    }
+
+    // Callback for modifier status updates
+    private var onModifierStatusReceived: ((JSONObject) -> Unit)? = null
+
+    fun setOnModifierStatusCallback(callback: ((JSONObject) -> Unit)?) {
+        onModifierStatusReceived = callback
+    }
+
     /**
      * Handle incoming WebSocket messages from Mac
      */
@@ -50,6 +64,8 @@ object WebSocketMessageHandler {
                 "disconnectRequest" -> handleDisconnectRequest(context)
                 "toggleAppNotif" -> handleToggleAppNotification(context, data)
                 "toggleNowPlaying" -> handleToggleNowPlaying(context, data)
+                "macVolume" -> handleMacVolume(data)
+                "modifierStatus" -> handleModifierStatus(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
@@ -308,7 +324,7 @@ object WebSocketMessageHandler {
 
             // We accept either "name" or legacy "action" for action name
             val actionName = data.optString("name", data.optString("action", "")).ifEmpty { "" }
-            val replyText = data.optString("text", "")
+            val replyText = data.optString("text")
 
             if (actionName.isEmpty()) {
                 sendNotificationActionResponse(notificationId, actionName, false, "No action name provided")
@@ -541,9 +557,11 @@ object WebSocketMessageHandler {
                         "macInfo: App list changed (new=${newOnAndroid.size}, missing=${missingOnAndroid.size}); syncing full list of ${androidPackages.size} apps"
                     )
                     // Send the full current Android list so desktop can add new and remove missing
-                    SyncManager.sendOptimizedAppIcons(context, androidPackages)
+                    SyncManager.sendOptimizedAppIcons(context, androidPackages, fetchIcons = true)
                 } else {
-                    Log.d(TAG, "macInfo: No app list changes; skipping icon extraction")
+                    Log.d(TAG, "macInfo: No app list changes; skipping icon extraction but syncing metadata")
+                    // Sync metadata (enabled/disabled states) without re-sending heavy icon data
+                    SyncManager.sendOptimizedAppIcons(context, androidPackages, fetchIcons = false)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error handling macInfo: ${e.message}")
@@ -683,6 +701,29 @@ object WebSocketMessageHandler {
                 val resp = JsonUtil.createToggleNowPlayingResponse(false, null, "Error: ${e.message}")
                 WebSocketUtil.sendMessage(resp)
             }
+        }
+    }
+
+    private fun handleMacVolume(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val volume = data.optInt("volume", -1)
+            if (volume >= 0) {
+                Log.d(TAG, "Received Mac volume update: $volume")
+                onMacVolumeReceived?.invoke(volume)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling macVolume: ${e.message}")
+        }
+    }
+
+    private fun handleModifierStatus(data: JSONObject?) {
+        try {
+            if (data == null) return
+            Log.d(TAG, "Received modifier status update: $data")
+            onModifierStatusReceived?.invoke(data)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling modifierStatus: ${e.message}")
         }
     }
 }

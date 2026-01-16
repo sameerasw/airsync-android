@@ -48,6 +48,9 @@ interface AirSyncRepository {
     suspend fun setClipboardSyncEnabled(enabled: Boolean)
     fun getClipboardSyncEnabled(): Flow<Boolean>
 
+    suspend fun setClipboardHistoryEnabled(enabled: Boolean)
+    fun getClipboardHistoryEnabled(): Flow<Boolean>
+
     // Auto reconnect settings
     suspend fun setAutoReconnectEnabled(enabled: Boolean)
     fun getAutoReconnectEnabled(): Flow<Boolean>
@@ -75,4 +78,12 @@ interface AirSyncRepository {
     // Mac Media controls
     suspend fun setMacMediaControlsEnabled(enabled: Boolean)
     fun getMacMediaControlsEnabled(): Flow<Boolean>
+
+    // Default tab settings
+    suspend fun setDefaultTab(tab: String)
+    fun getDefaultTab(): Flow<String>
+
+    // Essentials Bridge
+    suspend fun setEssentialsConnectionEnabled(enabled: Boolean)
+    fun getEssentialsConnectionEnabled(): Flow<Boolean>
 }

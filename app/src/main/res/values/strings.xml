@@ -5,4 +5,8 @@
     <string name="airsync">AirSync</string>
     <string name="work_in_progress">⚠️ Work In Progress</string>
     <string name="widget_under_development">Widget under development</string>
+    <string name="connect_to_essentials">Connect to Essentials</string>
+    <string name="connect_to_essentials_summary">Share battery and status with Essentials app</string>
+    <string name="download_essentials">Download Essentials App</string>
+    <string name="download_essentials_summary">Required for battery widget integration</string>
 </resources>

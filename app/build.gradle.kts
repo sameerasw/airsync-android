@@ -16,8 +16,8 @@ android {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
         targetSdk = 36
-        versionCode = 17
-        versionName = "2.2.0"
+        versionCode = 18
+        versionName = "2.3.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -63,7 +63,7 @@ dependencies {
     // Android 12+ SplashScreen API with backward compatibility attributes
     implementation("androidx.core:core-splashscreen:1.0.1")
 
-    implementation ("androidx.compose.material3:material3:1.5.0-alpha03")
+    implementation ("androidx.compose.material3:material3:1.5.0-alpha10")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
 
