@@ -192,27 +192,27 @@ fun RemoteControlScreen(
         )
     }
 
-    // Memoize the callbacks to prevent unnecessary recompositions in KeyboardInputSheet
-    val handleType = remember(scope, activeModifiers) {
-        { text: String, fromSystem: Boolean ->
+
+    val handleType = remember(scope) {
+        { text: String, fromSystem: Boolean, mods: List<String> ->
             sendRemoteAction(
                 "type",
                 extras = mapOf(
                     "text" to text,
-                    "modifiers" to activeModifiers.toList()
+                    "modifiers" to mods
                 ),
                 performHaptic = !fromSystem
             )
         }
     }
 
-    val handleKeyPress = remember(scope, activeModifiers) {
-        { code: Int, fromSystem: Boolean ->
+    val handleKeyPress = remember(scope) {
+        { code: Int, fromSystem: Boolean, mods: List<String> ->
             sendRemoteAction(
                 "keypress",
                 extras = mapOf(
                     "keycode" to code,
-                    "modifiers" to activeModifiers.toList()
+                    "modifiers" to mods
                 ),
                 performHaptic = !fromSystem
             )

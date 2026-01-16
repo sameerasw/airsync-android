@@ -85,12 +85,22 @@ object MacKeycodes {
 @Composable
 fun KeyboardInputSheet(
     onDismiss: () -> Unit,
-    onType: (String, Boolean) -> Unit, // Boolean: isSystemKeyboard
-    onKeyPress: (Int, Boolean) -> Unit, // Boolean: isSystemKeyboard
+    onType: (String, Boolean, List<String>) -> Unit, // Boolean: isSystemKeyboard, List: modifiers
+    onKeyPress: (Int, Boolean, List<String>) -> Unit, // Boolean: isSystemKeyboard, List: modifiers
     onClearModifiers: () -> Unit = {},
     modifiers: KeyboardModifiers = KeyboardModifiers(),
     onToggleModifier: (String) -> Unit = {}
 ) {
+    fun getActiveModifiers(extras: List<String> = emptyList()): List<String> {
+        val list = mutableListOf<String>()
+        if (modifiers.shift.active) list.add("shift")
+        if (modifiers.ctrl.active) list.add("ctrl")
+        if (modifiers.option.active) list.add("option")
+        if (modifiers.command.active) list.add("command")
+        if (modifiers.fn.active) list.add("fn")
+        list.addAll(extras)
+        return list.distinct()
+    }
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         dragHandle = { BottomSheetDefaults.DragHandle() },
@@ -107,7 +117,7 @@ fun KeyboardInputSheet(
         ) {
             // Shared rows visible in both modes
             NavigationRow(
-                onKeyPress = { onKeyPress(it, isSystemKeyboard) },
+                onKeyPress = { onKeyPress(it, isSystemKeyboard, getActiveModifiers()) },
                 onClearModifiers = { if (!isSystemKeyboard) onClearModifiers() },
                 onToggleKeyboard = { isSystemKeyboard = !isSystemKeyboard }
             )
@@ -116,7 +126,7 @@ fun KeyboardInputSheet(
                 modifiers = modifiers,
                 onToggleModifier = onToggleModifier,
                 onKeyPress = { 
-                    onKeyPress(it, isSystemKeyboard)
+                    onKeyPress(it, isSystemKeyboard, getActiveModifiers())
                     if (!isSystemKeyboard) onClearModifiers()
                 }
             )
@@ -124,12 +134,18 @@ fun KeyboardInputSheet(
 
             if (isSystemKeyboard) {
                 // System Keyboard mode
-                SystemInputArea(onType, onKeyPress)
+                SystemInputArea(
+                    onType = { text, isSystem -> onType(text, isSystem, getActiveModifiers()) },
+                    onKeyPress = { code, isSystem -> onKeyPress(code, isSystem, getActiveModifiers()) }
+                )
             } else {
                 // Custom/AirSync Keyboard
                 CustomKeyboard(
-                    onType = { onType(it, false) },
-                    onKeyPress = { onKeyPress(it, false) },
+                    onType = { text -> onType(text, false, getActiveModifiers()) },
+                    onKeyPress = { code, isShifted -> 
+                        val extras = if (isShifted) listOf("shift") else emptyList()
+                        onKeyPress(code, false, getActiveModifiers(extras)) 
+                    },
                     onClearModifiers = onClearModifiers,
                     onSwitchToSystem = { isSystemKeyboard = true },
                 )
@@ -183,7 +199,7 @@ private fun SystemInputArea(
 @Composable
 private fun CustomKeyboard(
     onType: (String) -> Unit,
-    onKeyPress: (Int) -> Unit,
+    onKeyPress: (Int, Boolean) -> Unit,
     onClearModifiers: () -> Unit,
     onSwitchToSystem: () -> Unit
 ) {
@@ -243,7 +259,7 @@ private fun CustomKeyboard(
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(char.first())
                             if (keycode != null) {
-                                onKeyPress(keycode)
+                                onKeyPress(keycode, false)
                             } else {
                                 onType(char)
                             }
@@ -285,7 +301,8 @@ private fun CustomKeyboard(
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                onKeyPress(keycode)
+                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
                             }
@@ -330,7 +347,8 @@ private fun CustomKeyboard(
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                onKeyPress(keycode)
+                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
                             }
@@ -416,7 +434,8 @@ private fun CustomKeyboard(
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                onKeyPress(keycode)
+                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
                             }
@@ -463,7 +482,8 @@ private fun CustomKeyboard(
                                         val steps = (kotlin.math.abs(delAccumulatedDx) / delSweepThreshold).toInt()
                                         repeat(steps) {
                                             performLightHaptic()
-                                            onKeyPress(MacKeycodes.BACKSPACE)
+                                            performLightHaptic()
+                                            onKeyPress(MacKeycodes.BACKSPACE, false)
                                         }
                                         delAccumulatedDx %= delSweepThreshold
                                     }
@@ -475,7 +495,7 @@ private fun CustomKeyboard(
                             detectTapGestures(
                                 onTap = {
                                     performLightHaptic()
-                                    onKeyPress(MacKeycodes.BACKSPACE)
+                                    onKeyPress(MacKeycodes.BACKSPACE, false)
                                 }
                             )
                         }
@@ -564,7 +584,8 @@ private fun CustomKeyboard(
                                         val keycode = if (accumulatedDx > 0) MacKeycodes.RIGHT else MacKeycodes.LEFT
                                         repeat(steps) {
                                             performLightHaptic()
-                                            onKeyPress(keycode)
+                                            performLightHaptic()
+                                            onKeyPress(keycode, false)
                                         }
                                         accumulatedDx %= sweepThreshold
                                     }
@@ -576,7 +597,8 @@ private fun CustomKeyboard(
                             detectTapGestures(
                                 onTap = {
                                     performLightHaptic()
-                                    onKeyPress(MacKeycodes.SPACE)
+                                    performLightHaptic()
+                                    onKeyPress(MacKeycodes.SPACE, false)
                                     onClearModifiers()
                                 }
                             )
@@ -621,7 +643,8 @@ private fun CustomKeyboard(
                 FilledIconButton(
                     onClick = {
                         performLightHaptic()
-                        onKeyPress(MacKeycodes.ENTER)
+                        performLightHaptic()
+                        onKeyPress(MacKeycodes.ENTER, false)
                         onClearModifiers()
                     },
                     interactionSource = returnInteraction,
