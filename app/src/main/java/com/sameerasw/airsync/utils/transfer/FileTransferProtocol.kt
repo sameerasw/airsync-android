@@ -6,6 +6,7 @@ object FileTransferProtocol {
         name: String,
         size: Int,
         mime: String,
+        chunkSize: Int,
         checksum: String?
     ): String {
         val checksumLine = if (checksum.isNullOrBlank()) "" else "\n            ,\"checksum\": \"$checksum\""
@@ -16,7 +17,8 @@ object FileTransferProtocol {
                 "id": "$id",
                 "name": "$name",
                 "size": $size,
-                "mime": "$mime"$checksumLine
+                "mime": "$mime",
+                "chunkSize": $chunkSize$checksumLine
             }
         }
         """.trimIndent()

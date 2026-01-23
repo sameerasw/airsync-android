@@ -23,10 +23,11 @@ object FileReceiver {
         val name: String,
         val size: Int,
         val mime: String,
+        val chunkSize: Int,
         var checksum: String? = null,
         var receivedBytes: Int = 0,
         var index: Int = 0,
-        var output: OutputStream? = null,
+        var pfd: android.os.ParcelFileDescriptor? = null,
         var uri: Uri? = null
     )
 
@@ -37,7 +38,7 @@ object FileReceiver {
         NotificationUtil.createFileChannel(context)
     }
 
-    fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, checksum: String? = null) {
+    fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, chunkSize: Int, checksum: String? = null) {
         ensureChannel(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -55,10 +56,10 @@ object FileReceiver {
                 }
 
                 val uri = resolver.insert(collection, values)
-                val out = uri?.let { resolver.openOutputStream(it) }
+                val pfd = uri?.let { resolver.openFileDescriptor(it, "rw") }
 
-                if (uri != null && out != null) {
-                    incoming[id] = IncomingFileState(name = name, size = size, mime = mime, checksum = checksum, output = out, uri = uri)
+                if (uri != null && pfd != null) {
+                    incoming[id] = IncomingFileState(name = name, size = size, mime = mime, chunkSize = chunkSize, checksum = checksum, pfd = pfd, uri = uri)
                     NotificationUtil.showFileProgress(context, id.hashCode(), name, 0)
                 }
             } catch (e: Exception) {
@@ -72,9 +73,18 @@ object FileReceiver {
             try {
                 val state = incoming[id] ?: return@launch
                 val bytes = android.util.Base64.decode(base64Chunk, android.util.Base64.NO_WRAP)
-                state.output?.write(bytes)
-                state.receivedBytes += bytes.size
-                state.index = index
+                
+                synchronized(state) {
+                    state.pfd?.fileDescriptor?.let { fd ->
+                        val channel = java.io.FileOutputStream(fd).channel
+                        val offset = index.toLong() * state.chunkSize
+                        channel.position(offset)
+                        channel.write(java.nio.ByteBuffer.wrap(bytes))
+                        state.receivedBytes += bytes.size
+                        state.index = index
+                    }
+                }
+                
                 updateProgressNotification(context, id, state)
                 // send ack for this chunk
                 try {
@@ -101,8 +111,7 @@ object FileReceiver {
                 }
 
                 // Now flush and close
-                state.output?.flush()
-                state.output?.close()
+                state.pfd?.close()
 
                 // Mark file as not pending (Android Q+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {

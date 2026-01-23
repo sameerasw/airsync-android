@@ -69,6 +69,8 @@ object WebSocketMessageHandler {
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
+                "fileChunkAck" -> handleFileChunkAck(data)
+                "transferVerified" -> handleTransferVerified(data)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -85,9 +87,10 @@ object WebSocketMessageHandler {
             val name = data.optString("name")
             val size = data.optInt("size", 0)
             val mime = data.optString("mime", "application/octet-stream")
+            val chunkSize = data.optInt("chunkSize", 64 * 1024)
             val checksumVal = data.optString("checksum", "")
 
-            FileReceiver.handleInit(context, id, name, size, mime, if (checksumVal.isBlank()) null else checksumVal)
+            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal)
             Log.d(TAG, "Started incoming file transfer: $name ($size bytes)")
         } catch (e: Exception) {
             Log.e(TAG, "Error in file init: ${e.message}")
@@ -724,6 +727,28 @@ object WebSocketMessageHandler {
             onModifierStatusReceived?.invoke(data)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling modifierStatus: ${e.message}")
+        }
+    }
+
+    private fun handleFileChunkAck(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            val index = data.optInt("index")
+            FileSender.handleAck(id, index)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling fileChunkAck: ${e.message}")
+        }
+    }
+
+    private fun handleTransferVerified(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            val verified = data.optBoolean("verified")
+            FileSender.handleVerified(id, verified)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transferVerified: ${e.message}")
         }
     }
 }
