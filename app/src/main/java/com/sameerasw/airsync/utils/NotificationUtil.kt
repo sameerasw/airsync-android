@@ -52,15 +52,30 @@ object NotificationUtil {
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showFileProgress(context: Context, notifId: Int, fileName: String, percent: Int) {
+    fun showFileProgress(context: Context, notifId: Int, fileName: String, percent: Int, transferId: String) {
         createFileChannel(context)
         val manager = NotificationManagerCompat.from(context)
+        
+        // Cancel intent
+        val cancelIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_CANCEL_TRANSFER
+            putExtra("transfer_id", transferId)
+        }
+        val cancelPending = PendingIntent.getBroadcast(
+            context,
+            notifId,
+            cancelIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
         val notif = NotificationCompat.Builder(context, FILE_CHANNEL_ID)
             .setContentTitle("Receiving: $fileName")
             .setContentText("$percent%")
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setProgress(100, percent, false)
             .setOnlyAlertOnce(true)
+            .setOngoing(true)
+            .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPending)
             .build()
         manager.notify(notifId, notif)
     }

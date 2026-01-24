@@ -62,4 +62,11 @@ object FileTransferProtocol {
             "data": { "id": "$id", "verified": $verified }
         }
     """.trimIndent()
+
+    fun buildCancel(id: String): String = """
+        {
+            "type": "fileTransferCancel",
+            "data": { "id": "$id" }
+        }
+    """.trimIndent()
 }

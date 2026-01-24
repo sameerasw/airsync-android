@@ -22,6 +22,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
     companion object {
         // New: Continue Browsing dismiss action
         const val ACTION_CONTINUE_BROWSING_DISMISS = "com.sameerasw.airsync.CONTINUE_BROWSING_DISMISS"
+        const val ACTION_CANCEL_TRANSFER = "com.sameerasw.airsync.CANCEL_TRANSFER"
         private const val TAG = "NotificationActionReceiver"
     }
 
@@ -44,6 +45,15 @@ class NotificationActionReceiver : BroadcastReceiver() {
             AirSyncService.ACTION_DISCONNECT -> {
                 Log.d(TAG, "Disconnecting from notification")
                 WebSocketUtil.disconnect(context)
+            }
+            ACTION_CANCEL_TRANSFER -> {
+                val transferId = intent.getStringExtra("transfer_id")
+                if (!transferId.isNullOrEmpty()) {
+                    Log.d(TAG, "Cancelling transfer $transferId from notification")
+                    // Try cancelling both (one will be active)
+                    com.sameerasw.airsync.utils.FileReceiver.cancelTransfer(context, transferId)
+                    com.sameerasw.airsync.utils.FileSender.cancelTransfer(transferId)
+                }
             }
         }
     }

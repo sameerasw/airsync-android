@@ -233,8 +233,13 @@ object WebSocketUtil {
                         onConnectionStatusChanged?.invoke(false)
                         // Clear continue browsing notifs on disconnect
                         try { NotificationUtil.clearContinueBrowsingNotifications(context) } catch (_: Exception) {}
+                        try { NotificationUtil.clearContinueBrowsingNotifications(context) } catch (_: Exception) {}
                         // Ensure media player is removed when connection closes
                         try { com.sameerasw.airsync.service.MacMediaPlayerService.stopMacMedia(context) } catch (_: Exception) {}
+                        
+                        // Clear transfers
+                        FileReceiver.clearAll()
+                        FileSender.clearAll()
 
                         // Notify listeners about the connection status
                         notifyConnectionStatusListeners(false)
@@ -262,8 +267,13 @@ object WebSocketUtil {
                         onConnectionStatusChanged?.invoke(false)
                         // Clear continue browsing notifs on failure
                         try { NotificationUtil.clearContinueBrowsingNotifications(context) } catch (_: Exception) {}
+                        try { NotificationUtil.clearContinueBrowsingNotifications(context) } catch (_: Exception) {}
                         // Ensure media player is removed when connection fails
                         try { com.sameerasw.airsync.service.MacMediaPlayerService.stopMacMedia(context) } catch (_: Exception) {}
+                        
+                        // Clear transfers
+                        FileReceiver.clearAll()
+                        FileSender.clearAll()
 
                         // Notify listeners about the connection status
                         notifyConnectionStatusListeners(false)

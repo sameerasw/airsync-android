@@ -7,6 +7,7 @@ import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
@@ -33,9 +34,42 @@ object FileReceiver {
 
     private val incoming = ConcurrentHashMap<String, IncomingFileState>()
 
+    fun clearAll() {
+        incoming.keys.forEach { id ->
+            incoming.remove(id)?.let { state ->
+                try {
+                    state.pfd?.close()
+                } catch (e: Exception) { e.printStackTrace() }
+            }
+        }
+    }
+
     fun ensureChannel(context: Context) {
         // Delegate to shared NotificationUtil
         NotificationUtil.createFileChannel(context)
+    }
+
+    fun cancelTransfer(context: Context, id: String) {
+        val state = incoming.remove(id) ?: return
+        Log.d("FileReceiver", "Cancelling incoming transfer $id")
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Close and delete
+                state.pfd?.close()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    state.uri?.let { context.contentResolver.delete(it, null, null) }
+                }
+                
+                // Cancel notification
+                NotificationManagerCompat.from(context).cancel(id.hashCode())
+
+                // Send network cancel
+                WebSocketUtil.sendMessage(FileTransferProtocol.buildCancel(id))
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
     }
 
     fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, chunkSize: Int, checksum: String? = null) {
@@ -60,7 +94,7 @@ object FileReceiver {
 
                 if (uri != null && pfd != null) {
                     incoming[id] = IncomingFileState(name = name, size = size, mime = mime, chunkSize = chunkSize, checksum = checksum, pfd = pfd, uri = uri)
-                    NotificationUtil.showFileProgress(context, id.hashCode(), name, 0)
+                    NotificationUtil.showFileProgress(context, id.hashCode(), name, 0, id)
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -163,11 +197,11 @@ object FileReceiver {
     }
 
     private fun showProgress(context: Context, id: String) {
-        NotificationUtil.showFileProgress(context, id.hashCode(), "Receiving...", 0)
+        NotificationUtil.showFileProgress(context, id.hashCode(), "Receiving...", 0, id)
     }
 
     private fun updateProgressNotification(context: Context, id: String, state: IncomingFileState) {
         val percent = if (state.size > 0) (state.receivedBytes * 100 / state.size) else 0
-        NotificationUtil.showFileProgress(context, id.hashCode(), state.name, percent)
+        NotificationUtil.showFileProgress(context, id.hashCode(), state.name, percent, id)
     }
 }

@@ -71,6 +71,7 @@ object WebSocketMessageHandler {
                 "macInfo" -> handleMacInfo(context, data)
                 "fileChunkAck" -> handleFileChunkAck(data)
                 "transferVerified" -> handleTransferVerified(data)
+                "fileTransferCancel" -> handleFileTransferCancel(context, data)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -749,6 +750,21 @@ object WebSocketMessageHandler {
             FileSender.handleVerified(id, verified)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling transferVerified: ${e.message}")
+        }
+    }
+
+    private fun handleFileTransferCancel(context: Context, data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            if (id.isNotEmpty()) {
+                Log.d(TAG, "Received transfer cancel request for $id")
+                // Try cancelling both directions
+                com.sameerasw.airsync.utils.FileReceiver.cancelTransfer(context, id)
+                com.sameerasw.airsync.utils.FileSender.cancelTransfer(id)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling fileTransferCancel: ${e.message}")
         }
     }
 }

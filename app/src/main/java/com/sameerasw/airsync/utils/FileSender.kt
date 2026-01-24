@@ -16,12 +16,27 @@ object FileSender {
     private val outgoingAcks = java.util.concurrent.ConcurrentHashMap<String, MutableSet<Int>>()
     private val transferStatus = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
 
+    fun clearAll() {
+        outgoingAcks.clear()
+        transferStatus.clear()
+    }
+
     fun handleAck(id: String, index: Int) {
         outgoingAcks[id]?.add(index)
     }
 
     fun handleVerified(id: String, verified: Boolean) {
         transferStatus[id] = verified
+    }
+
+    fun cancelTransfer(id: String) {
+        // Remove from acks to stop the loop
+        if (outgoingAcks.remove(id) != null) {
+            Log.d("FileSender", "Cancelling transfer $id")
+            // Send cancel message
+            WebSocketUtil.sendMessage(FileTransferProtocol.buildCancel(id))
+            transferStatus.remove(id)
+        }
     }
 
     fun sendFile(context: Context, uri: Uri, chunkSize: Int = 64 * 1024) {
