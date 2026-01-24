@@ -84,7 +84,7 @@ object WallpaperUtil {
      * Check if the app has the required permissions to access wallpaper
      */
     private fun hasWallpaperPermissions(context: Context): Boolean {
-        return PermissionUtil.hasManageExternalStoragePermission()
+        return PermissionUtil.hasReadMediaImagesPermission(context)
     }
 
     /**

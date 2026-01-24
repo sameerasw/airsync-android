@@ -17,6 +17,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.sameerasw.airsync.presentation.ui.screens.AirSyncMainScreen
+import com.sameerasw.airsync.health.SimpleHealthScreen
+import com.sameerasw.airsync.presentation.ui.screens.FileTransferScreen
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.utils.PermissionUtil
 import java.net.URLDecoder
@@ -363,7 +365,19 @@ class MainActivity : ComponentActivity() {
                                 isPlus = isPlus,
                                 symmetricKey = symmetricKey,
                                 showAboutDialog = showAboutDialog,
-                                onDismissAbout = { showAboutDialog = false }
+                                onDismissAbout = { showAboutDialog = false },
+                                onNavigateToHealth = { navController.navigate("health") },
+                                onNavigateToFileTransfer = { navController.navigate("fileTransfer") }
+                            )
+                        }
+                        composable("health") {
+                            SimpleHealthScreen(
+                                onNavigateBack = { navController.popBackStack() }
+                            )
+                        }
+                        composable("fileTransfer") {
+                            FileTransferScreen(
+                                onNavigateBack = { navController.popBackStack() }
                             )
                         }
                     }
@@ -504,14 +518,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
 
         // Handle Notes Role intent
         handleNotesRoleIntent(intent)
 
         // Check if this is a QS tile long-press intent
-        if (intent?.action == "android.service.quicksettings.action.QS_TILE_PREFERENCES") {
+        if (intent.action == "android.service.quicksettings.action.QS_TILE_PREFERENCES") {
             // Check if device is connected
             if (!WebSocketUtil.isConnected()) {
                 // Not connected, open QR scanner

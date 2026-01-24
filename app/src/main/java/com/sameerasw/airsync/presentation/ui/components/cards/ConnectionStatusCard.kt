@@ -13,9 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -33,7 +32,6 @@ import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ConnectionStatusCard(
     isConnected: Boolean,
@@ -149,11 +147,11 @@ fun ConnectionStatusCard(
                 }
 
                 if (isConnecting) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) { LoadingIndicator() }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp)) }
                 }
 
                 if (isConnected) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) { LoadingIndicator() }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) { CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp)) }
 //                    Icon(
 //                        painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_24),
 //                        contentDescription = "Connected",

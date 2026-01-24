@@ -3,7 +3,7 @@ Android app for AirSync 2.0 built with Kotlin Jetpack Compose
 
 Min : Android 11
 
-[<img src="https://steverichey.github.io/google-play-badge-svg/img/en_get.svg" width="30%" />](https://groups.google.com/forum/#!forum/airsync-testing/join)
+[<img src="https://steverichey.github.io/google-play-badge-svg/img/en_get.svg" width="30%" />](https://play.google.com/store/apps/details?id=com.sameerasw.airsync)
 
 
 ## How to connect?

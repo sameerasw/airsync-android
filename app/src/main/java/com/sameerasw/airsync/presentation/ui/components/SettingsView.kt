@@ -38,6 +38,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTipCa
 import com.sameerasw.airsync.presentation.ui.components.cards.ClipboardFeaturesCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SendNowPlayingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SmartspacerCard
+import com.sameerasw.airsync.presentation.ui.components.cards.BluetoothCard
 import com.sameerasw.airsync.utils.HapticUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -77,7 +78,9 @@ fun SettingsView(
     scope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope(),
     onSendMessage: (String) -> Unit = {},
     onExport: (String) -> Unit = {},
-    onImport: () -> Unit = {}
+    onImport: () -> Unit = {},
+    onNavigateToHealth: () -> Unit = {},
+    onNavigateToFileTransfer: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -153,6 +156,44 @@ fun SettingsView(
 
                 ExpandNetworkingCard(context)
             }
+
+        // Features Section - Health & File Transfer
+        RoundedCardContainer {
+            // Health & Fitness Button
+            Button(
+                onClick = {
+                    HapticUtil.performClick(haptics)
+                    onNavigateToHealth()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.extraSmall
+            ) {
+                Text("Health & Fitness")
+            }
+
+            // File Transfer Button (only when connected)
+            AnimatedVisibility(
+                visible = uiState.isConnected,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Button(
+                    onClick = {
+                        HapticUtil.performClick(haptics)
+                        onNavigateToFileTransfer()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.extraSmall
+                ) {
+                    Text("Send Files to Mac")
+                }
+            }
+        }
+        
+        // Bluetooth Connection Section
+        RoundedCardContainer {
+            BluetoothCard()
+        }
 
         // Device Info Section
             RoundedCardContainer {

@@ -21,7 +21,8 @@ enum class PermissionType {
     WALLPAPER_ACCESS,
     CALL_LOG,
     CONTACTS,
-    PHONE
+    PHONE,
+    ANSWER_PHONE_CALLS
 }
 
 data class PermissionInfo(
@@ -198,6 +199,14 @@ private fun getPermissionInfo(permissionType: PermissionType): PermissionInfo {
             description = "AirSync needs to detect your phone's state to notify you of incoming calls in real-time.",
             whyNeeded = "This permission allows AirSync to detect when your phone is ringing, when you answer, or when a call ends, so it can display a live call status on your Mac. \n\nAirSync NEVER accesses your call audio or records conversations. This is used solely to facilitate the remote call notification feature as a device companion.",
             buttonText = "Grant Phone Access"
+        )
+
+        PermissionType.ANSWER_PHONE_CALLS -> PermissionInfo(
+            title = "Answer Calls",
+            icon = R.drawable.outline_call_end_24,
+            description = "AirSync needs this permission to end or reject calls from your Mac.",
+            whyNeeded = "To allow you to decline or hang up calls directly from your Mac, Android requires this specific permission. \n\nWithout it, the 'End Call' button on your Mac will not work. This permission is strictly used for call control actions you initiate.",
+            buttonText = "Grant Call Control"
         )
     }
 }

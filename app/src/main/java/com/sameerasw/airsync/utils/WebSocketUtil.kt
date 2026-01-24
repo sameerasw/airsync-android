@@ -12,6 +12,9 @@ import kotlinx.coroutines.launch
 import okhttp3.*
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.selects.select
 
 object WebSocketUtil {
     private const val TAG = "WebSocketUtil"
@@ -41,6 +44,11 @@ object WebSocketUtil {
 
     // Global connection status listeners for UI updates
     private val connectionStatusListeners = mutableSetOf<(Boolean) -> Unit>()
+
+    // Message Queues
+    private val highPriorityQueue = Channel<String>(Channel.UNLIMITED)
+    private val lowPriorityQueue = Channel<String>(10, BufferOverflow.DROP_OLDEST)
+    private var messageProcessorJob: Job? = null
 
     private fun createClient(): OkHttpClient {
         return OkHttpClient.Builder()
@@ -76,15 +84,35 @@ object WebSocketUtil {
     ) {
         // Cache application context for future cleanup even if callers don't pass context on disconnect
         appContext = context.applicationContext
-
-        if (isConnecting.get() || isConnected.get()) {
-            Log.d(TAG, "Already connected or connecting")
-            return
+        
+        // Initialize Bluetooth sync manager for fallback/parallel sync
+        try {
+            BluetoothSyncManager.initialize(context.applicationContext)
+            BluetoothSyncManager.onMessageReceived = { message ->
+                // Forward Bluetooth messages to the same handler as WebSocket
+                CoroutineScope(Dispatchers.Main).launch {
+                    try {
+                        WebSocketMessageHandler.handleIncomingMessage(context.applicationContext, message)
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error handling Bluetooth message: ${e.message}")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to initialize Bluetooth sync: ${e.message}")
         }
 
-        // If user initiates a manual attempt, stop any auto-reconnect loop
+        // If user initiates a manual attempt, force reset connection state and stop auto-reconnect
         if (manualAttempt) {
+            // Force reset connection state for manual attempts to override stuck states
+            isConnecting.set(false)
+            isConnected.set(false)
+            isSocketOpen.set(false)
+            handshakeCompleted.set(false)
             cancelAutoReconnect()
+        } else if (isConnecting.get() || isConnected.get()) {
+            Log.d(TAG, "Already connected or connecting")
+            return
         }
 
         // Validate local network IP
@@ -125,6 +153,8 @@ object WebSocketUtil {
                 val request = Request.Builder()
                     .url(url)
                     .build()
+
+                startMessageProcessor()
 
                 val listener = object : WebSocketListener() {
                     override fun onOpen(webSocket: WebSocket, response: Response) {
@@ -223,11 +253,27 @@ object WebSocketUtil {
                         handshakeCompleted.set(false)
                         handshakeTimeoutJob?.cancel()
 
+                        // Cancel all ongoing file transfers
+                        try {
+                            FileReceiver.cancelAllTransfers(context)
+                            Log.d(TAG, "Cancelled all file transfers on connection close")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error cancelling file transfers: ${e.message}")
+                        }
+
                         // Stop AirSync service on disconnect
                         try {
                             com.sameerasw.airsync.service.AirSyncService.stop(context)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error stopping AirSyncService on close: ${e.message}")
+                        }
+                        
+                        // Stop screen mirroring on disconnect
+                        try {
+                            MirrorRequestHelper.stopMirroring(context)
+                            Log.d(TAG, "Screen mirroring stopped on disconnect")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error stopping mirroring on close: ${e.message}")
                         }
 
                         onConnectionStatusChanged?.invoke(false)
@@ -251,11 +297,27 @@ object WebSocketUtil {
                         handshakeCompleted.set(false)
                         handshakeTimeoutJob?.cancel()
 
+                        // Cancel all ongoing file transfers
+                        try {
+                            FileReceiver.cancelAllTransfers(context)
+                            Log.d(TAG, "Cancelled all file transfers on connection failure")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error cancelling file transfers: ${e.message}")
+                        }
+
                         // Stop AirSync service on failure
                         try {
                             com.sameerasw.airsync.service.AirSyncService.stop(context)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error stopping AirSyncService on failure: ${e.message}")
+                        }
+                        
+                        // Stop screen mirroring on failure
+                        try {
+                            MirrorRequestHelper.stopMirroring(context)
+                            Log.d(TAG, "Screen mirroring stopped on connection failure")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error stopping mirroring on failure: ${e.message}")
                         }
 
                         // Update connection status
@@ -315,18 +377,39 @@ object WebSocketUtil {
     }
 
     fun sendMessage(message: String): Boolean {
-        // Allow sending as soon as the socket is open (even before handshake completes)
-        return if (isSocketOpen.get() && webSocket != null) {
-            Log.d(TAG, "Sending message: $message")
-            val messageToSend = currentSymmetricKey?.let { key ->
-                CryptoUtil.encryptMessage(message, key)
-            } ?: message
-
-            webSocket!!.send(messageToSend)
-        } else {
-            Log.w(TAG, "WebSocket not connected, cannot send message")
-            false
+        // Try WebSocket first (primary connection)
+        if (isSocketOpen.get() && webSocket != null) {
+            // Determine priority
+            if (message.contains("\"type\":\"mirrorFrame\"") || message.contains("\"type\":\"fileChunk\"") || message.contains("\"type\":\"audioFrame\"")) {
+                val result = lowPriorityQueue.trySend(message)
+                if (result.isFailure) {
+                    // Log only occasionally to avoid spam
+                    // Log.v(TAG, "Dropped low priority message")
+                }
+                return true
+            } else {
+                highPriorityQueue.trySend(message)
+                return true
+            }
         }
+        
+        // Fallback to Bluetooth if WebSocket not available
+        if (BluetoothSyncManager.isAvailable()) {
+            if (!message.contains("\"type\":\"mirrorFrame\"")) {
+                Log.d(TAG, "Sending message via Bluetooth: ${message.take(100)}...")
+            }
+            return BluetoothSyncManager.sendMessage(message)
+        }
+        
+        Log.w(TAG, "No connection available (WebSocket or Bluetooth), cannot send message")
+        return false
+    }
+    
+    /**
+     * Check if any connection (WebSocket or Bluetooth) is available
+     */
+    fun isAnyConnectionAvailable(): Boolean {
+        return (isSocketOpen.get() && webSocket != null) || BluetoothSyncManager.isAvailable()
     }
 
     fun disconnect(context: Context? = null) {
@@ -343,8 +426,20 @@ object WebSocketUtil {
         webSocket?.close(1000, "Manual disconnection")
         webSocket = null
 
-        // Stop AirSync service on disconnect
+        // Resolve a context for side-effects (try provided one, fall back to appContext)
         val ctx = context ?: appContext
+        
+        // Cancel all ongoing file transfers on disconnect
+        ctx?.let { c ->
+            try {
+                FileReceiver.cancelAllTransfers(c)
+                Log.d(TAG, "Cancelled all file transfers on disconnect")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error cancelling file transfers: ${e.message}")
+            }
+        }
+
+        // Stop AirSync service on disconnect
         ctx?.let { c ->
             try { com.sameerasw.airsync.service.AirSyncService.stop(c) } catch (e: Exception) {
                 Log.e(TAG, "Error stopping AirSyncService on disconnect: ${e.message}")
@@ -353,7 +448,6 @@ object WebSocketUtil {
 
         onConnectionStatusChanged?.invoke(false)
 
-        // Resolve a context for side-effects (try provided one, fall back to appContext)
         // Clear continue browsing notifications if possible
         ctx?.let { c ->
             try { NotificationUtil.clearContinueBrowsingNotifications(c) } catch (_: Exception) {}
@@ -524,5 +618,34 @@ object WebSocketUtil {
         // Only if not already connected or connecting
         if (isConnected.get() || isConnecting.get()) return
         tryStartAutoReconnect(context)
+    }
+    private fun startMessageProcessor() {
+        messageProcessorJob?.cancel()
+        messageProcessorJob = CoroutineScope(Dispatchers.IO).launch {
+            while (true) {
+                try {
+                    // Prioritize high priority queue
+                    val message = select<String> {
+                        highPriorityQueue.onReceive { it }
+                        lowPriorityQueue.onReceive { it }
+                    }
+
+                    if (isSocketOpen.get() && webSocket != null) {
+                        if (!message.contains("\"type\":\"mirrorFrame\"")) {
+                            Log.d(TAG, "Sending message via WebSocket: ${message.take(100)}...")
+                        }
+                        
+                        val messageToSend = currentSymmetricKey?.let { key ->
+                            CryptoUtil.encryptMessage(message, key)
+                        } ?: message
+                        
+                        webSocket?.send(messageToSend)
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error in message processor: ${e.message}")
+                    delay(1000)
+                }
+            }
+        }
     }
 }
