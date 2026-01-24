@@ -3,6 +3,7 @@ package com.sameerasw.airsync.utils
 import android.content.Context
 import android.net.Uri
 import android.util.Log
+import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -72,11 +73,15 @@ object FileSender {
 
                 val transferId = UUID.randomUUID().toString()
                 outgoingAcks[transferId] = java.util.Collections.synchronizedSet(mutableSetOf<Int>())
+                transferStatus[transferId] = true
 
                 Log.d("FileSender", "Starting transfer id=$transferId name=$name size=$size")
 
                 // 3. Init
                 WebSocketUtil.sendMessage(FileTransferProtocol.buildInit(transferId, name, size, mime, chunkSize, checksum))
+                
+                // Show initial progress
+                NotificationUtil.showFileProgress(context, transferId.hashCode(), name, 0, transferId, isSending = true)
 
                 // 4. Send Chunks with Sliding Window
                 val windowSize = 8
@@ -89,9 +94,23 @@ object FileSender {
                 var nextIndexToSend = 0
                 val ackWaitMs = 2000L
                 val maxRetries = 5
+                
+                // Speed / ETA tracking
+                var lastUpdateTime = System.currentTimeMillis()
+                var bytesAtLastUpdate = 0L
+                var totalBytesSent = 0L
+                var smoothedSpeed: Double? = null
+                var etaString: String? = null
 
                 resolver.openInputStream(uri)?.use { input ->
                     while (true) {
+                        // Check cancellation
+                        if (!transferStatus.containsKey(transferId)) {
+                             Log.d("FileSender", "Transfer cancelled by user/receiver")
+                             NotificationManagerCompat.from(context).cancel(transferId.hashCode())
+                             break
+                        }
+
                         val acks = outgoingAcks[transferId] ?: break
                         
                         // find baseIndex = smallest unacked index
@@ -99,6 +118,47 @@ object FileSender {
                         while (acks.contains(baseIndex)) {
                             sentBuffer.remove(baseIndex)
                             baseIndex++
+                        }
+
+                        // Update Notification logic (Once per second)
+                        val now = System.currentTimeMillis()
+                        val timeDiff = (now - lastUpdateTime) / 1000.0
+                        
+                        val currentBytesSent = baseIndex * chunkSize.toLong()
+                        
+                        if (timeDiff >= 1.0) {
+                             val bytesDiff = currentBytesSent - bytesAtLastUpdate
+                             val intervalSpeed = if (timeDiff > 0) bytesDiff / timeDiff else 0.0
+                             
+                             val alpha = 0.4
+                             val lastSpeed = smoothedSpeed
+                             val newSpeed = if (lastSpeed != null) {
+                                 alpha * intervalSpeed + (1.0 - alpha) * lastSpeed
+                             } else {
+                                 intervalSpeed
+                             }
+                             smoothedSpeed = newSpeed
+                             
+                             if (newSpeed > 0) {
+                                 val remainingBytes = (size - currentBytesSent).coerceAtLeast(0)
+                                 val secondsRemaining = (remainingBytes / newSpeed).toLong()
+                                 
+                                 etaString = if (secondsRemaining < 60) {
+                                     "$secondsRemaining sec remaining"
+                                 } else {
+                                     val mins = secondsRemaining / 60
+                                     "$mins min remaining"
+                                 }
+                             }
+                             
+                             lastUpdateTime = now
+                             bytesAtLastUpdate = currentBytesSent
+                             
+                             val progress = if (totalChunks > 0) (baseIndex * 100) / totalChunks else 0
+                             NotificationUtil.showFileProgress(context, transferId.hashCode(), name, progress, transferId, isSending = true, etaString = etaString)
+                        } else if (baseIndex == 0) {
+                             // Force initial update
+                             NotificationUtil.showFileProgress(context, transferId.hashCode(), name, 0, transferId, isSending = true, etaString = "Calculating...")
                         }
                         
                         if (baseIndex >= totalChunks) break
@@ -113,17 +173,18 @@ object FileSender {
                                 WebSocketUtil.sendMessage(FileTransferProtocol.buildChunk(transferId, nextIndexToSend, base64))
                                 sentBuffer[nextIndexToSend] = SentChunk(base64, System.currentTimeMillis(), 1)
                                 nextIndexToSend++
+                                totalBytesSent += read
                             } else if (nextIndexToSend < totalChunks) {
                                 break
                             }
                         }
                         
                         // Retransmit logic
-                        val now = System.currentTimeMillis()
+                        val nowTx = System.currentTimeMillis()
                         var failed = false
                         for ((idx, sent) in sentBuffer) {
                             if (acks.contains(idx)) continue
-                            if (now - sent.lastSent > ackWaitMs) {
+                            if (nowTx - sent.lastSent > ackWaitMs) {
                                 if (sent.attempts >= maxRetries) {
                                     Log.e("FileSender", "Failed to send chunk $idx after $maxRetries attempts")
                                     failed = true
@@ -131,7 +192,7 @@ object FileSender {
                                 }
                                 Log.d("FileSender", "Retransmitting chunk $idx (attempt ${sent.attempts + 1})")
                                 WebSocketUtil.sendMessage(FileTransferProtocol.buildChunk(transferId, idx, sent.base64))
-                                sent.lastSent = now
+                                sent.lastSent = nowTx
                                 sent.attempts++
                             }
                         }
@@ -142,9 +203,14 @@ object FileSender {
                 }
                 
                 // 5. Complete
-                Log.d("FileSender", "Transfer $transferId completed")
-                WebSocketUtil.sendMessage(FileTransferProtocol.buildComplete(transferId, name, size, checksum))
+                // Check if we exited due to cancel or success
+                if (transferStatus.containsKey(transferId)) {
+                    Log.d("FileSender", "Transfer $transferId completed")
+                    WebSocketUtil.sendMessage(FileTransferProtocol.buildComplete(transferId, name, size, checksum))
+                    NotificationUtil.showFileComplete(context, transferId.hashCode(), name, success = true, isSending = true)
+                }
                 outgoingAcks.remove(transferId)
+                transferStatus.remove(transferId)
 
             } catch (e: Exception) {
                 Log.e("FileSender", "Error sending file: ${e.message}")

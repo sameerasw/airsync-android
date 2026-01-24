@@ -29,7 +29,11 @@ object FileReceiver {
         var receivedBytes: Int = 0,
         var index: Int = 0,
         var pfd: android.os.ParcelFileDescriptor? = null,
-        var uri: Uri? = null
+        var uri: Uri? = null,
+        // Speed / ETA tracking
+        var lastUpdateTime: Long = System.currentTimeMillis(),
+        var bytesAtLastUpdate: Int = 0,
+        var smoothedSpeed: Double? = null
     )
 
     private val incoming = ConcurrentHashMap<String, IncomingFileState>()
@@ -179,7 +183,7 @@ object FileReceiver {
 
                 // Notify user with an action to open the file
                 val notifId = id.hashCode()
-                NotificationUtil.showFileComplete(context, notifId, state.name, verified, state.uri)
+                NotificationUtil.showFileComplete(context, notifId, state.name, verified, isSending = false, contentUri = state.uri)
 
                 // Send transferVerified back to sender
                 try {
@@ -196,12 +200,48 @@ object FileReceiver {
         }
     }
 
-    private fun showProgress(context: Context, id: String) {
-        NotificationUtil.showFileProgress(context, id.hashCode(), "Receiving...", 0, id)
-    }
+
 
     private fun updateProgressNotification(context: Context, id: String, state: IncomingFileState) {
-        val percent = if (state.size > 0) (state.receivedBytes * 100 / state.size) else 0
-        NotificationUtil.showFileProgress(context, id.hashCode(), state.name, percent, id)
+        val now = System.currentTimeMillis()
+        val timeDiff = (now - state.lastUpdateTime) / 1000.0
+        
+        if (timeDiff >= 1.0) {
+            val bytesDiff = state.receivedBytes - state.bytesAtLastUpdate
+            val intervalSpeed = if (timeDiff > 0) bytesDiff / timeDiff else 0.0
+            
+            val alpha = 0.4
+            val lastSpeed = state.smoothedSpeed
+            val newSpeed = if (lastSpeed != null) {
+                alpha * intervalSpeed + (1.0 - alpha) * lastSpeed
+            } else {
+                intervalSpeed
+            }
+            state.smoothedSpeed = newSpeed
+            
+            var etaString: String? = null
+            if (newSpeed > 0) {
+                val remainingBytes = (state.size - state.receivedBytes).coerceAtLeast(0)
+                val secondsRemaining = (remainingBytes / newSpeed).toLong()
+                
+                etaString = if (secondsRemaining < 60) {
+                    "$secondsRemaining sec remaining"
+                } else {
+                    val mins = secondsRemaining / 60
+                    "$mins min remaining"
+                }
+            }
+            
+            state.lastUpdateTime = now
+            state.bytesAtLastUpdate = state.receivedBytes
+            
+            val percent = if (state.size > 0) (state.receivedBytes * 100 / state.size) else 0
+            NotificationUtil.showFileProgress(context, id.hashCode(), state.name, percent, id, isSending = false, etaString = etaString)
+        } else if (state.receivedBytes == 0) {
+            // Initial
+            NotificationUtil.showFileProgress(context, id.hashCode(), state.name, 0, id, isSending = false, etaString = "Calculating...")
+            state.lastUpdateTime = now
+            state.bytesAtLastUpdate = 0
+        }
     }
 }
