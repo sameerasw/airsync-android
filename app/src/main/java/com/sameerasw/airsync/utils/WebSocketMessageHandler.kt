@@ -72,6 +72,7 @@ object WebSocketMessageHandler {
                 "fileChunkAck" -> handleFileChunkAck(data)
                 "transferVerified" -> handleTransferVerified(data)
                 "fileTransferCancel" -> handleFileTransferCancel(context, data)
+                "browseLs" -> handleBrowseLs(context, data)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -765,6 +766,17 @@ object WebSocketMessageHandler {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling fileTransferCancel: ${e.message}")
+        }
+    }
+
+    private fun handleBrowseLs(context: Context, data: JSONObject?) {
+        try {
+            val path = data?.optString("path")
+            Log.d(TAG, "Browse request for path: $path")
+            val response = FileBrowserUtil.listDirectory(path)
+            WebSocketUtil.sendMessage(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling browseLs: ${e.message}")
         }
     }
 }
