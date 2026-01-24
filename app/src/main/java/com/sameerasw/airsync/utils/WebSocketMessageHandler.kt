@@ -69,6 +69,11 @@ object WebSocketMessageHandler {
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
+                "fileChunkAck" -> handleFileChunkAck(data)
+                "transferVerified" -> handleTransferVerified(data)
+                "fileTransferCancel" -> handleFileTransferCancel(context, data)
+                "browseLs" -> handleBrowseLs(context, data)
+                "filePull" -> handleFilePull(context, data)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -85,9 +90,10 @@ object WebSocketMessageHandler {
             val name = data.optString("name")
             val size = data.optInt("size", 0)
             val mime = data.optString("mime", "application/octet-stream")
+            val chunkSize = data.optInt("chunkSize", 64 * 1024)
             val checksumVal = data.optString("checksum", "")
 
-            FileReceiver.handleInit(context, id, name, size, mime, if (checksumVal.isBlank()) null else checksumVal)
+            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal)
             Log.d(TAG, "Started incoming file transfer: $name ($size bytes)")
         } catch (e: Exception) {
             Log.e(TAG, "Error in file init: ${e.message}")
@@ -724,6 +730,71 @@ object WebSocketMessageHandler {
             onModifierStatusReceived?.invoke(data)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling modifierStatus: ${e.message}")
+        }
+    }
+
+    private fun handleFileChunkAck(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            val index = data.optInt("index")
+            FileSender.handleAck(id, index)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling fileChunkAck: ${e.message}")
+        }
+    }
+
+    private fun handleTransferVerified(data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            val verified = data.optBoolean("verified")
+            FileSender.handleVerified(id, verified)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transferVerified: ${e.message}")
+        }
+    }
+
+    private fun handleFileTransferCancel(context: Context, data: JSONObject?) {
+        try {
+            if (data == null) return
+            val id = data.optString("id")
+            if (id.isNotEmpty()) {
+                Log.d(TAG, "Received transfer cancel request for $id")
+                // Try cancelling both directions
+                com.sameerasw.airsync.utils.FileReceiver.cancelTransfer(context, id)
+                com.sameerasw.airsync.utils.FileSender.cancelTransfer(id)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling fileTransferCancel: ${e.message}")
+        }
+    }
+
+    private fun handleBrowseLs(context: Context, data: JSONObject?) {
+        try {
+            val path = data?.optString("path")
+            val showHidden = data?.optBoolean("showHidden", false) ?: false
+            Log.d(TAG, "Browse request for path: $path, showHidden: $showHidden")
+            val response = FileBrowserUtil.listDirectory(path, showHidden)
+            WebSocketUtil.sendMessage(response)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling browseLs: ${e.message}")
+        }
+    }
+
+    private fun handleFilePull(context: Context, data: JSONObject?) {
+        try {
+            val path = data?.optString("path")
+            if (path.isNullOrEmpty()) return
+            Log.d(TAG, "File pull request for path: $path")
+            val file = java.io.File(path)
+            if (file.exists() && file.isFile) {
+                FileSender.sendFile(context, android.net.Uri.fromFile(file))
+            } else {
+                Log.e(TAG, "File pull failed: File does not exist or is not a file: $path")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling filePull: ${e.message}")
         }
     }
 }
