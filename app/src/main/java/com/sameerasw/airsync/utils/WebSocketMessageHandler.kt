@@ -73,6 +73,7 @@ object WebSocketMessageHandler {
                 "transferVerified" -> handleTransferVerified(data)
                 "fileTransferCancel" -> handleFileTransferCancel(context, data)
                 "browseLs" -> handleBrowseLs(context, data)
+                "filePull" -> handleFilePull(context, data)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -772,11 +773,28 @@ object WebSocketMessageHandler {
     private fun handleBrowseLs(context: Context, data: JSONObject?) {
         try {
             val path = data?.optString("path")
-            Log.d(TAG, "Browse request for path: $path")
-            val response = FileBrowserUtil.listDirectory(path)
+            val showHidden = data?.optBoolean("showHidden", false) ?: false
+            Log.d(TAG, "Browse request for path: $path, showHidden: $showHidden")
+            val response = FileBrowserUtil.listDirectory(path, showHidden)
             WebSocketUtil.sendMessage(response)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling browseLs: ${e.message}")
+        }
+    }
+
+    private fun handleFilePull(context: Context, data: JSONObject?) {
+        try {
+            val path = data?.optString("path")
+            if (path.isNullOrEmpty()) return
+            Log.d(TAG, "File pull request for path: $path")
+            val file = java.io.File(path)
+            if (file.exists() && file.isFile) {
+                FileSender.sendFile(context, android.net.Uri.fromFile(file))
+            } else {
+                Log.e(TAG, "File pull failed: File does not exist or is not a file: $path")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling filePull: ${e.message}")
         }
     }
 }

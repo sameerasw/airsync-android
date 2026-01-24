@@ -8,7 +8,7 @@ object FileBrowserUtil {
     private const val TAG = "FileBrowserUtil"
     private val ROOT_PATH = Environment.getExternalStorageDirectory().absolutePath
 
-    fun listDirectory(path: String?): String {
+    fun listDirectory(path: String?, showHidden: Boolean = false): String {
         var targetPath = if (path.isNullOrBlank()) ROOT_PATH else path
         
         if (!targetPath.startsWith("/")) {
@@ -35,6 +35,9 @@ object FileBrowserUtil {
         
         val jsonItems = JSONArray()
         for (file in items.sortedBy { it.name.lowercase() }.sortedByDescending { it.isDirectory }) {
+            if (!showHidden && file.name.startsWith(".") && file.name != ".") {
+                continue
+            }
             val item = JSONObject()
             item.put("name", file.name)
             item.put("isDir", file.isDirectory)

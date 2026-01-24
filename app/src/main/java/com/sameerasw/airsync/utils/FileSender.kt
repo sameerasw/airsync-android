@@ -44,14 +44,30 @@ object FileSender {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val resolver = context.contentResolver
-                val name = resolver.getFileName(uri) ?: "shared_file"
-                val mime = resolver.getType(uri) ?: "application/octet-stream"
+                val isFileUri = uri.scheme == "file"
+                
+                val name = if (isFileUri) {
+                    uri.lastPathSegment ?: "shared_file"
+                } else {
+                    resolver.getFileName(uri) ?: "shared_file"
+                }
+                
+                val mime = if (isFileUri) {
+                    val extension = android.webkit.MimeTypeMap.getFileExtensionFromUrl(uri.toString())
+                    android.webkit.MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension) ?: "application/octet-stream"
+                } else {
+                    resolver.getType(uri) ?: "application/octet-stream"
+                }
 
                 // 1. Get size
-                val size = resolver.query(uri, null, null, null, null)?.use { cursor ->
-                    val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
-                    if (sizeIndex != -1 && cursor.moveToFirst()) cursor.getInt(sizeIndex) else -1
-                } ?: -1
+                val size = if (isFileUri) {
+                    java.io.File(uri.path ?: "").length()
+                } else {
+                    resolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val sizeIndex = cursor.getColumnIndex(android.provider.OpenableColumns.SIZE)
+                        if (sizeIndex != -1 && cursor.moveToFirst()) cursor.getLong(sizeIndex) else -1L
+                    } ?: -1L
+                }
 
                 if (size < 0) {
                     Log.e("FileSender", "Could not determine file size for $uri")
@@ -85,7 +101,7 @@ object FileSender {
 
                 // 4. Send Chunks with Sliding Window
                 val windowSize = 8
-                val totalChunks = if (size == 0) 1 else (size + chunkSize - 1) / chunkSize
+                val totalChunks = if (size == 0L) 1L else (size + chunkSize - 1) / chunkSize
                 
                 // Buffer of sent chunks in the current window: index -> (base64, lastSentTime, attempts)
                 data class SentChunk(val base64: String, var lastSent: Long, var attempts: Int)
@@ -154,7 +170,7 @@ object FileSender {
                              lastUpdateTime = now
                              bytesAtLastUpdate = currentBytesSent
                              
-                             val progress = if (totalChunks > 0) (baseIndex * 100) / totalChunks else 0
+                             val progress = if (totalChunks > 0L) ((baseIndex.toLong() * 100) / totalChunks).toInt() else 0
                              NotificationUtil.showFileProgress(context, transferId.hashCode(), name, progress, transferId, isSending = true, etaString = etaString)
                         } else if (baseIndex == 0) {
                              // Force initial update
