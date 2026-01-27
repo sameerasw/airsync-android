@@ -13,6 +13,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 
+/**
+ * Central handler for all incoming WebSocket messages from the Mac server.
+ * Dispatches messages to specific handler methods based on the 'type' field.
+ */
 object WebSocketMessageHandler {
     private const val TAG = "WebSocketMessageHandler"
 
@@ -42,7 +46,11 @@ object WebSocketMessageHandler {
     }
 
     /**
-     * Handle incoming WebSocket messages from Mac
+     * Handle incoming WebSocket messages from Mac.
+     * Parses the JSON payload and routes to the appropriate private handler method.
+     *
+     * @param context Application context for performing actions.
+     * @param message Raw JSON message string.
      */
     fun handleIncomingMessage(context: Context, message: String) {
         try {
@@ -83,6 +91,12 @@ object WebSocketMessageHandler {
         }
     }
 
+    // MARK: - File Transfer Handlers
+
+    /**
+     * Initializes an incoming file transfer session.
+     * Prepares the `FileReceiver` to accept chunks.
+     */
     private fun handleFileTransferInit(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -100,6 +114,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Processes a single chunk of file data.
+     * Delegates to `FileReceiver` for writing.
+     */
     private fun handleFileChunk(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -114,6 +132,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Finalizes the incoming file transfer.
+     * Triggers completion notifications and cleanup.
+     */
     private fun handleFileTransferComplete(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -124,6 +146,12 @@ object WebSocketMessageHandler {
         }
     }
 
+    // MARK: - Clipboard & Control Handlers
+
+    /**
+     * Updates the system clipboard with text from the Mac.
+     * Uses `ClipboardSyncManager` to avoid feedback loops by tracking origin.
+     */
     private fun handleClipboardUpdate(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -149,6 +177,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles volume control commands (set, increase, decrease, mute).
+     * Sends a response back to the Mac indicating success or failure.
+     */
     private fun handleVolumeControl(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -210,6 +242,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles media control commands (play/pause, next, previous, like).
+     * Sends a response back to Mac and updates local media state after a short delay.
+     */
     private fun handleMediaControl(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -290,6 +326,9 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Attempts to dismiss a notification on the Android device by ID.
+     */
     private fun handleNotificationDismissal(data: JSONObject?) {
         try {
             if (data == null) {
@@ -314,6 +353,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Executes an action on a notification (e.g., Reply, Archive).
+     * Supports both action buttons and direct replies.
+     */
     private fun handleNotificationAction(data: JSONObject?) {
         try {
             if (data == null) {
@@ -377,6 +420,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Processes status updates received from the Mac (battery, music, etc.).
+     * Updates local storage and triggers widget refresh if needed.
+     */
     private fun handleMacDeviceStatus(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -448,6 +495,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles the 'macInfo' handshake/update message containing Mac specs and installed apps.
+     * Updates device info in the database and synchronizes app icons if needed.
+     */
     private fun handleMacInfo(context: Context, data: JSONObject?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {

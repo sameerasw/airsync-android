@@ -14,29 +14,32 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String): String {
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[]}}"""
+    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, targetIpAddress: String? = null): String {
+        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[]$targetIpJson}}"""
     }
 
     /**
      * Creates a single-line JSON string for device info with ADB ports
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, adbPorts: List<String>): String {
+    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, adbPorts: List<String>, targetIpAddress: String? = null): String {
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]}}"""
+        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
     /**
      * Creates a single-line JSON string for device info with wallpaper
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, wallpaperBase64: String?, adbPorts: List<String>): String {
+    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, wallpaperBase64: String?, adbPorts: List<String>, targetIpAddress: String? = null): String {
         val wallpaperJson = if (wallpaperBase64 != null) {
             ""","wallpaper":"$wallpaperBase64""""
         } else {
             ""
         }
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson}}"""
+        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson$targetIpJson}}"""
     }
 
     /**

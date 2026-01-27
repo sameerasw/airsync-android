@@ -73,7 +73,8 @@ class AirSyncViewModel(
             _uiState.value = _uiState.value.copy(
                 isConnected = isConnected,
                 isConnecting = false,
-                response = if (isConnected) "Connected successfully!" else "Disconnected"
+                response = if (isConnected) "Connected successfully!" else "Disconnected",
+                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null
             )
 
             // Notify Smartspacer of connection status change

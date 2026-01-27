@@ -304,8 +304,21 @@ fun AirSyncMainScreen(
                 // Parse the QR code (expected format: airsync://ip:port?name=...&plus=...&key=...)
                 try {
                     val uri = qrCode.toUri()
-                    val ip = uri.host ?: ""
-                    val port = uri.port.takeIf { it != -1 }?.toString() ?: ""
+                    
+                    // Handle potential multiple IPs in host part (e.g., ip1,ip2,ip3)
+                    var ip = uri.host ?: ""
+                    var port = uri.port.takeIf { it != -1 }?.toString() ?: ""
+                    
+                    if (ip.isEmpty() || port.isEmpty()) {
+                        // Fallback manual parsing if URI host is null due to commas
+                        val authority = qrCode.substringAfter("://").substringBefore("?")
+                        if (authority.contains(":")) {
+                            ip = authority.substringBeforeLast(":")
+                            port = authority.substringAfterLast(":")
+                        } else {
+                            ip = authority
+                        }
+                    }
 
                     // Parse query parameters
                     var pcName: String? = null
