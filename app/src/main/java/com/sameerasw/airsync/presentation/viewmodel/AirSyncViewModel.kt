@@ -20,6 +20,8 @@ import com.sameerasw.airsync.utils.WebSocketUtil
 import com.sameerasw.airsync.service.WakeupService
 import com.sameerasw.airsync.smartspacer.AirSyncDeviceTarget
 import kotlinx.coroutines.flow.*
+import com.sameerasw.airsync.utils.UDPDiscoveryManager
+import com.sameerasw.airsync.utils.DiscoveredDevice
 import kotlinx.coroutines.launch
 
 class AirSyncViewModel(
@@ -42,6 +44,9 @@ class AirSyncViewModel(
 
     // Network-aware device connections state
     private val _networkDevices = MutableStateFlow<List<NetworkDeviceConnection>>(emptyList())
+
+    // Discovered devices from UDP
+    val discoveredDevices: StateFlow<List<DiscoveredDevice>> = UDPDiscoveryManager.discoveredDevices
 
     // Notes Role state
     private val _stylusMode = MutableStateFlow(false)
@@ -113,9 +118,10 @@ class AirSyncViewModel(
         super.onCleared()
         // Unregister the connection status listener when ViewModel is cleared
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
-    try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
-
         try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
+
+        UDPDiscoveryManager.stop()
+        
         
         // Stop WakeupService when ViewModel is cleared
         appContext?.let { context ->
@@ -255,6 +261,10 @@ class AirSyncViewModel(
 
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
+
+            // Start UDP Discovery when main screen initializes
+            UDPDiscoveryManager.start(context)
+            isNetworkMonitoringActive = true
             
             // Start WakeupService if we have WiFi connectivity
             if (localIp != "Unknown" && localIp != "No Wi-Fi") {
@@ -341,8 +351,13 @@ class AirSyncViewModel(
     fun setConnectionStatus(isConnected: Boolean, isConnecting: Boolean = false) {
         _uiState.value = _uiState.value.copy(
             isConnected = isConnected,
-            isConnecting = isConnecting
+            isConnecting = isConnecting,
+            connectingDeviceId = if (!isConnecting) null else _uiState.value.connectingDeviceId
         )
+    }
+
+    fun setConnectingDeviceId(id: String?) {
+        _uiState.value = _uiState.value.copy(connectingDeviceId = id)
     }
 
     fun refreshPermissions(context: Context) {

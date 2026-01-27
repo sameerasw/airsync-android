@@ -197,4 +197,12 @@ class AirSyncRepositoryImpl(
     override fun getEssentialsConnectionEnabled(): Flow<Boolean> {
         return dataStoreManager.getEssentialsConnectionEnabled()
     }
+
+    override suspend fun setExpandNetworkingEnabled(enabled: Boolean) {
+        dataStoreManager.setExpandNetworkingEnabled(enabled)
+    }
+
+    override fun getExpandNetworkingEnabled(): Flow<Boolean> {
+        return dataStoreManager.getExpandNetworkingEnabled()
+    }
 }

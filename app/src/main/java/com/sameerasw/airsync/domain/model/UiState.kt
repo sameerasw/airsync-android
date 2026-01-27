@@ -38,5 +38,6 @@ data class UiState(
     val clipboardHistory: List<ClipboardEntry> = emptyList(),
     val defaultTab: String = "dynamic",
     val isEssentialsConnectionEnabled: Boolean = false,
-    val activeIp: String? = null
+    val activeIp: String? = null,
+    val connectingDeviceId: String? = null
 )

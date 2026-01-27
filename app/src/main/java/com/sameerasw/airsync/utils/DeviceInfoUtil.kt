@@ -180,4 +180,12 @@ object DeviceInfoUtil {
             likeStatus = audioInfo.likeStatus
         )
     }
+    fun getDeviceId(context: Context): String {
+        return try {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                ?: UUID.randomUUID().toString()
+        } catch (_: Exception) {
+            UUID.randomUUID().toString()
+        }
+    }
 }
