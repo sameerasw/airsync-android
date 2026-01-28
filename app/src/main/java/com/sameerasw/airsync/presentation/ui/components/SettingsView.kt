@@ -228,7 +228,9 @@ fun SettingsView(
                             } catch (_: Exception) {
                                 emptyList()
                             }
+                            val deviceId = com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
                             val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
+                                deviceId,
                                 deviceInfo.name,
                                 deviceInfo.localIp,
                                 uiState.port.toIntOrNull() ?: 6996,

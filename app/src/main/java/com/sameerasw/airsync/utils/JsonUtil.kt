@@ -22,16 +22,22 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info with ADB ports
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, adbPorts: List<String>, targetIpAddress: String? = null): String {
+    /**
+     * Creates a single-line JSON string for device info with ADB ports
+     */
+    fun createDeviceInfoJson(id: String, name: String, ipAddress: String, port: Int, version: String, adbPorts: List<String>, targetIpAddress: String? = null): String {
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
         val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
+        return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
     /**
      * Creates a single-line JSON string for device info with wallpaper
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, wallpaperBase64: String?, adbPorts: List<String>, targetIpAddress: String? = null): String {
+    /**
+     * Creates a single-line JSON string for device info with wallpaper
+     */
+    fun createDeviceInfoJson(id: String, name: String, ipAddress: String, port: Int, version: String, wallpaperBase64: String?, adbPorts: List<String>, targetIpAddress: String? = null): String {
         val wallpaperJson = if (wallpaperBase64 != null) {
             ""","wallpaper":"$wallpaperBase64""""
         } else {
@@ -39,7 +45,7 @@ object JsonUtil {
         }
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
         val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson$targetIpJson}}"""
+        return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson$targetIpJson}}"""
     }
 
     /**
