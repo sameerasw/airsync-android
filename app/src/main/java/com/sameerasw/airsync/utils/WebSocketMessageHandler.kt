@@ -77,6 +77,7 @@ object WebSocketMessageHandler {
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
+                "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "fileChunkAck" -> handleFileChunkAck(data)
                 "transferVerified" -> handleTransferVerified(data)
                 "fileTransferCancel" -> handleFileTransferCancel(context, data)
@@ -847,5 +848,10 @@ object WebSocketMessageHandler {
         } catch (e: Exception) {
             Log.e(TAG, "Error handling filePull: ${e.message}")
         }
+    }
+
+    private fun handleRefreshAdbPorts(context: Context) {
+        Log.d(TAG, "Request to refresh ADB ports received")
+        SyncManager.sendDeviceInfoNow(context)
     }
 }
