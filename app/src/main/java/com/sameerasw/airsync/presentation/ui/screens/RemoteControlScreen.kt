@@ -303,13 +303,13 @@ fun RemoteControlScreen(
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    color = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
+                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = musicInfo?.artist?.takeIf { it.isNotEmpty() }
                                         ?: "from your Mac",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (albumArtBitmap != null) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
