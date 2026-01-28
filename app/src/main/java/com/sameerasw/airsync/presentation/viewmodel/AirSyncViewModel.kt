@@ -119,14 +119,6 @@ class AirSyncViewModel(
         // Unregister the connection status listener when ViewModel is cleared
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
         try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
-
-        UDPDiscoveryManager.stop()
-        
-        
-        // Stop WakeupService when ViewModel is cleared
-        appContext?.let { context ->
-            try { WakeupService.stopService(context) } catch (_: Exception) {}
-        }
     }
 
     private fun startObservingDeviceChanges(context: Context) {
@@ -262,14 +254,9 @@ class AirSyncViewModel(
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
 
-            // Start UDP Discovery when main screen initializes
-            UDPDiscoveryManager.start(context)
+            // Start AirSync Service in scanning mode (which handles UDP Discovery and WakeupService)
+            com.sameerasw.airsync.service.AirSyncService.startScanning(context)
             isNetworkMonitoringActive = true
-            
-            // Start WakeupService if we have WiFi connectivity
-            if (localIp != "Unknown" && localIp != "No Wi-Fi") {
-                try { WakeupService.startService(context) } catch (_: Exception) {}
-            }
         }
     }
 
@@ -549,13 +536,13 @@ class AirSyncViewModel(
                         if (currentIp == "No Wi-Fi" || currentIp == "Unknown") {
                             // No usable Wi‑Fi: ensure we stop any active connection and do not attempt reconnect
                             try { WebSocketUtil.disconnect(context) } catch (_: Exception) {}
-                            // Stop wake-up service when no WiFi
-                            try { WakeupService.stopService(context) } catch (_: Exception) {}
+                            // Stop service when no WiFi
+                            try { com.sameerasw.airsync.service.AirSyncService.stop(context) } catch (_: Exception) {}
                             _uiState.value = _uiState.value.copy(isConnected = false, isConnecting = false)
                             return@collect
                         } else {
-                            // Start wake-up service when WiFi is available
-                            try { WakeupService.startService(context) } catch (_: Exception) {}
+                            // Ensure service is running when WiFi is available
+                            try { com.sameerasw.airsync.service.AirSyncService.startScanning(context) } catch (_: Exception) {}
                         }
 
                         if (target != null) {

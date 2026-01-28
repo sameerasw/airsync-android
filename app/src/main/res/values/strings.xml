@@ -9,4 +9,7 @@
     <string name="connect_to_essentials_summary">Share battery and status with Essentials app</string>
     <string name="download_essentials">Download Essentials App</string>
     <string name="download_essentials_summary">Required for battery widget integration</string>
+    <string name="searching_for_devices">Searching for devices…</string>
+    <string name="connected_to_device">Connected to %1$s</string>
+    <string name="disconnect">Disconnect</string>
 </resources>

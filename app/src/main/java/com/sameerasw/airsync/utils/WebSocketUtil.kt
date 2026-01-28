@@ -269,7 +269,7 @@ object WebSocketUtil {
                                     handshakeCompleted.set(false)
                                     handshakeTimeoutJob?.cancel()
                                     currentIpAddress = null
-                                    try { com.sameerasw.airsync.service.AirSyncService.stop(context) } catch (_: Exception) {}
+                                    try { com.sameerasw.airsync.service.AirSyncService.startScanning(context) } catch (_: Exception) {}
                                     onConnectionStatusChanged?.invoke(false)
                                     notifyConnectionStatusListeners(false)
                                     tryStartAutoReconnect(context)
@@ -289,7 +289,7 @@ object WebSocketUtil {
                                     handshakeTimeoutJob?.cancel()
                                     connectionAttemptJob?.cancel()
                                     currentIpAddress = null
-                                    try { com.sameerasw.airsync.service.AirSyncService.stop(context) } catch (_: Exception) {}
+                                    try { com.sameerasw.airsync.service.AirSyncService.startScanning(context) } catch (_: Exception) {}
                                     onConnectionStatusChanged?.invoke(false)
                                     notifyConnectionStatusListeners(false)
                                     tryStartAutoReconnect(context)
@@ -379,11 +379,11 @@ object WebSocketUtil {
         webSocket?.close(1000, "Manual disconnection")
         webSocket = null
 
-        // Stop AirSync service on disconnect
+        // Transition back to scanning on disconnect
         val ctx = context ?: appContext
         ctx?.let { c ->
-            try { com.sameerasw.airsync.service.AirSyncService.stop(c) } catch (e: Exception) {
-                Log.e(TAG, "Error stopping AirSyncService on disconnect: ${e.message}")
+            try { com.sameerasw.airsync.service.AirSyncService.startScanning(c) } catch (e: Exception) {
+                Log.e(TAG, "Error starting scanning on disconnect: ${e.message}")
             }
         }
 

@@ -19,7 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 
 /**
- * Foreground service that maintains the airsync connection and handles call monitoring.
+ * Foreground service that maintains the airsync connection and handles discovery.
  * 
  * Uses connectedDevice foreground service type as per Google Play Store requirements.
  */
@@ -27,6 +27,7 @@ class AirSyncService : Service() {
 
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var connectedDeviceName: String? = null
+    private var isScanning = false
 
     override fun onCreate() {
         super.onCreate()
@@ -40,29 +41,46 @@ class AirSyncService : Service() {
 
         val action = intent?.action
         when (action) {
+            ACTION_START_SCANNING -> startScanning()
             ACTION_START_SYNC -> {
                 connectedDeviceName = intent.getStringExtra(EXTRA_DEVICE_NAME) ?: "Mac"
                 startSync()
             }
             ACTION_STOP_SYNC -> stopSync()
             else -> {
-                if (connectedDeviceName == null) {
-                    connectedDeviceName = intent?.getStringExtra(EXTRA_DEVICE_NAME) ?: "Mac"
+                if (connectedDeviceName != null) {
+                    startSync()
+                } else {
+                    startScanning()
                 }
-                startSync()
             }
         }
 
         return START_STICKY
     }
 
-    private fun startSync() {
-        Log.d(TAG, "Starting AirSync foreground service")
+    private fun startScanning() {
+        Log.d(TAG, "Starting AirSync scanning mode")
+        isScanning = true
+        connectedDeviceName = null
         startForeground(NOTIFICATION_ID, buildNotification())
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this)
+        com.sameerasw.airsync.service.WakeupService.startService(this)
+    }
+
+    private fun startSync() {
+        Log.d(TAG, "Starting AirSync foreground service (connected)")
+        isScanning = false
+        startForeground(NOTIFICATION_ID, buildNotification())
+        // Keep discovery running even when connected (optional, but requested to always work)
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this)
+        com.sameerasw.airsync.service.WakeupService.startService(this)
     }
 
     private fun stopSync() {
         Log.d(TAG, "Stopping AirSync foreground service")
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.stop()
+        com.sameerasw.airsync.service.WakeupService.stopService(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -71,10 +89,11 @@ class AirSyncService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "AirSync Connection",
-                NotificationManager.IMPORTANCE_LOW
+                "AirSync Status",
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
-                description = "Shows that AirSync is connected to your Mac"
+                description = "Shows AirSync connection and discovery status"
+                setShowBadge(false)
             }
             val notificationManager = getSystemService(NotificationManager::class.java)
             notificationManager?.createNotificationChannel(channel)
@@ -90,17 +109,25 @@ class AirSyncService : Service() {
         }
         val disconnectPendingIntent = PendingIntent.getBroadcast(this, 1, disconnectIntent, PendingIntent.FLAG_IMMUTABLE)
 
-        val name = connectedDeviceName ?: "Mac"
-        
-        return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("AirSync")
-            .setContentText("Connected to $name")
+        val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_laptop_24)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
             .setOngoing(true)
             .setContentIntent(pendingIntent)
-            .addAction(R.drawable.rounded_link_off_24, "Disconnect", disconnectPendingIntent)
-            .build()
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+
+        if (isScanning) {
+            builder.setContentTitle(getString(R.string.app_name))
+            builder.setContentText(getString(R.string.searching_for_devices))
+        } else {
+            val name = connectedDeviceName ?: "Mac"
+            builder.setContentTitle(getString(R.string.app_name))
+            builder.setContentText(getString(R.string.connected_to_device, name))
+            builder.addAction(R.drawable.rounded_link_off_24, getString(R.string.disconnect), disconnectPendingIntent)
+        }
+        
+        return builder.build()
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -118,17 +145,29 @@ class AirSyncService : Service() {
         private const val CHANNEL_ID = "airsync_connection_channel"
         private const val NOTIFICATION_ID = 4001
 
+        const val ACTION_START_SCANNING = "com.sameerasw.airsync.START_SCANNING"
         const val ACTION_START_SYNC = "com.sameerasw.airsync.START_SYNC"
         const val ACTION_STOP_SYNC = "com.sameerasw.airsync.STOP_SYNC"
         const val ACTION_DISCONNECT = "com.sameerasw.airsync.DISCONNECT_FROM_NOTIFICATION"
         
         const val EXTRA_DEVICE_NAME = "device_name"
 
+        fun startScanning(context: Context) {
+            val intent = Intent(context, AirSyncService::class.java).apply {
+                action = ACTION_START_SCANNING
+            }
+            startAction(context, intent)
+        }
+
         fun start(context: Context, deviceName: String?) {
             val intent = Intent(context, AirSyncService::class.java).apply {
                 action = ACTION_START_SYNC
                 putExtra(EXTRA_DEVICE_NAME, deviceName)
             }
+            startAction(context, intent)
+        }
+
+        private fun startAction(context: Context, intent: Intent) {
             try {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
