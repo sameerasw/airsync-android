@@ -54,9 +54,7 @@
             android:exported="true"
             android:label="@string/app_name"
             android:theme="@style/Theme.AirSync.Splash"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden"
-            android:showWhenLocked="true"
-            android:turnScreenOn="true">
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden">
             <!-- Main launcher intent filter -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
