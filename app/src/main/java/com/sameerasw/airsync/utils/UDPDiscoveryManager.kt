@@ -154,7 +154,7 @@ object UDPDiscoveryManager {
             when (type) {
                 "presence" -> {
                     val deviceType = json.optString("deviceType")
-                    if (deviceType == "mac" && isDiscoveryEnabled) {
+                    if (deviceType == "mac") {
                         handlePresenceMessage(context, json, sourceIp)
                     }
                 }
