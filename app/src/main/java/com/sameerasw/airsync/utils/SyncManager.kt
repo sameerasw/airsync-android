@@ -108,7 +108,7 @@ object SyncManager {
                     val success = WebSocketUtil.sendMessage(statusJson)
 
                     if (success) {
-                        Log.d(TAG, "Device status synced successfully")
+                        // Log.d(TAG, "Device status synced successfully")
                         lastAudioInfo = currentAudio
                         lastBatteryInfo = currentBattery
                         lastVolume = currentAudio.volume

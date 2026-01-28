@@ -146,7 +146,7 @@ object DeviceInfoUtil {
 
             // Get media information including like status
             val mediaInfo = MediaNotificationListener.getMediaInfo(context)
-            Log.d("DeviceInfoUtil", "Retrieved media info: $mediaInfo")
+            // Log.d("DeviceInfoUtil", "Retrieved media info: $mediaInfo")
 
             AudioInfo(
                 isPlaying = mediaInfo.isPlaying,

@@ -126,14 +126,18 @@ class AirSyncViewModel(
 
         // Observe both last connected device and network devices for real-time updates
         viewModelScope.launch {
-            dataStoreManager.getLastConnectedDevice().collect { device ->
+            dataStoreManager.getLastConnectedDevice()
+                .distinctUntilChanged()
+                .collect { device ->
                 Log.d("AirSyncViewModel", "Last connected device changed: ${device?.name}, isPlus: ${device?.isPlus}")
                 updateDisplayedDevice(context)
             }
         }
 
         viewModelScope.launch {
-            dataStoreManager.getAllNetworkDeviceConnections().collect { networkDevices ->
+            dataStoreManager.getAllNetworkDeviceConnections()
+                .distinctUntilChanged()
+                .collect { networkDevices ->
                 Log.d("AirSyncViewModel", "Network devices changed: ${networkDevices.size} devices")
                 _networkDevices.value = networkDevices
                 updateDisplayedDevice(context)
@@ -152,8 +156,11 @@ class AirSyncViewModel(
             val storedDevice = repository.getLastConnectedDevice().first()
             val deviceToShow = networkAwareDevice ?: storedDevice
 
-            Log.d("AirSyncViewModel", "Updating displayed device: ${deviceToShow?.name}, isPlus: ${deviceToShow?.isPlus}, model: ${deviceToShow?.model}")
-            _uiState.value = _uiState.value.copy(lastConnectedDevice = deviceToShow)
+            // Only update if changed
+            if (_uiState.value.lastConnectedDevice != deviceToShow) {
+                Log.d("AirSyncViewModel", "Updating displayed device: ${deviceToShow?.name}, isPlus: ${deviceToShow?.isPlus}, model: ${deviceToShow?.model}")
+                _uiState.value = _uiState.value.copy(lastConnectedDevice = deviceToShow)
+            }
         }
     }
 

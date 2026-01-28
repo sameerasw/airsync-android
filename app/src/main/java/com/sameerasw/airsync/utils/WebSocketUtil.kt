@@ -436,11 +436,20 @@ object WebSocketUtil {
         return isConnecting.get()
     }
 
+    private val lastSyncTimeCache = java.util.concurrent.atomic.AtomicLong(0L)
+
     private fun updateLastSyncTime(context: Context) {
+        val now = System.currentTimeMillis()
+        // Only update if at least 60 seconds have passed since last write
+        if (now - lastSyncTimeCache.get() < 60_000L) {
+            return
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                lastSyncTimeCache.set(now)
                 val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager(context)
-                dataStoreManager.updateLastSyncTime(System.currentTimeMillis())
+                dataStoreManager.updateLastSyncTime(now)
             } catch (e: Exception) {
                 Log.e(TAG, "Error updating last sync time: ${e.message}")
             }

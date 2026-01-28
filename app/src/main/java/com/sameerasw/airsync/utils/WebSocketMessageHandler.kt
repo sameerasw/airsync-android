@@ -58,7 +58,9 @@ object WebSocketMessageHandler {
             val type = json.optString("type")
             val data = json.optJSONObject("data")
 
-            Log.d(TAG, "Handling message type: $type")
+            if (type != "ping") {
+                Log.d(TAG, "Handling message type: $type")
+            }
 
             when (type) {
                 "clipboardUpdate" -> handleClipboardUpdate(context, data)
@@ -397,7 +399,8 @@ object WebSocketMessageHandler {
 
     private fun handlePing(context: Context) {
         try {
-            // Respond to ping with current device status
+            // Respond to ping with current device status to keep connection alive
+            // We must force sync here because the server expects a response to every ping
             SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")

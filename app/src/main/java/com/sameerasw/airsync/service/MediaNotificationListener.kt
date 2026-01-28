@@ -104,13 +104,13 @@ class MediaNotificationListener : NotificationListenerService() {
                     emptyList()
                 }
 
-                Log.d(TAG, "Found ${activeSessions.size} active media sessions")
+                // Log.d(TAG, "Found ${activeSessions.size} active media sessions")
 
                 if (activeSessions.isNotEmpty()) {
                     for (controller in activeSessions) {
                         try {
                             if (controller.packageName == context.packageName) {
-                                Log.d(TAG, "Skipping own media session from package: ${controller.packageName}")
+                                // Log.d(TAG, "Skipping own media session from package: ${controller.packageName}")
                                 continue
                             }
                         } catch (_: Exception) { }
@@ -132,7 +132,8 @@ class MediaNotificationListener : NotificationListenerService() {
                             Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
                         }
 
-                        Log.d(TAG, "Media session - Title: $title, Artist: $artist, Playing: $isPlaying, State: ${playbackState?.state}")
+
+                        // Log.d(TAG, "Media session - Title: $title, Artist: $artist, Playing: $isPlaying, State: ${playbackState?.state}")
 
                         // Determine like status; apply app filter and strict positive-only like detection
                         val (detectedStatus, source) = determineLikeStatusWithSource(context, controller)
@@ -164,7 +165,7 @@ class MediaNotificationListener : NotificationListenerService() {
                     }
                 }
 
-                Log.d(TAG, "No media info found")
+                // Log.d(TAG, "No media info found")
                 MediaInfo(false, "", "", null, "none")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting media info: ${e.message}")
