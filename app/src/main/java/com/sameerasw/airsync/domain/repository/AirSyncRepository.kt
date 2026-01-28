@@ -90,4 +90,8 @@ interface AirSyncRepository {
     // Expanded Networking
     suspend fun setExpandNetworkingEnabled(enabled: Boolean)
     fun getExpandNetworkingEnabled(): Flow<Boolean>
+
+    // Device discovery
+    suspend fun setDeviceDiscoveryEnabled(enabled: Boolean)
+    fun getDeviceDiscoveryEnabled(): Flow<Boolean>
 }

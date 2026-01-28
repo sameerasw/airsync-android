@@ -231,8 +231,8 @@ class AirSyncViewModel(
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
-                defaultTab = defaultTab,
-                isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
+                isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first(),
+                isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             )
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
@@ -451,6 +451,22 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isAutoReconnectEnabled = enabled)
         viewModelScope.launch {
             repository.setAutoReconnectEnabled(enabled)
+        }
+    }
+
+    fun setDeviceDiscoveryEnabled(context: Context, enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isDeviceDiscoveryEnabled = enabled)
+        viewModelScope.launch {
+            repository.setDeviceDiscoveryEnabled(enabled)
+            if (enabled) {
+                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+            } else {
+                // When disabling discovery, we should stop discovery broadcasts
+                // If a connection exists, the service continues but discovery stops.
+                // If no connection, the service should still run for WakeupService but maybe without scanning?
+                // For now, let's just trigger a service update that checks the new flag.
+                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+            }
         }
     }
 

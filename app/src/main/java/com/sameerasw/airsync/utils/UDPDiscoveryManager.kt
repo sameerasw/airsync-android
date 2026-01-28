@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import org.json.JSONObject
+import org.json.JSONArray
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.net.DatagramPacket
@@ -48,21 +49,41 @@ object UDPDiscoveryManager {
     private var listeningJob: Job? = null
     private var broadcastJob: Job? = null
     private var pruningJob: Job? = null
-    private var isRunning = false
+    @Volatile private var isRunning = false
+    @Volatile private var isDiscoveryEnabled = true
 
-    fun start(context: Context) {
-        if (isRunning) return
+    fun start(context: Context, discoveryEnabled: Boolean = true) {
+        isDiscoveryEnabled = discoveryEnabled
+        if (isRunning) {
+            updateBroadcastingState(context)
+            return
+        }
+        
         isRunning = true
-        Log.d(TAG, "Starting UDP Discovery")
+        Log.d(TAG, "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled)")
 
         startListening(context)
-        startBroadcasting(context)
+        updateBroadcastingState(context)
         startPruning()
     }
 
-    fun stop() {
-        Log.d(TAG, "Stopping UDP Discovery")
+    private fun updateBroadcastingState(context: Context) {
+        broadcastJob?.cancel()
+        if (isDiscoveryEnabled) {
+            startBroadcasting(context)
+        } else {
+            Log.d(TAG, "Discovery broadcasting disabled")
+            _discoveredDevices.value = emptyList()
+        }
+    }
+
+    fun stop(context: Context? = null) {
+        Log.d(TAG, "Stopping UDP Discovery Manager")
+        if (context != null && isRunning && isDiscoveryEnabled) {
+            broadcastGoodbye(context)
+        }
         isRunning = false
+        isDiscoveryEnabled = false
         listeningJob?.cancel()
         broadcastJob?.cancel()
         pruningJob?.cancel()
@@ -75,6 +96,22 @@ object UDPDiscoveryManager {
         socket = null
         _discoveredDevices.value = emptyList()
     }
+    
+    fun setDiscoveryEnabled(context: Context, enabled: Boolean) {
+        if (isDiscoveryEnabled == enabled) return
+        Log.d(TAG, "Discovery enabled changed to: $enabled")
+        isDiscoveryEnabled = enabled
+        
+        if (enabled) {
+            // If discovery is being enabled, start broadcasting
+            startBroadcasting(context)
+        } else {
+            // If discovery is being disabled
+            broadcastGoodbye(context)
+            broadcastJob?.cancel()
+            _discoveredDevices.value = emptyList()
+        }
+    }
 
     private fun startListening(context: Context) {
         val appContext = context.applicationContext
@@ -84,6 +121,7 @@ object UDPDiscoveryManager {
                 socket?.close()
                 socket = DatagramSocket(BROADCAST_PORT).apply {
                     broadcast = true
+                    reuseAddress = true 
                     soTimeout = 0
                 }
  
@@ -94,7 +132,7 @@ object UDPDiscoveryManager {
                         socket?.receive(packet)
  
                         val jsonString = String(packet.data, 0, packet.length)
-                        handleMessage(appContext, jsonString, packet.address.hostAddress)
+                        handleIncomingTraffic(appContext, jsonString, packet.address.hostAddress)
                     } catch (e: Exception) {
                         if (isRunning) {
                              Log.e(TAG, "Error receiving packet: ${e.message}")
@@ -108,18 +146,49 @@ object UDPDiscoveryManager {
         }
     }
 
-    private fun handleMessage(context: Context, message: String, sourceIp: String?) {
+    private fun handleIncomingTraffic(context: Context, message: String, sourceIp: String?) {
         try {
             val json = JSONObject(message)
             val type = json.optString("type")
-            if (type != "presence") return
+            
+            when (type) {
+                "presence" -> {
+                    val deviceType = json.optString("deviceType")
+                    if (deviceType == "mac" && isDiscoveryEnabled) {
+                        handlePresenceMessage(context, json, sourceIp)
+                    }
+                }
+                "bye" -> {
+                    val deviceType = json.optString("deviceType")
+                    if (deviceType == "mac") {
+                        val id = json.optString("id")
+                        val currentList = _discoveredDevices.value.filter { it.id != id }
+                        _discoveredDevices.value = currentList
+                    }
+                }
+                "wakeUpRequest" -> {
+                    // Handle wake-up logic shifted from WakeupService
+                    val data = if (json.has("data")) json.getJSONObject("data") else json
+                    val macIp = data.optString("macIP", data.optString("macIp", ""))
+                    val macPort = data.optInt("macPort", 6996)
+                    val macName = data.optString("macName", "Mac")
+                    
+                    CoroutineScope(Dispatchers.IO).launch {
+                        WakeupHandler.processWakeupRequest(context, macIp, macPort, macName)
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            
+        }
+    }
 
-            val deviceType = json.optString("deviceType")
-            if (deviceType != "mac") return
-
+    private fun handlePresenceMessage(context: Context, json: JSONObject, sourceIp: String?) {
+        try {
             val id = json.optString("id")
             val name = json.optString("name")
             val port = json.optInt("port", 6996)
+            val deviceType = json.optString("deviceType")
 
             // Support both "ips" (array) and legacy "ip" (string)
             val incomingIps = mutableSetOf<String>()
@@ -263,6 +332,41 @@ object UDPDiscoveryManager {
                 if (!expandNetworkingEnabled && targetIp.startsWith("100.")) continue
                 
                 sendUnicast(targetIp, payload)
+            }
+        }
+    }
+
+    private fun broadcastGoodbye(context: Context) {
+        val allIps = getAllIpAddresses()
+        if (allIps.isEmpty()) return
+
+        val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+        val deviceId = DeviceInfoUtil.getDeviceId(context)
+        
+        val json = JSONObject()
+        json.put("type", "bye")
+        json.put("deviceType", "android")
+        json.put("id", deviceId)
+        val payload = json.toString()
+        val data = payload.toByteArray()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            repeat(3) {
+                for (bindIp in allIps) {
+                    try {
+                        val packet = DatagramPacket(
+                            data,
+                            data.size,
+                            InetAddress.getByName("255.255.255.255"),
+                            BROADCAST_PORT
+                        )
+                        DatagramSocket(0, InetAddress.getByName(bindIp)).use { sender ->
+                            sender.broadcast = true
+                            sender.send(packet)
+                        }
+                    } catch (e: Exception) {}
+                }
+                delay(100)
             }
         }
     }

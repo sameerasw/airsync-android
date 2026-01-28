@@ -205,4 +205,12 @@ class AirSyncRepositoryImpl(
     override fun getExpandNetworkingEnabled(): Flow<Boolean> {
         return dataStoreManager.getExpandNetworkingEnabled()
     }
+
+    override suspend fun setDeviceDiscoveryEnabled(enabled: Boolean) {
+        dataStoreManager.setDeviceDiscoveryEnabled(enabled)
+    }
+
+    override fun getDeviceDiscoveryEnabled(): Flow<Boolean> {
+        return dataStoreManager.getDeviceDiscoveryEnabled()
+    }
 }

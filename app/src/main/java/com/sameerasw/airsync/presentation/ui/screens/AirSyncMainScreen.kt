@@ -24,7 +24,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -54,6 +53,7 @@ import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.zIndex
@@ -658,7 +658,7 @@ fun AirSyncMainScreen(
                                 }
 
                                 AnimatedVisibility(
-                                    visible = !uiState.isConnected && discoveredDevices.isNotEmpty(),
+                                    visible = !uiState.isConnected,
                                     enter = expandVertically() + fadeIn(),
                                     exit = shrinkVertically() + fadeOut()
                                 ) {
@@ -667,81 +667,127 @@ fun AirSyncMainScreen(
                                         shape = MaterialTheme.shapes.extraSmall,
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
-                                            Text(
-                                                text = "Available Devices",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(bottom = 12.dp)
-                                            )
-
-                                            discoveredDevices.forEachIndexed { index, device ->
-                                                if (index > 0) {
-                                                    HorizontalDivider(
-                                                        modifier = Modifier.padding(vertical = 8.dp),
-                                                        thickness = 0.5.dp,
-                                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                                    )
-                                                }
-
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .clickable {
-                                                            HapticUtil.performClick(haptics)
-                                                            viewModel.updateIpAddress(device.getBestIp())
-                                                            viewModel.updatePort(device.port.toString())
-                                                            viewModel.updateManualPcName(device.name)
-                                                            connect(device.id)
+                                            Row(
+                                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                                horizontalArrangement = Arrangement.SpaceBetween,
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Text(
+                                                    text = "Available Devices",
+                                                    style = MaterialTheme.typography.titleMedium,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                                
+                                                Switch(
+                                                    checked = uiState.isDeviceDiscoveryEnabled,
+                                                    onCheckedChange = { enabled ->
+                                                        HapticUtil.performClick(haptics)
+                                                        viewModel.setDeviceDiscoveryEnabled(context, enabled)
+                                                    },
+                                                    thumbContent = if (uiState.isDeviceDiscoveryEnabled) {
+                                                        {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
+                                                                contentDescription = null,
+                                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                            )
                                                         }
-                                                        .padding(vertical = 4.dp),
-                                                    verticalAlignment = Alignment.CenterVertically
-                                                ) {
-                                                    Icon(
-                                                        painter = painterResource(R.drawable.apple),
-                                                        contentDescription = null,
-                                                        tint = MaterialTheme.colorScheme.primary
-                                                    )
-                                                    Spacer(modifier = Modifier.width(12.dp))
-                                                    Column {
-                                                        Row(verticalAlignment = Alignment.CenterVertically) {
-                                                            Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
-                                                            Spacer(modifier = Modifier.width(8.dp))
-                                                            if (device.hasLocalIp()) {
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
-                                                                    contentDescription = "Wi-Fi",
-                                                                    modifier = Modifier.size(14.dp),
-                                                                    tint = MaterialTheme.colorScheme.primary
-                                                                )
-                                                            }
-                                                            if (device.hasTailscaleIp()) {
-                                                                if (device.hasLocalIp()) Spacer(modifier = Modifier.width(4.dp))
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.rounded_network_node_24),
-                                                                    contentDescription = "Tailscale",
-                                                                    modifier = Modifier.size(14.dp),
-                                                                    tint = MaterialTheme.colorScheme.secondary
-                                                                )
-                                                            }
+                                                    } else null
+                                                )
+                                            }
+
+                                            AnimatedVisibility(
+                                                visible = uiState.isDeviceDiscoveryEnabled,
+                                                enter = expandVertically() + fadeIn(),
+                                                exit = shrinkVertically() + fadeOut()
+                                            ) {
+                                                Column {
+                                                    if (discoveredDevices.isEmpty()) {
+                                                        Row(
+                                                            verticalAlignment = Alignment.CenterVertically,
+                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                        ) {
+                                                            LoadingIndicator()
+
+                                                            Text(
+                                                                text = "Scanning...",
+                                                                style = MaterialTheme.typography.bodyMedium,
+                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                modifier = Modifier.padding(vertical = 8.dp)
+                                                            )
                                                         }
-                                                        Text(
-                                                            text = "${device.getBestIp()}:${device.port}",
-                                                            style = MaterialTheme.typography.bodySmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
                                                     }
-                                                    Spacer(modifier = Modifier.weight(1f))
-                                                    if (uiState.isConnecting && uiState.connectingDeviceId == device.id) {
-                                                        CircularWavyProgressIndicator(
-                                                            modifier = Modifier.size(20.dp)
-                                                        )
-                                                    } else {
-                                                        Icon(
-                                                            Icons.AutoMirrored.Filled.ArrowForward,
-                                                            contentDescription = "Connect",
-                                                            modifier = Modifier.size(20.dp),
-                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                        )
+
+                                                    discoveredDevices.forEachIndexed { index, device ->
+                                                        if (index > 0) {
+                                                            HorizontalDivider(
+                                                                modifier = Modifier.padding(vertical = 8.dp),
+                                                                thickness = 0.5.dp,
+                                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                                            )
+                                                        }
+
+                                                        Row(
+                                                            modifier = Modifier
+                                                                .fillMaxWidth()
+                                                                .clickable {
+                                                                    HapticUtil.performClick(haptics)
+                                                                    viewModel.updateIpAddress(device.getBestIp())
+                                                                    viewModel.updatePort(device.port.toString())
+                                                                    viewModel.updateManualPcName(device.name)
+                                                                    connect(device.id)
+                                                                }
+                                                                .padding(vertical = 4.dp),
+                                                            verticalAlignment = Alignment.CenterVertically
+                                                        ) {
+                                                            Icon(
+                                                                painter = painterResource(R.drawable.apple),
+                                                                contentDescription = null,
+                                                                tint = MaterialTheme.colorScheme.primary
+                                                            )
+                                                            Spacer(modifier = Modifier.width(12.dp))
+                                                            Column {
+                                                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                    Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
+                                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                                    if (device.hasLocalIp()) {
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
+                                                                            contentDescription = "Wi-Fi",
+                                                                            modifier = Modifier.size(14.dp),
+                                                                            tint = MaterialTheme.colorScheme.primary
+                                                                        )
+                                                                    }
+                                                                    if (device.hasTailscaleIp()) {
+                                                                        if (device.hasLocalIp()) Spacer(modifier = Modifier.width(4.dp))
+                                                                        Icon(
+                                                                            painter = painterResource(R.drawable.rounded_network_node_24),
+                                                                            contentDescription = "Tailscale",
+                                                                            modifier = Modifier.size(14.dp),
+                                                                            tint = MaterialTheme.colorScheme.secondary
+                                                                        )
+                                                                    }
+                                                                }
+                                                                Text(
+                                                                    text = "${device.getBestIp()}:${device.port}",
+                                                                    style = MaterialTheme.typography.bodySmall,
+                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                            Spacer(modifier = Modifier.weight(1f))
+                                                            if (uiState.isConnecting && uiState.connectingDeviceId == device.id) {
+                                                                CircularWavyProgressIndicator(
+                                                                    modifier = Modifier.size(20.dp)
+                                                                )
+                                                            } else {
+                                                                Icon(
+                                                                    Icons.AutoMirrored.Filled.ArrowForward,
+                                                                    contentDescription = "Connect",
+                                                                    modifier = Modifier.size(20.dp),
+                                                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                )
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }

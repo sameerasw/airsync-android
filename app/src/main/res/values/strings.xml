@@ -12,4 +12,6 @@
     <string name="searching_for_devices">Searching for devices…</string>
     <string name="connected_to_device">Connected to %1$s</string>
     <string name="disconnect">Disconnect</string>
+    <string name="device_discovery">Device discovery</string>
+    <string name="device_discovery_description">Allow other devices to find this phone in the background</string>
 </resources>

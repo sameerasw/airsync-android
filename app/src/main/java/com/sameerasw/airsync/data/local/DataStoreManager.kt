@@ -72,6 +72,7 @@ class DataStoreManager(private val context: Context) {
 
         // Call monitoring preferences
         private val CALL_SYNC_ENABLED = booleanPreferencesKey("call_sync_enabled")
+        private val DEVICE_DISCOVERY_ENABLED = booleanPreferencesKey("device_discovery_enabled")
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
 
@@ -771,6 +772,18 @@ class DataStoreManager(private val context: Context) {
     fun getCallSyncEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[CALL_SYNC_ENABLED] ?: false // Default to disabled
+        }
+    }
+
+    suspend fun setDeviceDiscoveryEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DEVICE_DISCOVERY_ENABLED] = enabled
+        }
+    }
+
+    fun getDeviceDiscoveryEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[DEVICE_DISCOVERY_ENABLED] != false // Default to enabled
         }
     }
 

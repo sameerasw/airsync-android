@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.first
 
 /**
  * Foreground service that maintains the airsync connection and handles discovery.
@@ -64,7 +65,13 @@ class AirSyncService : Service() {
         isScanning = true
         connectedDeviceName = null
         startForeground(NOTIFICATION_ID, buildNotification())
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this)
+        
+        val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
+        val isDiscoveryEnabled = kotlinx.coroutines.runBlocking {
+            dataStoreManager.getDeviceDiscoveryEnabled().first() 
+        }
+        
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this, isDiscoveryEnabled)
         com.sameerasw.airsync.service.WakeupService.startService(this)
     }
 
@@ -72,14 +79,20 @@ class AirSyncService : Service() {
         Log.d(TAG, "Starting AirSync foreground service (connected)")
         isScanning = false
         startForeground(NOTIFICATION_ID, buildNotification())
-        // Keep discovery running even when connected (optional, but requested to always work)
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this)
+        
+        val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
+        val isDiscoveryEnabled = kotlinx.coroutines.runBlocking {
+            dataStoreManager.getDeviceDiscoveryEnabled().first() 
+        }
+        
+        // Keep discovery manager running for wake-ups even when connected
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this, isDiscoveryEnabled)
         com.sameerasw.airsync.service.WakeupService.startService(this)
     }
 
     private fun stopSync() {
         Log.d(TAG, "Stopping AirSync foreground service")
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.stop()
+        com.sameerasw.airsync.utils.UDPDiscoveryManager.stop(this)
         com.sameerasw.airsync.service.WakeupService.stopService(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()

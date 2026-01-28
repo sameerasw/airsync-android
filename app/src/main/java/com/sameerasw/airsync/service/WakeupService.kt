@@ -7,6 +7,7 @@ import android.os.IBinder
 import android.util.Log
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.utils.DeviceInfoUtil
+import com.sameerasw.airsync.utils.WakeupHandler
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
@@ -15,14 +16,14 @@ import java.io.*
 import java.net.*
 
 /**
- * Service that runs a lightweight HTTP server and UDP listener
- * to receive wake-up requests from Mac clients for initiating reconnection
+ * Service that runs a lightweight HTTP server
+ * to receive wake-up requests from Mac clients for initiating reconnection.
+ * UDP wake-up requests are now handled by UDPDiscoveryManager to avoid port conflicts.
  */
 class WakeupService : Service() {
     companion object {
         private const val TAG = "WakeupService"
         private const val HTTP_PORT = 8888 // HTTP server port
-        private const val UDP_PORT = 8889   // UDP listener port
         private const val WAKEUP_ENDPOINT = "/wakeup"
         
         fun startService(context: Context) {
@@ -37,7 +38,6 @@ class WakeupService : Service() {
     }
 
     private var httpServerSocket: ServerSocket? = null
-    private var udpSocket: DatagramSocket? = null
     private var serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var isRunning = false
 
@@ -70,10 +70,7 @@ class WakeupService : Service() {
                 // Start HTTP server
                 startHttpServer()
                 
-                // Start UDP listener
-                startUdpListener()
-                
-                Log.i(TAG, "Wake-up listeners started (HTTP: $HTTP_PORT, UDP: $UDP_PORT)")
+                Log.i(TAG, "Wake-up HTTP listener started on port $HTTP_PORT")
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to start wake-up listeners", e)
             }
@@ -91,15 +88,7 @@ class WakeupService : Service() {
         }
         httpServerSocket = null
         
-        // Stop UDP listener
-        try {
-            udpSocket?.close()
-        } catch (e: Exception) {
-            Log.w(TAG, "Error closing UDP socket", e)
-        }
-        udpSocket = null
-        
-        Log.i(TAG, "Wake-up listeners stopped")
+        Log.i(TAG, "Wake-up HTTP server stopped")
     }
 
     private suspend fun startHttpServer() {
@@ -198,8 +187,8 @@ class WakeupService : Service() {
                             val response = """{"status": "success", "message": "Wake-up request received"}"""
                             sendHttpResponse(output, 200, "OK", response)
 
-                            // Process the wake-up request
-                            processWakeupRequest(macIp, macPort, macName)
+                            // Process the wake-up request using centralized handler
+                            WakeupHandler.processWakeupRequest(this@WakeupService, macIp, macPort, macName)
                         } catch (e: Exception) {
                             Log.e(TAG, "Error parsing wake-up request", e)
                             val response = """{"status": "error", "message": "Invalid JSON"}"""
@@ -240,209 +229,5 @@ class WakeupService : Service() {
         output.println("Content-Length: 0")
         output.println() // Empty line to end headers
         output.flush()
-    }
-
-    private suspend fun startUdpListener() {
-        withContext(Dispatchers.IO) {
-            try {
-                udpSocket = DatagramSocket(UDP_PORT)
-                
-                serviceScope.launch {
-                    val buffer = ByteArray(1024)
-                    
-                    while (isRunning && udpSocket?.isClosed == false) {
-                        try {
-                            val packet = DatagramPacket(buffer, buffer.size)
-                            udpSocket?.receive(packet)
-                            
-                            val message = String(packet.data, 0, packet.length)
-                            Log.d(TAG, "Received UDP wake-up message: $message")
-                            
-                            // Parse UDP message (expecting JSON similar to HTTP)
-                            try {
-                                val jsonRequest = JSONObject(message)
-                                
-                                // Handle nested JSON structure from Mac
-                                val macIp: String
-                                val macPort: Int
-                                val macName: String
-                                
-                                if (jsonRequest.has("data")) {
-                                    // Mac sends nested format: {"type": "wakeUpRequest", "data": {...}}
-                                    val data = jsonRequest.getJSONObject("data")
-                                    macIp = data.optString("macIP", "") // Note: Mac uses "macIP" not "macIp"
-                                    macPort = data.optInt("macPort", 6996)
-                                    macName = data.optString("macName", "Mac")
-                                } else {
-                                    // Fallback to flat structure
-                                    macIp = jsonRequest.optString("macIp", "")
-                                    macPort = jsonRequest.optInt("macPort", 6996)
-                                    macName = jsonRequest.optString("macName", "Mac")
-                                }
-                                
-                                processWakeupRequest(macIp, macPort, macName)
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to parse UDP wake-up message", e)
-                            }
-                        } catch (e: Exception) {
-                            if (isRunning) {
-                                Log.e(TAG, "Error in UDP listener", e)
-                            }
-                        }
-                    }
-                }
-                
-                Log.d(TAG, "UDP listener started on port $UDP_PORT")
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to start UDP listener", e)
-            }
-        }
-    }
-
-    private suspend fun processWakeupRequest(macIp: String, macPort: Int, macName: String) {
-        try {
-            Log.i(TAG, "Processing wake-up request from $macName at $macIp:$macPort")
-
-            // Validate that we have the necessary information
-            if (macIp.isEmpty()) {
-                Log.w(TAG, "Wake-up request missing Mac IP address")
-                return
-            }
-
-            val dataStoreManager = DataStoreManager(this@WakeupService)
-
-            // Check if we already have a connection
-            if (WebSocketUtil.isConnected()) {
-                Log.d(TAG, "Already connected, ignoring wake-up request")
-                return
-            }
-
-            // Clear manual disconnect flag since this is an external wake-up request
-            dataStoreManager.setUserManuallyDisconnected(false)
-
-            // Look up stored encryption key from previous connections
-            val encryptionKey = findStoredEncryptionKey(dataStoreManager, macIp, macPort, macName)
-            
-            if (encryptionKey == null) {
-                Log.w(TAG, "No stored encryption key found for $macName at $macIp:$macPort")
-                return
-            }
-            
-            Log.d(TAG, "Found stored encryption key for $macName")
-
-            // Update device information and last connected timestamp
-            val ourIp = DeviceInfoUtil.getWifiIpAddress(this@WakeupService)
-            if (ourIp != null) {
-                // Update the network device connection with current timestamp
-                dataStoreManager.saveNetworkDeviceConnection(
-                    deviceName = macName,
-                    ourIp = ourIp,
-                    clientIp = macIp,
-                    port = macPort.toString(),
-                    isPlus = true, // Assume Plus features for wake-up capability
-                    symmetricKey = encryptionKey,
-                    model = "Mac",
-                    deviceType = "desktop"
-                )
-                
-                // Update last connected device
-                val connectedDevice = com.sameerasw.airsync.domain.model.ConnectedDevice(
-                    name = macName,
-                    ipAddress = macIp,
-                    port = macPort.toString(),
-                    lastConnected = System.currentTimeMillis(),
-                    isPlus = true,
-                    symmetricKey = encryptionKey,
-                    model = "Mac",
-                    deviceType = "desktop"
-                )
-                dataStoreManager.saveLastConnectedDevice(connectedDevice)
-            }
-
-            // Attempt to connect to the Mac
-            Log.d(TAG, "Attempting to connect to Mac at $macIp:$macPort")
-            
-            WebSocketUtil.connect(
-                context = this@WakeupService,
-                ipAddress = macIp,
-                port = macPort,
-                symmetricKey = encryptionKey,
-                manualAttempt = false, // This is an automated response to wake-up
-                onConnectionStatus = { connected ->
-                    if (connected) {
-                        Log.i(TAG, "Successfully connected to Mac after wake-up request")
-                        // Update last connected timestamp
-                        CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                dataStoreManager.updateNetworkDeviceLastConnected(macName, System.currentTimeMillis())
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Failed to update last connected timestamp", e)
-                            }
-                        }
-                    } else {
-                        Log.w(TAG, "Failed to connect to Mac after wake-up request")
-                    }
-                },
-                onHandshakeTimeout = {
-                    Log.w(TAG, "Handshake timeout during wake-up connection attempt")
-                    WebSocketUtil.disconnect(this@WakeupService)
-                }
-            )
-
-        } catch (e: Exception) {
-            Log.e(TAG, "Error processing wake-up request", e)
-        }
-    }
-
-    /**
-     * Find stored encryption key for the given Mac device
-     * Searches both network device connections and last connected device
-     */
-    private suspend fun findStoredEncryptionKey(
-        dataStoreManager: DataStoreManager,
-        macIp: String,
-        macPort: Int,
-        macName: String
-    ): String? {
-        try {
-            // First, try to find by exact device name match
-            val networkDevices = dataStoreManager.getAllNetworkDeviceConnections().first()
-            val ourIp = DeviceInfoUtil.getWifiIpAddress(this@WakeupService)
-            
-            if (ourIp != null) {
-                // Look for network-aware device connection
-                val networkDevice = networkDevices.firstOrNull { device ->
-                    device.deviceName == macName && device.getClientIpForNetwork(ourIp) == macIp
-                }
-                
-                if (networkDevice?.symmetricKey != null) {
-                    Log.d(TAG, "Found encryption key from network device connection")
-                    return networkDevice.symmetricKey
-                }
-            }
-            
-            // Fallback: Check last connected device
-            val lastConnectedDevice = dataStoreManager.getLastConnectedDevice().first()
-            if (lastConnectedDevice?.name == macName && 
-                lastConnectedDevice.ipAddress == macIp &&
-                lastConnectedDevice.symmetricKey != null) {
-                Log.d(TAG, "Found encryption key from last connected device")
-                return lastConnectedDevice.symmetricKey
-            }
-            
-            // Additional fallback: Look for any device with matching name (in case IP changed)
-            val deviceByName = networkDevices.firstOrNull { it.deviceName == macName }
-            if (deviceByName?.symmetricKey != null) {
-                Log.d(TAG, "Found encryption key by device name (IP may have changed)")
-                return deviceByName.symmetricKey
-            }
-            
-            Log.w(TAG, "No stored encryption key found for $macName")
-            return null
-            
-        } catch (e: Exception) {
-            Log.e(TAG, "Error finding stored encryption key", e)
-            return null
-        }
     }
 }
