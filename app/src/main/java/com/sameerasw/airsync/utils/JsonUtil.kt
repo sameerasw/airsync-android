@@ -65,6 +65,7 @@ object JsonUtil {
         body: String,
         app: String,
         packageName: String,
+        priority: String = "alerting",
         actions: List<Pair<String, String>>
     ): String {
         val actionsJson = if (actions.isNotEmpty()) {
@@ -75,7 +76,7 @@ object JsonUtil {
         } else {
             ""
         }
-        return """{"type":"notification","data":{"id":"$id","title":"${escape(title)}","body":"${escape(body)}","app":"${escape(app)}","package":"${escape(packageName)}"$actionsJson}}"""
+        return """{"type":"notification","data":{"id":"$id","title":"${escape(title)}","body":"${escape(body)}","app":"${escape(app)}","package":"${escape(packageName)}","priority":"$priority"$actionsJson}}"""
     }
 
     /**

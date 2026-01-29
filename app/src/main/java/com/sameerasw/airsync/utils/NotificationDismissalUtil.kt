@@ -17,6 +17,8 @@ object NotificationDismissalUtil {
     private val keyToId = ConcurrentHashMap<String, String>()
     // IDs suppressed from Android->Mac dismissal sync (because dismissal originated from Mac)
     private val suppressedIds = ConcurrentHashMap.newKeySet<String>()
+    // Test notification IDs for mock dismissal support
+    private val testNotificationIds = ConcurrentHashMap.newKeySet<String>()
 
     /**
      * Generate a unique notification ID
@@ -48,6 +50,14 @@ object NotificationDismissalUtil {
     }
     
     /**
+     * Store a test notification ID for mock dismissal
+     */
+    fun storeTestNotificationId(id: String) {
+        testNotificationIds.add(id)
+        Log.d(TAG, "Stored test notification ID: $id")
+    }
+    
+    /**
      * Dismiss a notification by its ID
      */
     fun dismissNotification(notificationId: String): Boolean {
@@ -68,6 +78,11 @@ object NotificationDismissalUtil {
                     Log.w(TAG, "Notification listener service not available")
                     false
                 }
+            } else if (testNotificationIds.contains(notificationId)) {
+                // Handle test notification dismissal as a success (mock)
+                testNotificationIds.remove(notificationId)
+                Log.d(TAG, "Mock dismissed test notification: $notificationId")
+                true
             } else {
                 Log.w(TAG, "Notification with ID $notificationId not found")
                 false
@@ -174,6 +189,7 @@ object NotificationDismissalUtil {
         activeNotifications.remove(id)?.let { sbn ->
             keyToId.remove(sbn.key)
         }
+        testNotificationIds.remove(id)
     }
 
     /**

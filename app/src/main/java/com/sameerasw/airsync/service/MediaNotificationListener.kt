@@ -1,6 +1,7 @@
 package com.sameerasw.airsync.service
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
@@ -550,6 +551,9 @@ class MediaNotificationListener : NotificationListenerService() {
                         Log.w(TAG, "Failed to extract actions: ${e.message}")
                     }
 
+                    // Get notification priority (alerting vs silent)
+                    val priority = getNotificationPriority(sbn)
+
                     // Create notification JSON with actions
                     val notificationJson = JsonUtil.toSingleLine(
                         JsonUtil.createNotificationJson(
@@ -558,6 +562,7 @@ class MediaNotificationListener : NotificationListenerService() {
                             body = body,
                             app = appName,
                             packageName = sbn.packageName,
+                            priority = priority,
                             actions = actions
                         )
                     )
@@ -604,6 +609,25 @@ class MediaNotificationListener : NotificationListenerService() {
         }
 
         return isDuplicate
+    }
+
+    private fun getNotificationPriority(sbn: StatusBarNotification): String {
+        return try {
+            val ranking = Ranking()
+            if (currentRanking.getRanking(sbn.key, ranking)) {
+                val importance = ranking.importance
+                if (importance >= NotificationManager.IMPORTANCE_DEFAULT) {
+                    "alerting"
+                } else {
+                    "silent"
+                }
+            } else {
+                "alerting" // Default to alerting if ranking not found
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting notification priority: ${e.message}")
+            "alerting"
+        }
     }
 
     private fun shouldSkipNotification(sbn: StatusBarNotification): Boolean {

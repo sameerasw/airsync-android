@@ -242,12 +242,18 @@ fun SettingsView(
                         onSendNotification = {
                             val testNotification =
                                 com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+                            
+                            // Store ID for mock dismissal support
+                            com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(testNotification.id)
+
                             val message = com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
                                 testNotification.id,
                                 testNotification.title,
                                 testNotification.body,
                                 testNotification.appName,
-                                testNotification.packageName
+                                testNotification.packageName,
+                                testNotification.priority,
+                                testNotification.actions
                             )
                             onSendMessage(message)
                         },
