@@ -108,7 +108,7 @@ object SyncManager {
                     val success = WebSocketUtil.sendMessage(statusJson)
 
                     if (success) {
-                        Log.d(TAG, "Device status synced successfully")
+                        // Log.d(TAG, "Device status synced successfully")
                         lastAudioInfo = currentAudio
                         lastBatteryInfo = currentBattery
                         lastVolume = currentAudio.volume
@@ -172,7 +172,8 @@ object SyncManager {
                 }
                 Log.d(TAG, "Discovered ADB ports: $adbPorts")
 
-                val liteDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, adbPorts)
+                val deviceId = DeviceInfoUtil.getDeviceId(context)
+                val liteDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, adbPorts, WebSocketUtil.currentIpAddress)
                 if (WebSocketUtil.sendMessage(liteDeviceInfoJson)) {
                     Log.d(TAG, "Lite device info sent to trigger macInfo")
                 } else {
@@ -190,7 +191,7 @@ object SyncManager {
                             emptyList()
                         }
                         val currentAdbPorts = discoveredServices.map { it.port.toString() }
-                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, wallpaperBase64, currentAdbPorts)
+                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, wallpaperBase64, currentAdbPorts, WebSocketUtil.currentIpAddress)
                         if (WebSocketUtil.sendMessage(fullDeviceInfoJson)) {
                             Log.d(TAG, "Full device info sent with wallpaper: ${if (wallpaperBase64 != null) "included" else "not available"}")
                         }
@@ -249,7 +250,8 @@ object SyncManager {
                 }
 
                 val wallpaperBase64 = try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
-                val deviceInfoJson = JsonUtil.createDeviceInfoJson(deviceName, localIp, port, version, wallpaperBase64, adbPorts)
+                val deviceId = DeviceInfoUtil.getDeviceId(context)
+                val deviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, wallpaperBase64, adbPorts, WebSocketUtil.currentIpAddress)
 
                 if (WebSocketUtil.sendMessage(deviceInfoJson)) {
                     Log.d(TAG, "Sent updated device info: $deviceName")

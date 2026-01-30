@@ -16,8 +16,8 @@ android {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
         targetSdk = 36
-        versionCode = 20
-        versionName = "2.4.0"
+        versionCode = 21
+        versionName = "2.5.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -40,6 +40,11 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.5.0\"")
     }
 }
 
@@ -112,6 +117,10 @@ dependencies {
 
     // ML Kit barcode scanner (QR code only)
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
+
+    // Google Play Review
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

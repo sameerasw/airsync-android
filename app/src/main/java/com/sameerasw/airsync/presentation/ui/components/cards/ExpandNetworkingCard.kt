@@ -10,8 +10,10 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.HapticUtil
 import com.sameerasw.airsync.ui.theme.minCornerRadius
 import kotlinx.coroutines.launch
 
@@ -48,10 +50,12 @@ fun ExpandNetworkingCard(context: Context) {
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+            val haptics = LocalHapticFeedback.current
             Switch(
                 checked = enabled,
                 onCheckedChange = {
                     enabled = it
+                    if (it) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(haptics)
                     scope.launch {
                         ds.setExpandNetworkingEnabled(it)
                     }

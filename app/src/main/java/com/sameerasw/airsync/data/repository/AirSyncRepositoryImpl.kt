@@ -197,4 +197,44 @@ class AirSyncRepositoryImpl(
     override fun getEssentialsConnectionEnabled(): Flow<Boolean> {
         return dataStoreManager.getEssentialsConnectionEnabled()
     }
+
+    override suspend fun setExpandNetworkingEnabled(enabled: Boolean) {
+        dataStoreManager.setExpandNetworkingEnabled(enabled)
+    }
+
+    override fun getExpandNetworkingEnabled(): Flow<Boolean> {
+        return dataStoreManager.getExpandNetworkingEnabled()
+    }
+
+    override suspend fun setDeviceDiscoveryEnabled(enabled: Boolean) {
+        dataStoreManager.setDeviceDiscoveryEnabled(enabled)
+    }
+
+    override fun getDeviceDiscoveryEnabled(): Flow<Boolean> {
+        return dataStoreManager.getDeviceDiscoveryEnabled()
+    }
+
+    override suspend fun setFirstMacConnectionTime(time: Long) {
+        dataStoreManager.setFirstMacConnectionTime(time)
+    }
+
+    override fun getFirstMacConnectionTime(): Flow<Long> {
+        return dataStoreManager.getFirstMacConnectionTime()
+    }
+
+    override suspend fun setLastPromptDismissedVersion(version: Int) {
+        dataStoreManager.setLastPromptDismissedVersion(version)
+    }
+
+    override fun getLastPromptDismissedVersion(): Flow<Int> {
+        return dataStoreManager.getLastPromptDismissedVersion()
+    }
+
+    override suspend fun setHasRatedApp(hasRated: Boolean) {
+        dataStoreManager.setHasRatedApp(hasRated)
+    }
+
+    override fun hasRatedApp(): Flow<Boolean> {
+        return dataStoreManager.hasRatedApp()
+    }
 }

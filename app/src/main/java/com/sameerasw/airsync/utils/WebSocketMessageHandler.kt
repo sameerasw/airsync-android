@@ -11,8 +11,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.widget.Toast
+import com.sameerasw.airsync.BuildConfig
 import org.json.JSONObject
 
+/**
+ * Central handler for all incoming WebSocket messages from the Mac server.
+ * Dispatches messages to specific handler methods based on the 'type' field.
+ */
 object WebSocketMessageHandler {
     private const val TAG = "WebSocketMessageHandler"
 
@@ -42,7 +48,11 @@ object WebSocketMessageHandler {
     }
 
     /**
-     * Handle incoming WebSocket messages from Mac
+     * Handle incoming WebSocket messages from Mac.
+     * Parses the JSON payload and routes to the appropriate private handler method.
+     *
+     * @param context Application context for performing actions.
+     * @param message Raw JSON message string.
      */
     fun handleIncomingMessage(context: Context, message: String) {
         try {
@@ -50,7 +60,9 @@ object WebSocketMessageHandler {
             val type = json.optString("type")
             val data = json.optJSONObject("data")
 
-            Log.d(TAG, "Handling message type: $type")
+            if (type != "ping") {
+                Log.d(TAG, "Handling message type: $type")
+            }
 
             when (type) {
                 "clipboardUpdate" -> handleClipboardUpdate(context, data)
@@ -69,6 +81,7 @@ object WebSocketMessageHandler {
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macInfo" -> handleMacInfo(context, data)
+                "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "fileChunkAck" -> handleFileChunkAck(data)
                 "transferVerified" -> handleTransferVerified(data)
                 "fileTransferCancel" -> handleFileTransferCancel(context, data)
@@ -83,6 +96,12 @@ object WebSocketMessageHandler {
         }
     }
 
+    // MARK: - File Transfer Handlers
+
+    /**
+     * Initializes an incoming file transfer session.
+     * Prepares the `FileReceiver` to accept chunks.
+     */
     private fun handleFileTransferInit(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -100,6 +119,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Processes a single chunk of file data.
+     * Delegates to `FileReceiver` for writing.
+     */
     private fun handleFileChunk(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -114,6 +137,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Finalizes the incoming file transfer.
+     * Triggers completion notifications and cleanup.
+     */
     private fun handleFileTransferComplete(context: Context, data: JSONObject?) {
         try {
             if (data == null) return
@@ -124,6 +151,12 @@ object WebSocketMessageHandler {
         }
     }
 
+    // MARK: - Clipboard & Control Handlers
+
+    /**
+     * Updates the system clipboard with text from the Mac.
+     * Uses `ClipboardSyncManager` to avoid feedback loops by tracking origin.
+     */
     private fun handleClipboardUpdate(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -149,6 +182,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles volume control commands (set, increase, decrease, mute).
+     * Sends a response back to the Mac indicating success or failure.
+     */
     private fun handleVolumeControl(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -210,6 +247,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles media control commands (play/pause, next, previous, like).
+     * Sends a response back to Mac and updates local media state after a short delay.
+     */
     private fun handleMediaControl(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -290,6 +331,9 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Attempts to dismiss a notification on the Android device by ID.
+     */
     private fun handleNotificationDismissal(data: JSONObject?) {
         try {
             if (data == null) {
@@ -314,6 +358,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Executes an action on a notification (e.g., Reply, Archive).
+     * Supports both action buttons and direct replies.
+     */
     private fun handleNotificationAction(data: JSONObject?) {
         try {
             if (data == null) {
@@ -353,7 +401,8 @@ object WebSocketMessageHandler {
 
     private fun handlePing(context: Context) {
         try {
-            // Respond to ping with current device status
+            // Respond to ping with current device status to keep connection alive
+            // We must force sync here because the server expects a response to every ping
             SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
@@ -377,6 +426,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Processes status updates received from the Mac (battery, music, etc.).
+     * Updates local storage and triggers widget refresh if needed.
+     */
     private fun handleMacDeviceStatus(context: Context, data: JSONObject?) {
         try {
             if (data == null) {
@@ -448,6 +501,10 @@ object WebSocketMessageHandler {
         }
     }
 
+    /**
+     * Handles the 'macInfo' handshake/update message containing Mac specs and installed apps.
+     * Updates device info in the database and synchronizes app icons if needed.
+     */
     private fun handleMacInfo(context: Context, data: JSONObject?) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -458,8 +515,17 @@ object WebSocketMessageHandler {
 
                 val macName = data.optString("name", "")
                 val isPlus = data.optBoolean("isPlusSubscription", false)
+                val macVersion = data.optString("version", "2.0.0")
                 
-                Log.d(TAG, "Processing macInfo - name: '$macName', isPlus: $isPlus")
+                Log.d(TAG, "Processing macInfo - name: '$macName', isPlus: $isPlus, version: '$macVersion'")
+
+                // Version compatibility check
+                val minVersion = BuildConfig.MIN_MAC_APP_VERSION
+                if (isVersionOutdated(macVersion, minVersion)) {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(context, "Mac app is outdated ($macVersion < $minVersion). Please update the mac app and reconnect.", Toast.LENGTH_LONG).show()
+                    }
+                }
                 
                 val savedAppPackagesJson = data.optJSONArray("savedAppPackages")
                 val savedPackages = mutableSetOf<String>()
@@ -795,6 +861,30 @@ object WebSocketMessageHandler {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling filePull: ${e.message}")
+        }
+    }
+
+    private fun handleRefreshAdbPorts(context: Context) {
+        Log.d(TAG, "Request to refresh ADB ports received")
+        SyncManager.sendDeviceInfoNow(context)
+    }
+
+    private fun isVersionOutdated(current: String, min: String): Boolean {
+        return try {
+            val currentParts = current.split(".").map { it.toInt() }
+            val minParts = min.split(".").map { it.toInt() }
+            
+            val maxLen = maxOf(currentParts.size, minParts.size)
+            for (i in 0 until maxLen) {
+                val currentPart = if (i < currentParts.size) currentParts[i] else 0
+                val minPart = if (i < minParts.size) minParts[i] else 0
+                
+                if (currentPart < minPart) return true
+                if (currentPart > minPart) return false
+            }
+            false
+        } catch (e: Exception) {
+            false
         }
     }
 }

@@ -78,7 +78,8 @@ fun SettingsView(
     scope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope(),
     onSendMessage: (String) -> Unit = {},
     onExport: (String) -> Unit = {},
-    onImport: () -> Unit = {}
+    onImport: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -228,7 +229,9 @@ fun SettingsView(
                             } catch (_: Exception) {
                                 emptyList()
                             }
+                            val deviceId = com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
                             val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
+                                deviceId,
                                 deviceInfo.name,
                                 deviceInfo.localIp,
                                 uiState.port.toIntOrNull() ?: 6996,
@@ -240,12 +243,18 @@ fun SettingsView(
                         onSendNotification = {
                             val testNotification =
                                 com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+                            
+                            // Store ID for mock dismissal support
+                            com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(testNotification.id)
+
                             val message = com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
                                 testNotification.id,
                                 testNotification.title,
                                 testNotification.body,
                                 testNotification.appName,
-                                testNotification.packageName
+                                testNotification.packageName,
+                                testNotification.priority,
+                                testNotification.actions
                             )
                             onSendMessage(message)
                         },
@@ -276,6 +285,9 @@ fun SettingsView(
                         },
                         onImportData = {
                             onImport()
+                        },
+                        onResetOnboarding = {
+                            onResetOnboarding()
                         }
                     )
                 }
@@ -287,7 +299,6 @@ fun SettingsView(
                         viewModel.manualSyncAppIcons(context)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraSmall,
                     enabled = uiState.isConnected && !uiState.isIconSyncLoading
                 ) {
                     if (uiState.isIconSyncLoading) {

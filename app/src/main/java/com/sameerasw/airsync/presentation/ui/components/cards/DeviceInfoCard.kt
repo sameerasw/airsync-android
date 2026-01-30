@@ -28,7 +28,6 @@ fun DeviceInfoCard(
             Text("My Android", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(8.dp))
             Text("Local IP: $localIp", style = MaterialTheme.typography.bodyMedium)
-            Text("Wake-up Ports: HTTP 8888, UDP 8889", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(

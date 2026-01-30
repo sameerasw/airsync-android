@@ -1,6 +1,7 @@
 package com.sameerasw.airsync.service
 
 import android.app.Notification
+import android.app.NotificationManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.Bitmap
@@ -104,13 +105,13 @@ class MediaNotificationListener : NotificationListenerService() {
                     emptyList()
                 }
 
-                Log.d(TAG, "Found ${activeSessions.size} active media sessions")
+                // Log.d(TAG, "Found ${activeSessions.size} active media sessions")
 
                 if (activeSessions.isNotEmpty()) {
                     for (controller in activeSessions) {
                         try {
                             if (controller.packageName == context.packageName) {
-                                Log.d(TAG, "Skipping own media session from package: ${controller.packageName}")
+                                // Log.d(TAG, "Skipping own media session from package: ${controller.packageName}")
                                 continue
                             }
                         } catch (_: Exception) { }
@@ -132,7 +133,8 @@ class MediaNotificationListener : NotificationListenerService() {
                             Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
                         }
 
-                        Log.d(TAG, "Media session - Title: $title, Artist: $artist, Playing: $isPlaying, State: ${playbackState?.state}")
+
+                        // Log.d(TAG, "Media session - Title: $title, Artist: $artist, Playing: $isPlaying, State: ${playbackState?.state}")
 
                         // Determine like status; apply app filter and strict positive-only like detection
                         val (detectedStatus, source) = determineLikeStatusWithSource(context, controller)
@@ -164,7 +166,7 @@ class MediaNotificationListener : NotificationListenerService() {
                     }
                 }
 
-                Log.d(TAG, "No media info found")
+                // Log.d(TAG, "No media info found")
                 MediaInfo(false, "", "", null, "none")
             } catch (e: Exception) {
                 Log.e(TAG, "Error getting media info: ${e.message}")
@@ -549,6 +551,9 @@ class MediaNotificationListener : NotificationListenerService() {
                         Log.w(TAG, "Failed to extract actions: ${e.message}")
                     }
 
+                    // Get notification priority (alerting vs silent)
+                    val priority = getNotificationPriority(sbn)
+
                     // Create notification JSON with actions
                     val notificationJson = JsonUtil.toSingleLine(
                         JsonUtil.createNotificationJson(
@@ -557,6 +562,7 @@ class MediaNotificationListener : NotificationListenerService() {
                             body = body,
                             app = appName,
                             packageName = sbn.packageName,
+                            priority = priority,
                             actions = actions
                         )
                     )
@@ -603,6 +609,25 @@ class MediaNotificationListener : NotificationListenerService() {
         }
 
         return isDuplicate
+    }
+
+    private fun getNotificationPriority(sbn: StatusBarNotification): String {
+        return try {
+            val ranking = Ranking()
+            if (currentRanking.getRanking(sbn.key, ranking)) {
+                val importance = ranking.importance
+                if (importance >= NotificationManager.IMPORTANCE_DEFAULT) {
+                    "alerting"
+                } else {
+                    "silent"
+                }
+            } else {
+                "alerting" // Default to alerting if ranking not found
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error getting notification priority: ${e.message}")
+            "alerting"
+        }
     }
 
     private fun shouldSkipNotification(sbn: StatusBarNotification): Boolean {

@@ -146,7 +146,7 @@ object DeviceInfoUtil {
 
             // Get media information including like status
             val mediaInfo = MediaNotificationListener.getMediaInfo(context)
-            Log.d("DeviceInfoUtil", "Retrieved media info: $mediaInfo")
+            // Log.d("DeviceInfoUtil", "Retrieved media info: $mediaInfo")
 
             AudioInfo(
                 isPlaying = mediaInfo.isPlaying,
@@ -179,5 +179,13 @@ object DeviceInfoUtil {
             albumArt = audioInfo.albumArt,
             likeStatus = audioInfo.likeStatus
         )
+    }
+    fun getDeviceId(context: Context): String {
+        return try {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+                ?: UUID.randomUUID().toString()
+        } catch (_: Exception) {
+            UUID.randomUUID().toString()
+        }
     }
 }

@@ -15,6 +15,13 @@ import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -45,6 +52,9 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
@@ -71,6 +81,7 @@ fun RemoteControlScreen(
     // Volume state (0-100)
     var volume by remember { mutableFloatStateOf(50f) }
     var isMuted by remember { mutableStateOf(false) }
+    var isPlayerExpanded by remember { mutableStateOf(false) }
 
     // Observe Mac Status
     val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
@@ -247,12 +258,15 @@ fun RemoteControlScreen(
         )
     }
 
+    val scrollState = rememberScrollState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
+            .verticalScroll(scrollState)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.SpaceBetween
+        verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
         RoundedCardContainer {
@@ -283,9 +297,12 @@ fun RemoteControlScreen(
                         )
                     }
                     Column(
-                        modifier = Modifier.padding(horizontal = 24.dp, vertical = 32.dp),
+                        modifier = Modifier.padding(
+                            horizontal = 24.dp, 
+                            vertical = if (isPlayerExpanded) 32.dp else 16.dp
+                        ),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(32.dp)
+                        verticalArrangement = Arrangement.spacedBy(if (isPlayerExpanded) 32.dp else 16.dp)
                     ) {
                         // Album Art (Foreground) & Info
                         Column(
@@ -303,13 +320,13 @@ fun RemoteControlScreen(
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis,
-                                    color = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
+                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
                                     text = musicInfo?.artist?.takeIf { it.isNotEmpty() }
                                         ?: "from your Mac",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (albumArtBitmap != null) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -320,106 +337,158 @@ fun RemoteControlScreen(
                         val isBuffering = false // Placeholder
                         val playWhenReady = true // Placeholder
 
-                        ButtonGroup(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(60.dp)
-                                .padding(horizontal = 4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            content = {
-                            // Previous Button
-                            val prevInteraction = remember { MutableInteractionSource() }
-                            FilledTonalIconButton(
-                                onClick = { sendRemoteAction("media_prev") },
-                                interactionSource = prevInteraction,
-                                modifier = Modifier
-                                    .weight(0.7f)
-                                    .fillMaxHeight()
-                                    .animateWidth(prevInteraction),
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            // Expand/Collapse Toggle
+                            IconButton(
+                                onClick = { isPlayerExpanded = !isPlayerExpanded },
+                                modifier = Modifier.size(48.dp)
                             ) {
                                 Icon(
-                                    Icons.Rounded.SkipPrevious,
-                                    contentDescription = "Previous",
-                                    modifier = Modifier.size(36.dp)
+                                    imageVector = if (isPlayerExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
+                                    contentDescription = if (isPlayerExpanded) "Collapse" else "Expand",
+                                    tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(24.dp)
                                 )
                             }
 
-                            // Play/Pause Button
-                            val playInteraction = remember { MutableInteractionSource() }
-                            FilledIconButton(
-                                onClick = { sendRemoteAction("media_play_pause") },
-                                interactionSource = playInteraction,
+                            ButtonGroup(
                                 modifier = Modifier
-                                    .weight(1.5f)
-                                    .fillMaxHeight()
-                                    .animateWidth(playInteraction)
-                            ) {
-                                if (isBuffering && playWhenReady && !(musicInfo?.isPlaying == true)) {
-                                    LoadingIndicator()
-                                } else {
-                                    Icon(
-                                        imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                                        contentDescription = if (musicInfo?.isPlaying == true) "Pause" else "Play",
-                                        modifier = Modifier.size(48.dp)
-                                    )
+                                    .weight(1f)
+                                    .height(60.dp),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                content = {
+                                    // Previous Button
+                                    val prevInteraction = remember { MutableInteractionSource() }
+                                    FilledTonalIconButton(
+                                        onClick = { sendRemoteAction("media_prev") },
+                                        interactionSource = prevInteraction,
+                                        modifier = Modifier
+                                            .weight(0.7f)
+                                            .fillMaxHeight()
+                                            .animateWidth(prevInteraction),
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.SkipPrevious,
+                                            contentDescription = "Previous",
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
+
+                                    // Play/Pause Button
+                                    val playInteraction = remember { MutableInteractionSource() }
+                                    FilledIconButton(
+                                        onClick = { sendRemoteAction("media_play_pause") },
+                                        interactionSource = playInteraction,
+                                        modifier = Modifier
+                                            .weight(1.5f)
+                                            .fillMaxHeight()
+                                            .animateWidth(playInteraction)
+                                    ) {
+                                        Icon(
+                                            imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                            contentDescription = if (musicInfo?.isPlaying == true) "Pause" else "Play",
+                                            modifier = Modifier.size(48.dp)
+                                        )
+                                    }
+
+                                    // Next Button
+                                    val nextInteraction = remember { MutableInteractionSource() }
+                                    FilledTonalIconButton(
+                                        onClick = { sendRemoteAction("media_next") },
+                                        interactionSource = nextInteraction,
+                                        modifier = Modifier
+                                            .weight(0.7f)
+                                            .fillMaxHeight()
+                                            .animateWidth(nextInteraction),
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.SkipNext,
+                                            contentDescription = "Next",
+                                            modifier = Modifier.size(36.dp)
+                                        )
+                                    }
                                 }
-                            }
-
-                            // Next Button
-                            val nextInteraction = remember { MutableInteractionSource() }
-                            FilledTonalIconButton(
-                                onClick = { sendRemoteAction("media_next") },
-                                interactionSource = nextInteraction,
-                                modifier = Modifier
-                                    .weight(0.7f)
-                                    .fillMaxHeight()
-                                    .animateWidth(nextInteraction),
-                            ) {
-                                Icon(
-                                    Icons.Rounded.SkipNext,
-                                    contentDescription = "Next",
-                                    modifier = Modifier.size(36.dp)
-                                )
-                            }
-                        }
-                        )
-                    }
-                }
-            }
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(4.dp),
-//                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        IconButton(onClick = {
-                            sendRemoteAction("vol_mute")
-                            isMuted = !isMuted
-                        }) {
-                            Icon(
-                                imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                                contentDescription = "Mute"
                             )
                         }
 
-                        Slider(
-                            value = volume,
-                            onValueChange = {
-                                volume = it
-                                sendRemoteAction("vol_set", it.toInt())
-                            },
-                            valueRange = 0f..100f,
-                            modifier = Modifier.weight(1f)
-                        )
+                        // Volume Control
+                        AnimatedVisibility(
+                            visible = isPlayerExpanded,
+                            enter = expandVertically() + fadeIn(),
+                            exit = shrinkVertically() + fadeOut()
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                IconButton(onClick = {
+                                    sendRemoteAction("vol_mute")
+                                    isMuted = !isMuted
+                                }) {
+                                    Icon(
+                                        imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                                        contentDescription = "Mute",
+                                        tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+
+                                Slider(
+                                    value = volume,
+                                    onValueChange = {
+                                        volume = it
+                                        sendRemoteAction("vol_set", it.toInt())
+                                    },
+                                    valueRange = 0f..100f,
+                                    modifier = Modifier.weight(1f),
+                                    colors = SliderDefaults.colors(
+                                        thumbColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
+                                        activeTrackColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
+                                        inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+
+
+        // Extra Keys
+        FlowRow(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            maxItemsInEachRow = 3
+        ) {
+            OutlinedButton(
+                onClick = { sendRemoteAction("escape") },
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                Text("Esc")
+            }
+            
+           OutlinedButton(
+               onClick = { sendRemoteAction("space") },
+               modifier = Modifier.padding(horizontal = 4.dp)
+           ) {
+                Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
+            }
+            // Mouse Toggle
+            OutlinedButton(
+                onClick = { isMouseMode = !isMouseMode },
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                Icon(
+                    painter = if (isMouseMode) painterResource(id = R.drawable.rounded_drag_click_24) else painterResource(id = R.drawable.rounded_gamepad_circle_up_24),
+                    contentDescription = if (isMouseMode) "Touchpad Mode" else "Mouse Mode",
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
@@ -428,8 +497,7 @@ fun RemoteControlScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
-                    .padding(vertical = 16.dp)
+                    .heightIn(min = if (isPlayerExpanded) 300.dp else 450.dp, max = 800.dp)
                     .pointerInput(isMouseMode) {
                         if (!isMouseMode) return@pointerInput
                         
@@ -575,39 +643,8 @@ fun RemoteControlScreen(
             }
         }
 
-        // Extra Keys
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            OutlinedButton(
-                onClick = { sendRemoteAction("escape") },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Esc")
-            }
-            
-           OutlinedButton(
-               onClick = { sendRemoteAction("space") },
-               modifier = Modifier.weight(1f)
-           ) {
-                Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
-            }
-            // Mouse Toggle
-            OutlinedButton(
-                onClick = { isMouseMode = !isMouseMode },
-                modifier = Modifier.weight(1f),
-            ) {
-                Icon(
-                    painter = if (isMouseMode) painterResource(id = R.drawable.rounded_drag_click_24) else painterResource(id = R.drawable.rounded_gamepad_circle_up_24),
-                    contentDescription = if (isMouseMode) "Touchpad Mode" else "Mouse Mode",
-                    modifier = Modifier.size(20.dp)
-                )
-            }
 
-
-        }
+        Spacer(modifier = Modifier.height(80.dp))
     }
 }
 
