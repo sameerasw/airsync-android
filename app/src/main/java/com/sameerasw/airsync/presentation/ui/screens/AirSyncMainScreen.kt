@@ -180,7 +180,7 @@ fun AirSyncMainScreen(
         viewModel.setUserManuallyDisconnected(false)
 
         scope.launch(Dispatchers.Main) {
-            val result = withTimeoutOrNull(5000) {
+            val result = withTimeoutOrNull(10000) {
                 var connectionResult: Boolean? = null
                 WebSocketUtil.connect(
                     context = context,
