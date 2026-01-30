@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 object WebSocketUtil {
     private const val TAG = "WebSocketUtil"
-    private const val HANDSHAKE_TIMEOUT_MS = 7_000L
+    private const val HANDSHAKE_TIMEOUT_MS = 10_000L
     private var webSocket: WebSocket? = null
     private var client: OkHttpClient? = null
     var currentIpAddress: String? = null
@@ -152,7 +152,7 @@ object WebSocketUtil {
 
                 // Overall timeout for all parallel connection attempts
                 connectionAttemptJob = CoroutineScope(Dispatchers.IO).launch {
-                    delay(10000) // 15 seconds global timeout
+                    delay(15000) // 15 seconds global timeout
                     if (isConnecting.get() && !isSocketOpen.get()) {
                         Log.w(TAG, "All connection attempts timed out")
                         isConnecting.set(false)
