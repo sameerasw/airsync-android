@@ -11,6 +11,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import android.widget.Toast
+import com.sameerasw.airsync.BuildConfig
 import org.json.JSONObject
 
 /**
@@ -513,8 +515,17 @@ object WebSocketMessageHandler {
 
                 val macName = data.optString("name", "")
                 val isPlus = data.optBoolean("isPlusSubscription", false)
+                val macVersion = data.optString("version", "2.0.0")
                 
-                Log.d(TAG, "Processing macInfo - name: '$macName', isPlus: $isPlus")
+                Log.d(TAG, "Processing macInfo - name: '$macName', isPlus: $isPlus, version: '$macVersion'")
+
+                // Version compatibility check
+                val minVersion = BuildConfig.MIN_MAC_APP_VERSION
+                if (isVersionOutdated(macVersion, minVersion)) {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(context, "Mac app is outdated ($macVersion < $minVersion). Please update the mac app and reconnect.", Toast.LENGTH_LONG).show()
+                    }
+                }
                 
                 val savedAppPackagesJson = data.optJSONArray("savedAppPackages")
                 val savedPackages = mutableSetOf<String>()
@@ -856,5 +867,24 @@ object WebSocketMessageHandler {
     private fun handleRefreshAdbPorts(context: Context) {
         Log.d(TAG, "Request to refresh ADB ports received")
         SyncManager.sendDeviceInfoNow(context)
+    }
+
+    private fun isVersionOutdated(current: String, min: String): Boolean {
+        return try {
+            val currentParts = current.split(".").map { it.toInt() }
+            val minParts = min.split(".").map { it.toInt() }
+            
+            val maxLen = maxOf(currentParts.size, minParts.size)
+            for (i in 0 until maxLen) {
+                val currentPart = if (i < currentParts.size) currentParts[i] else 0
+                val minPart = if (i < minParts.size) minParts[i] else 0
+                
+                if (currentPart < minPart) return true
+                if (currentPart > minPart) return false
+            }
+            false
+        } catch (e: Exception) {
+            false
+        }
     }
 }

@@ -299,7 +299,6 @@ fun SettingsView(
                         viewModel.manualSyncAppIcons(context)
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraSmall,
                     enabled = uiState.isConnected && !uiState.isIconSyncLoading
                 ) {
                     if (uiState.isIconSyncLoading) {

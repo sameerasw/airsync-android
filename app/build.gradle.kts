@@ -40,6 +40,11 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+    defaultConfig {
+        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.6.0\"")
     }
 }
 
