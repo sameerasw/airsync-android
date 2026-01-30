@@ -40,5 +40,6 @@ data class UiState(
     val isEssentialsConnectionEnabled: Boolean = false,
     val activeIp: String? = null,
     val connectingDeviceId: String? = null,
-    val isDeviceDiscoveryEnabled: Boolean = true
+    val isDeviceDiscoveryEnabled: Boolean = true,
+    val shouldShowRatingPrompt: Boolean = false
 )

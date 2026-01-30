@@ -113,6 +113,10 @@ dependencies {
     // ML Kit barcode scanner (QR code only)
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
 
+    // Google Play Review
+    implementation(libs.play.review)
+    implementation(libs.play.review.ktx)
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

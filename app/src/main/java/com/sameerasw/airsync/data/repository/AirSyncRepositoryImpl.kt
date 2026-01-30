@@ -213,4 +213,28 @@ class AirSyncRepositoryImpl(
     override fun getDeviceDiscoveryEnabled(): Flow<Boolean> {
         return dataStoreManager.getDeviceDiscoveryEnabled()
     }
+
+    override suspend fun setFirstMacConnectionTime(time: Long) {
+        dataStoreManager.setFirstMacConnectionTime(time)
+    }
+
+    override fun getFirstMacConnectionTime(): Flow<Long> {
+        return dataStoreManager.getFirstMacConnectionTime()
+    }
+
+    override suspend fun setLastPromptDismissedVersion(version: Int) {
+        dataStoreManager.setLastPromptDismissedVersion(version)
+    }
+
+    override fun getLastPromptDismissedVersion(): Flow<Int> {
+        return dataStoreManager.getLastPromptDismissedVersion()
+    }
+
+    override suspend fun setHasRatedApp(hasRated: Boolean) {
+        dataStoreManager.setHasRatedApp(hasRated)
+    }
+
+    override fun hasRatedApp(): Flow<Boolean> {
+        return dataStoreManager.hasRatedApp()
+    }
 }

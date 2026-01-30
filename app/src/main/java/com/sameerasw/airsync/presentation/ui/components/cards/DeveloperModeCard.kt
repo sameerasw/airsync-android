@@ -29,7 +29,8 @@ fun DeveloperModeCard(
     onSendNotification: () -> Unit,
     onSendDeviceStatus: () -> Unit,
     onExportData: () -> Unit,
-    onImportData: () -> Unit
+    onImportData: () -> Unit,
+    onResetOnboarding: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -119,6 +120,17 @@ fun DeveloperModeCard(
                         ) {
                             Text("Import Data")
                         }
+                    }
+
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            onResetOnboarding()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
+                    ) {
+                        Text("Reset Onboarding")
                     }
 
                 }

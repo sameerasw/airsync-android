@@ -49,7 +49,7 @@ fun ConnectionStatusCard(
 
     // Determine gradient color
     val gradientColor = when {
-        isConnected -> Color(0xFF4CAF50) // Green
+        isConnected -> MaterialTheme.colorScheme.primary
         isConnecting -> Color(0xFFFFC107) // Yellow
         else -> Color(0xFFF44336) // Red
     }

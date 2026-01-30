@@ -68,6 +68,9 @@ class DataStoreManager(private val context: Context) {
         private val ESSENTIALS_CONNECTION_ENABLED = booleanPreferencesKey("essentials_connection_enabled")
         
         private val DEFAULT_TAB = stringPreferencesKey("default_tab")
+        private val FIRST_MAC_CONNECTION_TIME = longPreferencesKey("first_mac_connection_time")
+        private val LAST_PROMPT_DISMISSED_VERSION = intPreferencesKey("last_prompt_dismissed_version")
+        private val HAS_RATED_APP = booleanPreferencesKey("has_rated_app")
 
 
         // Call monitoring preferences
@@ -282,6 +285,44 @@ class DataStoreManager(private val context: Context) {
     fun getDefaultTab(): Flow<String> {
         return context.dataStore.data.map { prefs ->
             prefs[DEFAULT_TAB] ?: "dynamic"
+        }
+    }
+
+    suspend fun setFirstMacConnectionTime(time: Long) {
+        context.dataStore.edit { prefs ->
+            if (prefs[FIRST_MAC_CONNECTION_TIME] == null) {
+                prefs[FIRST_MAC_CONNECTION_TIME] = time
+            }
+        }
+    }
+
+    fun getFirstMacConnectionTime(): Flow<Long> {
+        return context.dataStore.data.map { prefs ->
+            prefs[FIRST_MAC_CONNECTION_TIME] ?: 0L
+        }
+    }
+
+    suspend fun setLastPromptDismissedVersion(version: Int) {
+        context.dataStore.edit { prefs ->
+            prefs[LAST_PROMPT_DISMISSED_VERSION] = version
+        }
+    }
+
+    fun getLastPromptDismissedVersion(): Flow<Int> {
+        return context.dataStore.data.map { prefs ->
+            prefs[LAST_PROMPT_DISMISSED_VERSION] ?: -1
+        }
+    }
+
+    suspend fun setHasRatedApp(hasRated: Boolean) {
+        context.dataStore.edit { prefs ->
+            prefs[HAS_RATED_APP] = hasRated
+        }
+    }
+
+    fun hasRatedApp(): Flow<Boolean> {
+        return context.dataStore.data.map { prefs ->
+            prefs[HAS_RATED_APP] ?: false
         }
     }
 

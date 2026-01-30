@@ -94,4 +94,12 @@ interface AirSyncRepository {
     // Device discovery
     suspend fun setDeviceDiscoveryEnabled(enabled: Boolean)
     fun getDeviceDiscoveryEnabled(): Flow<Boolean>
+
+    // Rating card refined logic
+    suspend fun setFirstMacConnectionTime(time: Long)
+    fun getFirstMacConnectionTime(): Flow<Long>
+    suspend fun setLastPromptDismissedVersion(version: Int)
+    fun getLastPromptDismissedVersion(): Flow<Int>
+    suspend fun setHasRatedApp(hasRated: Boolean)
+    fun hasRatedApp(): Flow<Boolean>
 }

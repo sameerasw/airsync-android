@@ -72,6 +72,7 @@ import kotlinx.coroutines.launch
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
+import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import org.json.JSONObject
@@ -606,6 +607,18 @@ fun AirSyncMainScreen(
     
                             RoundedCardContainer {
     
+                                // Rating Prompt Card
+                                AnimatedVisibility(
+                                    visible = uiState.shouldShowRatingPrompt,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    RateAppCard(
+                                        onDismiss = { viewModel.setRatingCardDismissed() },
+                                        onRate = { viewModel.setAppRated() }
+                                    )
+                                }
+
                                 // Connection Status Card
                                 ConnectionStatusCard(
                                     isConnected = uiState.isConnected,
@@ -847,7 +860,8 @@ fun AirSyncMainScreen(
                                     pendingExportJson = json
                                     createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                                 },
-                                onImport = { openDocLauncher.launch(arrayOf("application/json")) }
+                                onImport = { openDocLauncher.launch(arrayOf("application/json")) },
+                                onResetOnboarding = { viewModel.resetOnboarding() }
                             )
                         }
                     }
@@ -890,7 +904,8 @@ fun AirSyncMainScreen(
                                 pendingExportJson = json
                                 createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                             },
-                            onImport = { openDocLauncher.launch(arrayOf("application/json")) }
+                            onImport = { openDocLauncher.launch(arrayOf("application/json")) },
+                            onResetOnboarding = { viewModel.resetOnboarding() }
                         )
                     }
                 }

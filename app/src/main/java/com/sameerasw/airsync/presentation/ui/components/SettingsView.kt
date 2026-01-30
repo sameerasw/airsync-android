@@ -78,7 +78,8 @@ fun SettingsView(
     scope: CoroutineScope = androidx.compose.runtime.rememberCoroutineScope(),
     onSendMessage: (String) -> Unit = {},
     onExport: (String) -> Unit = {},
-    onImport: () -> Unit = {}
+    onImport: () -> Unit = {},
+    onResetOnboarding: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -284,6 +285,9 @@ fun SettingsView(
                         },
                         onImportData = {
                             onImport()
+                        },
+                        onResetOnboarding = {
+                            onResetOnboarding()
                         }
                     )
                 }
