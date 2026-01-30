@@ -44,7 +44,7 @@ android {
     }
 
     defaultConfig {
-        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.6.0\"")
+        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.5.0\"")
     }
 }
 

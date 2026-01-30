@@ -930,17 +930,18 @@ fun AirSyncMainScreen(
                 },
                 scrollBehavior = exitAlwaysScrollBehavior,
                 floatingActionButton = {
+                    val currentTab = tabs.getOrNull(pagerState.currentPage)
                     FloatingToolbarDefaults.StandardFloatingActionButton(
                         onClick = {
                             HapticUtil.performClick(haptics)
-                            when (pagerState.currentPage) {
-                                1 -> { // Remote Tab
+                            when (currentTab?.title) {
+                                "Remote" -> {
                                     showKeyboard = !showKeyboard
                                 }
-                                2 -> { // Clipboard Tab
+                                "Clipboard" -> {
                                     viewModel.clearClipboardHistory()
                                 }
-                                else -> { // Connect (0) or Settings (3)
+                                else -> { // Connect or Settings
                                     if (uiState.isConnected) {
                                         disconnect()
                                     } else {
@@ -950,14 +951,14 @@ fun AirSyncMainScreen(
                             }
                         }
                     ) {
-                        when (pagerState.currentPage) {
-                            1 -> { // Remote Tab
+                        when (currentTab?.title) {
+                            "Remote" -> {
                                 Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
                             }
-                            2 -> { // Clipboard Tab
+                            "Clipboard" -> {
                                 Icon(Icons.Rounded.Delete, contentDescription = "Clear History")
                             }
-                            else -> { // Connect (0) or Settings (3)
+                            else -> { // Connect or Settings
                                 if (uiState.isConnected) {
                                     Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
                                 } else {
