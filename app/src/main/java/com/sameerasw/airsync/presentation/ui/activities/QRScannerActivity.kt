@@ -45,7 +45,9 @@ class QRScannerActivity : ComponentActivity() {
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { isGranted ->
-        if (!isGranted) {
+        if (isGranted) {
+            startScanner()
+        } else {
             // Permission denied, finish the activity
             setResult(RESULT_CANCELED)
             finish()
@@ -78,9 +80,12 @@ class QRScannerActivity : ComponentActivity() {
             ) != PackageManager.PERMISSION_GRANTED
         ) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
-            return
+        } else {
+            startScanner()
         }
+    }
 
+    private fun startScanner() {
         setContent {
             AirSyncTheme {
                 QRScannerScreen(
