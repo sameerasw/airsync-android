@@ -111,8 +111,9 @@ object WebSocketMessageHandler {
             val mime = data.optString("mime", "application/octet-stream")
             val chunkSize = data.optInt("chunkSize", 64 * 1024)
             val checksumVal = data.optString("checksum", "")
+            val isClipboard = data.optBoolean("isClipboard", false)
 
-            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal)
+            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal, isClipboard)
             Log.d(TAG, "Started incoming file transfer: $name ($size bytes)")
         } catch (e: Exception) {
             Log.e(TAG, "Error in file init: ${e.message}")
