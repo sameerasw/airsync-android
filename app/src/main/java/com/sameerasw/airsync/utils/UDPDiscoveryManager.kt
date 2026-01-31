@@ -209,7 +209,7 @@ object UDPDiscoveryManager {
 
             val validIps = incomingIps.filter { ip ->
                 if (ip.startsWith("100.")) {
-                    if (!expandNetworkingEnabled) return@filter false
+                    if (expandNetworkingEnabled) return@filter true
                     val myIps = getAllIpAddresses()
                     myIps.any { it.startsWith("100.") }
                 } else true
@@ -396,7 +396,7 @@ object UDPDiscoveryManager {
         return array
     }
 
-    private fun getAllIpAddresses(): List<String> {
+    fun getAllIpAddresses(): List<String> {
         val ips = mutableListOf<String>()
         try {
             val interfaces = java.net.NetworkInterface.getNetworkInterfaces()
