@@ -101,7 +101,10 @@ fun SettingsView(
                 )
                 PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
                 QuickSettingsTipCard(
-                    isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(context)
+                    isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(context, com.sameerasw.airsync.service.AirSyncTileService::class.java)
+                )
+                com.sameerasw.airsync.presentation.ui.components.cards.ClipboardTileTipCard(
+                    isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(context, com.sameerasw.airsync.service.ClipboardTileService::class.java)
                 )
             }
 

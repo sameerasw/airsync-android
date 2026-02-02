@@ -106,6 +106,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".presentation.ui.activities.ClipboardActionActivity"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:taskAffinity="" />
+
         <service
             android:name=".service.MediaNotificationListener"
             android:exported="false"
@@ -149,6 +157,18 @@
             android:exported="true"
             android:icon="@drawable/ic_laptop_24"
             android:label="@string/qs_tile_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <!-- Clipboard Quick Settings Tile Service -->
+        <service
+            android:name=".service.ClipboardTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_clipboard_24"
+            android:label="Send Clipboard"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
