@@ -14,8 +14,9 @@ import com.sameerasw.airsync.service.AirSyncTileService
 object QuickSettingsUtil {
     fun isQSTileAdded(context: Context, serviceClass: Class<*> = AirSyncTileService::class.java): Boolean {
         return try {
+            val componentName = ComponentName(context, serviceClass)
             val tiles = Settings.Secure.getString(context.contentResolver, "sysui_qs_tiles") ?: ""
-            tiles.contains(serviceClass.simpleName) || tiles.contains(serviceClass.name)
+            tiles.contains(componentName.flattenToString()) || tiles.contains(componentName.flattenToShortString())
         } catch (_: Exception) {
             false
         }
