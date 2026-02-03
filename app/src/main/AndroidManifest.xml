@@ -108,7 +108,7 @@
 
         <activity
             android:name=".presentation.ui.activities.ClipboardActionActivity"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:theme="@style/Theme.AirSync.Transparent"
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"
