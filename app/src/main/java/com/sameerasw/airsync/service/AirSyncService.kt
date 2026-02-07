@@ -7,17 +7,26 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
+import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.utils.DiscoveryMode
+import com.sameerasw.airsync.utils.UDPDiscoveryManager
+import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
  * Foreground service that maintains the airsync connection and handles discovery.
@@ -29,12 +38,16 @@ class AirSyncService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var connectedDeviceName: String? = null
     private var isScanning = false
+    
+    // Network state tracking
+    private var networkCallback: ConnectivityManager.NetworkCallback? = null
 
     override fun onCreate() {
         super.onCreate()
         Log.d(TAG, "AirSyncService created")
         createNotificationChannel()
         com.sameerasw.airsync.utils.MacDeviceStatusManager.startMonitoring(this)
+        registerNetworkCallback()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -48,6 +61,8 @@ class AirSyncService : Service() {
                 startSync()
             }
             ACTION_STOP_SYNC -> stopSync()
+            ACTION_APP_FOREGROUND -> handleAppForeground()
+            ACTION_APP_BACKGROUND -> handleAppBackground()
             else -> {
                 if (connectedDeviceName != null) {
                     startSync()
@@ -67,12 +82,37 @@ class AirSyncService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         
         val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
-        val isDiscoveryEnabled = kotlinx.coroutines.runBlocking {
+        val isDiscoveryEnabled = runBlocking {
             dataStoreManager.getDeviceDiscoveryEnabled().first() 
         }
         
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this, isDiscoveryEnabled)
+        // Default to PASSIVE mode to save battery
+        // But do a burst to check for devices immediately
+        UDPDiscoveryManager.start(this, isDiscoveryEnabled)
+        UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
+        UDPDiscoveryManager.burstBroadcast(this)
+        
+        // Start WakeupService for HTTP wakeups
         com.sameerasw.airsync.service.WakeupService.startService(this)
+        
+        // Also trigger auto-reconnect logic to check if we already have a candidate
+        WebSocketUtil.requestAutoReconnect(this)
+    }
+
+    private fun handleAppForeground() {
+        if (isScanning) {
+            Log.d(TAG, "App in foreground, switching to ACTIVE discovery")
+            UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
+            startForeground(NOTIFICATION_ID, buildNotification()) // Update notification if needed
+        }
+    }
+
+    private fun handleAppBackground() {
+        if (isScanning) {
+            Log.d(TAG, "App in background, switching to PASSIVE discovery")
+            UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
+            startForeground(NOTIFICATION_ID, buildNotification()) // Update notification if needed
+        }
     }
 
     private fun startSync() {
@@ -81,21 +121,48 @@ class AirSyncService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         
         val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
-        val isDiscoveryEnabled = kotlinx.coroutines.runBlocking {
+        val isDiscoveryEnabled = runBlocking {
             dataStoreManager.getDeviceDiscoveryEnabled().first() 
         }
         
         // Keep discovery manager running for wake-ups even when connected
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.start(this, isDiscoveryEnabled)
+        // But stay in Passive mode mostly
+        UDPDiscoveryManager.start(this, isDiscoveryEnabled)
+        UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
+        
         com.sameerasw.airsync.service.WakeupService.startService(this)
     }
 
     private fun stopSync() {
         Log.d(TAG, "Stopping AirSync foreground service")
-        com.sameerasw.airsync.utils.UDPDiscoveryManager.stop(this)
+        UDPDiscoveryManager.stop(this)
         com.sameerasw.airsync.service.WakeupService.stopService(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
+    }
+
+    private fun registerNetworkCallback() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val builder = NetworkRequest.Builder()
+                .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
+                .addTransportType(NetworkCapabilities.TRANSPORT_ETHERNET)
+            
+            networkCallback = object : ConnectivityManager.NetworkCallback() {
+                override fun onAvailable(network: Network) {
+                    Log.d(TAG, "Network available, triggering burst broadcast")
+                    // When network becomes available, do a burst to announce ourselves
+                    if (isScanning) {
+                        UDPDiscoveryManager.burstBroadcast(applicationContext)
+                        WebSocketUtil.requestAutoReconnect(applicationContext)
+                    }
+                }
+            }
+            
+            connectivityManager.registerNetworkCallback(builder.build(), networkCallback!!)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error registering network callback", e)
+        }
     }
 
     private fun createNotificationChannel() {
@@ -132,7 +199,8 @@ class AirSyncService : Service() {
 
         if (isScanning) {
             builder.setContentTitle(getString(R.string.app_name))
-            builder.setContentText(getString(R.string.searching_for_devices))
+            //builder.setContentText(getString(R.string.searching_for_devices))
+            builder.setContentText("Waiting for devices...") // Less alarming text for passive mode
         } else {
             val name = connectedDeviceName ?: "Mac"
             builder.setContentTitle(getString(R.string.app_name))
@@ -147,6 +215,16 @@ class AirSyncService : Service() {
 
     override fun onDestroy() {
         Log.d(TAG, "AirSyncService destroyed")
+        
+        networkCallback?.let {
+            try {
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                cm.unregisterNetworkCallback(it)
+            } catch (e: Exception) {
+                Log.e(TAG, "Error unregistering network callback", e)
+            }
+        }
+        
         com.sameerasw.airsync.utils.MacDeviceStatusManager.stopMonitoring()
         com.sameerasw.airsync.utils.MacDeviceStatusManager.cleanup(this)
         scope.coroutineContext.cancel()
@@ -162,6 +240,8 @@ class AirSyncService : Service() {
         const val ACTION_START_SYNC = "com.sameerasw.airsync.START_SYNC"
         const val ACTION_STOP_SYNC = "com.sameerasw.airsync.STOP_SYNC"
         const val ACTION_DISCONNECT = "com.sameerasw.airsync.DISCONNECT_FROM_NOTIFICATION"
+        const val ACTION_APP_FOREGROUND = "com.sameerasw.airsync.APP_FOREGROUND"
+        const val ACTION_APP_BACKGROUND = "com.sameerasw.airsync.APP_BACKGROUND"
         
         const val EXTRA_DEVICE_NAME = "device_name"
 
@@ -176,6 +256,20 @@ class AirSyncService : Service() {
             val intent = Intent(context, AirSyncService::class.java).apply {
                 action = ACTION_START_SYNC
                 putExtra(EXTRA_DEVICE_NAME, deviceName)
+            }
+            startAction(context, intent)
+        }
+        
+        fun notifyAppForeground(context: Context) {
+            val intent = Intent(context, AirSyncService::class.java).apply {
+                action = ACTION_APP_FOREGROUND
+            }
+            startAction(context, intent)
+        }
+        
+        fun notifyAppBackground(context: Context) {
+            val intent = Intent(context, AirSyncService::class.java).apply {
+                action = ACTION_APP_BACKGROUND
             }
             startAction(context, intent)
         }
