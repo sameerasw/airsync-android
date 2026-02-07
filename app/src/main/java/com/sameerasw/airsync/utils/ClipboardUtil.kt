@@ -86,4 +86,20 @@ object ClipboardUtil {
             Log.e(TAG, "Error unregistering clipboard listener: ${e.message}")
         }
     }
+
+    /**
+     * Set a content URI to clipboard (useful for images)
+     */
+    fun copyUriToClipboard(context: Context, uri: android.net.Uri): Boolean {
+        return try {
+            val clipboardManager = context.getSystemService(Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+            val clipData = android.content.ClipData.newUri(context.contentResolver, "AirSync Image", uri)
+            clipboardManager.setPrimaryClip(clipData)
+            Log.d(TAG, "URI set to clipboard: $uri")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Error setting clipboard URI: ${e.message}")
+            false
+        }
+    }
 }
