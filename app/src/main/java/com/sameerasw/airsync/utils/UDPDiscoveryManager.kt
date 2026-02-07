@@ -39,8 +39,8 @@ data class DiscoveredDevice(
 object UDPDiscoveryManager {
     private const val TAG = "UDPDiscoveryManager"
     private const val BROADCAST_PORT = 8889
-    private const val PRUNE_INTERVAL_MS = 5000L
-    private const val DEVICE_TIMEOUT_MS = 10000L
+    private const val PRUNE_INTERVAL_MS = 10000L
+    private const val DEVICE_TIMEOUT_MS = 25000L
 
     private val _discoveredDevices = MutableStateFlow<List<DiscoveredDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<DiscoveredDevice>> = _discoveredDevices.asStateFlow()
@@ -255,7 +255,7 @@ object UDPDiscoveryManager {
         broadcastJob = CoroutineScope(Dispatchers.IO).launch {
             while (isRunning) {
                 broadcastPresence(context)
-                delay(3000)
+                delay(10000)
             }
         }
     }
@@ -403,6 +403,11 @@ object UDPDiscoveryManager {
             while (interfaces.hasMoreElements()) {
                 val networkInterface = interfaces.nextElement()
                 if (networkInterface.isLoopback || !networkInterface.isUp) continue
+
+                val name = networkInterface.name.lowercase()
+                if (name.contains("rmnet") || name.contains("ccmni") || name.contains("pdp") || name.contains("ppp")) {
+                    continue
+                }
 
                 val addresses = networkInterface.inetAddresses
                 while (addresses.hasMoreElements()) {

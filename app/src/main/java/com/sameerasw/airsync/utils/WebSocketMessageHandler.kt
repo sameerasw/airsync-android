@@ -452,7 +452,9 @@ object WebSocketMessageHandler {
             val artist = music?.optString("artist", "") ?: ""
             val volume = music?.optInt("volume", 50) ?: 50
             val isMuted = music?.optBoolean("isMuted", false) ?: false
-            val albumArt = music?.optString("albumArt", "") ?: ""
+            
+            val albumArt = if (music?.has("albumArt") == true) music.optString("albumArt", "") else null
+            
             val likeStatus = music?.optString("likeStatus", "none") ?: "none"
 
             val isPaired = data.optBoolean("isPaired", true)
