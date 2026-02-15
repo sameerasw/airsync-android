@@ -39,10 +39,12 @@ object MacDeviceStatusManager {
         artist: String,
         volume: Int,
         isMuted: Boolean,
-        albumArt: String,
+        albumArt: String?,
         likeStatus: String
     ) {
         try {
+            val effectiveAlbumArt = albumArt ?: _macDeviceStatus.value?.music?.albumArt ?: ""
+
             val macBattery = MacBattery(level = batteryLevel, isCharging = isCharging)
             val macMusicInfo = MacMusicInfo(
                 isPlaying = isPlaying,
@@ -50,7 +52,7 @@ object MacDeviceStatusManager {
                 artist = artist,
                 volume = volume,
                 isMuted = isMuted,
-                albumArt = albumArt,
+                albumArt = effectiveAlbumArt,
                 likeStatus = likeStatus
             )
 
@@ -62,9 +64,12 @@ object MacDeviceStatusManager {
 
             _macDeviceStatus.value = status
 
-            // Decode album art if available
-            val bitmap = decodeAlbumArt(albumArt)
-            _albumArt.value = bitmap
+            var bitmap: Bitmap? = _albumArt.value
+
+            if (albumArt != null) {
+                bitmap = decodeAlbumArt(albumArt)
+                _albumArt.value = bitmap
+            }
 
             // Start/update or stop the Mac media player service based on media state and USER SETTING
             CoroutineScope(Dispatchers.IO).launch {

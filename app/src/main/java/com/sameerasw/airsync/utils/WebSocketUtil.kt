@@ -518,19 +518,19 @@ object WebSocketUtil {
                     // Match by name within the discovery list
                     val discoveryMatch = discoveredList.find { it.name == last.name }
                     if (discoveryMatch != null) {
-                        Log.d(TAG, "Discovery found target device: ${discoveryMatch.name} at ${discoveryMatch.getBestIp()}")
+                        Log.d(TAG, "Discovery found target device: ${discoveryMatch.name} with IPs: ${discoveryMatch.ips}")
                         
                         val all = ds.getAllNetworkDeviceConnections().first()
-                        val targetConnection = all.firstOrNull { it.deviceName == last.name && it.getClientIpForNetwork(ourIp) != null }
+                        val targetConnection = all.firstOrNull { it.deviceName == last.name }
                         
                         if (targetConnection != null) {
-                            val ip = discoveryMatch.getBestIp()
+                            val ips = discoveryMatch.ips.joinToString(",")
                             val port = targetConnection.port.toIntOrNull() ?: 6996
                             
-                            Log.d(TAG, "Smart Auto-reconnect attempting connection to $ip:$port")
+                            Log.d(TAG, "Smart Auto-reconnect attempting parallel connections to $ips:$port")
                             connect(
                                 context = context,
-                                ipAddress = ip,
+                                ipAddress = ips,
                                 port = port,
                                 symmetricKey = targetConnection.symmetricKey,
                                 manualAttempt = false,

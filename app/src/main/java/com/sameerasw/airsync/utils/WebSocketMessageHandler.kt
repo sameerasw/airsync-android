@@ -111,8 +111,9 @@ object WebSocketMessageHandler {
             val mime = data.optString("mime", "application/octet-stream")
             val chunkSize = data.optInt("chunkSize", 64 * 1024)
             val checksumVal = data.optString("checksum", "")
+            val isClipboard = data.optBoolean("isClipboard", false)
 
-            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal)
+            FileReceiver.handleInit(context, id, name, size, mime, chunkSize, if (checksumVal.isBlank()) null else checksumVal, isClipboard)
             Log.d(TAG, "Started incoming file transfer: $name ($size bytes)")
         } catch (e: Exception) {
             Log.e(TAG, "Error in file init: ${e.message}")
@@ -451,7 +452,9 @@ object WebSocketMessageHandler {
             val artist = music?.optString("artist", "") ?: ""
             val volume = music?.optInt("volume", 50) ?: 50
             val isMuted = music?.optBoolean("isMuted", false) ?: false
-            val albumArt = music?.optString("albumArt", "") ?: ""
+            
+            val albumArt = if (music?.has("albumArt") == true) music.optString("albumArt", "") else null
+            
             val likeStatus = music?.optString("likeStatus", "none") ?: "none"
 
             val isPaired = data.optBoolean("isPaired", true)

@@ -8,8 +8,10 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
+import com.sameerasw.airsync.R
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -25,6 +27,7 @@ object FileReceiver {
         val size: Int,
         val mime: String,
         val chunkSize: Int,
+        val isClipboard: Boolean = false,
         var checksum: String? = null,
         var receivedBytes: Int = 0,
         var index: Int = 0,
@@ -76,7 +79,7 @@ object FileReceiver {
         }
     }
 
-    fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, chunkSize: Int, checksum: String? = null) {
+    fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, chunkSize: Int, checksum: String? = null, isClipboard: Boolean = false) {
         ensureChannel(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -97,8 +100,10 @@ object FileReceiver {
                 val pfd = uri?.let { resolver.openFileDescriptor(it, "rw") }
 
                 if (uri != null && pfd != null) {
-                    incoming[id] = IncomingFileState(name = name, size = size, mime = mime, chunkSize = chunkSize, checksum = checksum, pfd = pfd, uri = uri)
-                    NotificationUtil.showFileProgress(context, id.hashCode(), name, 0, id)
+                    incoming[id] = IncomingFileState(name = name, size = size, mime = mime, chunkSize = chunkSize, isClipboard = isClipboard, checksum = checksum, pfd = pfd, uri = uri)
+                    if (!isClipboard) {
+                        NotificationUtil.showFileProgress(context, id.hashCode(), name, 0, id)
+                    }
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -183,11 +188,31 @@ object FileReceiver {
 
                 // Notify user with an action to open the file
                 val notifId = id.hashCode()
-                NotificationUtil.showFileComplete(context, notifId, state.name, verified, isSending = false, contentUri = state.uri)
+                if (!state.isClipboard) {
+                    NotificationUtil.showFileComplete(context, notifId, state.name, verified, isSending = false, contentUri = state.uri)
+                }
+
+                // If this was a clipboard sync request, copy image to clipboard
+                if (state.isClipboard) {
+                    state.uri?.let { uri ->
+                        if (state.mime.startsWith("image/")) {
+                            val copied = ClipboardUtil.copyUriToClipboard(context, uri)
+                            if (copied) {
+                                launch(Dispatchers.Main) {
+                                    Toast.makeText(context, context.getString(R.string.image_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        } else {
+                            launch(Dispatchers.Main) {
+                                Toast.makeText(context, context.getString(R.string.file_received_from_clipboard), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                }
 
                 // Send transferVerified back to sender
                 try {
-                    val verifyJson = FileTransferProtocol.buildTransferVerified(id, verified)
+                    val verifyJson = com.sameerasw.airsync.utils.transfer.FileTransferProtocol.buildTransferVerified(id, verified)
                     WebSocketUtil.sendMessage(verifyJson)
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -203,6 +228,8 @@ object FileReceiver {
 
 
     private fun updateProgressNotification(context: Context, id: String, state: IncomingFileState) {
+        if (state.isClipboard) return
+        
         val now = System.currentTimeMillis()
         val timeDiff = (now - state.lastUpdateTime) / 1000.0
         
