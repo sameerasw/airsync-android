@@ -15,7 +15,7 @@
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_WALLPAPER_INTERNAL" />
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
 
     <!-- Permission for downloading updates -->
     <uses-permission android:name="android.permission.DOWNLOAD_WITHOUT_NOTIFICATION" />
@@ -251,17 +251,10 @@
             </intent-filter>
         </receiver>
 
-        <receiver
-            android:name=".receiver.BootCompletedReceiver"
-            android:exported="true"
-            android:enabled="true">
-            <intent-filter>
-                <action android:name="android.intent.action.BOOT_COMPLETED" />
-            </intent-filter>
-        </receiver>
+
     </application>
 
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
     <queries>
         <!-- To see launchable apps -->
         <intent>

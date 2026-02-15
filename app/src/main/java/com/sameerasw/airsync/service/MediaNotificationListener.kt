@@ -356,6 +356,12 @@ class MediaNotificationListener : NotificationListenerService() {
     override fun onListenerConnected() {
         super.onListenerConnected()
         Log.d(TAG, "Notification listener connected - Ready to sync notifications")
+        // Start AirSyncService scanning when listener connects (effectively on boot)
+        try {
+            AirSyncService.startScanning(applicationContext)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start AirSyncService from listener", e)
+        }
         updateMediaInfo()
     }
 

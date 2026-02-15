@@ -17,4 +17,5 @@
     <string name="rating_prompt">Psst... You\'ve been syncing with your mac for a while now, Do you like the app? Rate and give your feedback. ♥</string>
     <string name="rate_now">Rate Now</string>
     <string name="maybe_later">Maybe Later</string>
+    <string name="no_device_connected">No device connected</string>
 </resources>

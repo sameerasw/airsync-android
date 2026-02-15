@@ -197,10 +197,9 @@ class AirSyncService : Service() {
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
-        if (isScanning) {
+        if (isScanning && connectedDeviceName == null ) {
             builder.setContentTitle(getString(R.string.app_name))
-            //builder.setContentText(getString(R.string.searching_for_devices))
-            builder.setContentText("Waiting for devices...") // Less alarming text for passive mode
+            builder.setContentText(getString(R.string.no_device_connected))
         } else {
             val name = connectedDeviceName ?: "Mac"
             builder.setContentTitle(getString(R.string.app_name))
