@@ -108,7 +108,11 @@ object MediaControlUtil {
             val controller = getActiveMediaController(context)
             // 1) Try MediaSession custom actions first (more reliable on some apps)
             if (controller != null) {
-                val currentStatus = try { MediaNotificationListener.getMediaInfo(context).likeStatus } catch (_: Exception) { "none" }
+                val currentStatus = try {
+                    MediaNotificationListener.getMediaInfo(context).likeStatus
+                } catch (_: Exception) {
+                    "none"
+                }
                 val preferUnlike = currentStatus == "liked"
                 if (performCustomLikeAction(controller, preferUnlike)) {
                     val newStatus = if (preferUnlike) "not_liked" else "liked"
@@ -126,16 +130,28 @@ object MediaControlUtil {
                 Log.w(TAG, "Notification listener not available; cannot toggle like")
                 return false
             }
-            val packageName = try { controller?.packageName } catch (_: Exception) { null }
+            val packageName = try {
+                controller?.packageName
+            } catch (_: Exception) {
+                null
+            }
 
-            val active = try { service.activeNotifications } catch (_: Exception) { emptyArray() }
+            val active = try {
+                service.activeNotifications
+            } catch (_: Exception) {
+                emptyArray()
+            }
             if (active.isEmpty()) {
                 Log.w(TAG, "No active notifications for media; cannot toggle like")
                 return false
             }
 
             // Determine current like status to pick the opposite action
-            val currentStatus = try { MediaNotificationListener.getMediaInfo(context).likeStatus } catch (_: Exception) { "none" }
+            val currentStatus = try {
+                MediaNotificationListener.getMediaInfo(context).likeStatus
+            } catch (_: Exception) {
+                "none"
+            }
             val preferUnlike = currentStatus == "liked"
 
             val candidates = if (packageName != null) {
@@ -198,19 +214,26 @@ object MediaControlUtil {
         return false
     }
 
-    private fun performCustomLikeAction(controller: MediaController, preferUnlike: Boolean): Boolean {
+    private fun performCustomLikeAction(
+        controller: MediaController,
+        preferUnlike: Boolean
+    ): Boolean {
         return try {
             val customs = controller.playbackState?.customActions ?: emptyList()
             if (customs.isEmpty()) return false
             val match = if (preferUnlike) {
                 customs.firstOrNull { ca ->
                     val s = ((ca.action ?: "") + " " + (ca.name?.toString() ?: "")).lowercase()
-                    s.contains("unlike") || s.contains("remove like") || s.contains("remove from liked") || s.contains("thumbs_down") || s.contains("dislike")
+                    s.contains("unlike") || s.contains("remove like") || s.contains("remove from liked") || s.contains(
+                        "thumbs_down"
+                    ) || s.contains("dislike")
                 }
             } else {
                 customs.firstOrNull { ca ->
                     val s = ((ca.action ?: "") + " " + (ca.name?.toString() ?: "")).lowercase()
-                    s.contains("like") || s.contains("favorite") || s.contains("favourite") || s.contains("thumbs_up") || s.contains("❤") || s.contains("♥")
+                    s.contains("like") || s.contains("favorite") || s.contains("favourite") || s.contains(
+                        "thumbs_up"
+                    ) || s.contains("❤") || s.contains("♥")
                 }
             }
             if (match != null) {
@@ -228,8 +251,16 @@ object MediaControlUtil {
         return try {
             val service = MediaNotificationListener.getInstance() ?: return false
             val controller = getActiveMediaController(context)
-            val packageName = try { controller?.packageName } catch (_: Exception) { null }
-            val active = try { service.activeNotifications } catch (_: Exception) { emptyArray() }
+            val packageName = try {
+                controller?.packageName
+            } catch (_: Exception) {
+                null
+            }
+            val active = try {
+                service.activeNotifications
+            } catch (_: Exception) {
+                emptyArray()
+            }
             val candidates = if (packageName != null) {
                 active.filter { it.packageName == packageName } + active.filter { it.packageName != packageName }
             } else active.toList()
@@ -245,13 +276,19 @@ object MediaControlUtil {
         }
     }
 
-    private fun findLikeAction(actions: Array<Notification.Action>, preferUnlike: Boolean): Notification.Action? {
+    private fun findLikeAction(
+        actions: Array<Notification.Action>,
+        preferUnlike: Boolean
+    ): Notification.Action? {
         // Heuristics: match action titles and semantic thumbs up/down
         val likePredicates = listOf<(Notification.Action) -> Boolean>(
             { a -> a.title?.toString()?.lowercase()?.contains("like") == true },
             { a -> a.title?.toString()?.lowercase()?.contains("favorite") == true },
             { a -> a.title?.toString()?.lowercase()?.contains("favourite") == true },
-            { a -> a.title?.toString()?.contains("❤") == true || a.title?.toString()?.contains("♥") == true },
+            { a ->
+                a.title?.toString()?.contains("❤") == true || a.title?.toString()
+                    ?.contains("♥") == true
+            },
             { a -> a.semanticAction == Notification.Action.SEMANTIC_ACTION_THUMBS_UP }
         )
         val unlikePredicates = listOf<(Notification.Action) -> Boolean>(
@@ -273,9 +310,10 @@ object MediaControlUtil {
      */
     private fun getActiveMediaController(context: Context): MediaController? {
         return try {
-            val mediaSessionManager = context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
+            val mediaSessionManager =
+                context.getSystemService(Context.MEDIA_SESSION_SERVICE) as MediaSessionManager
             val componentName = ComponentName(context, MediaNotificationListener::class.java)
-            
+
             val activeSessions = try {
                 mediaSessionManager.getActiveSessions(componentName)
             } catch (e: SecurityException) {
@@ -298,13 +336,14 @@ object MediaControlUtil {
      */
     private fun sendMediaButtonEvent(context: Context, keyCode: Int): Boolean {
         return try {
-            val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
+            val audioManager =
+                context.getSystemService(Context.AUDIO_SERVICE) as android.media.AudioManager
             val downEvent = KeyEvent(KeyEvent.ACTION_DOWN, keyCode)
             val upEvent = KeyEvent(KeyEvent.ACTION_UP, keyCode)
-            
+
             audioManager.dispatchMediaKeyEvent(downEvent)
             audioManager.dispatchMediaKeyEvent(upEvent)
-            
+
             Log.d(TAG, "Sent media button event: $keyCode")
             true
         } catch (e: Exception) {

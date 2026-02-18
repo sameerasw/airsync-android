@@ -6,11 +6,11 @@ import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
 import android.util.Log
+import com.sameerasw.airsync.domain.model.NetworkInfo
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
-import com.sameerasw.airsync.domain.model.NetworkInfo
 
 object NetworkMonitor {
     private const val TAG = "NetworkMonitor"
@@ -19,15 +19,17 @@ object NetworkMonitor {
      * Monitor network changes and emit new network information
      */
     fun observeNetworkChanges(context: Context): Flow<NetworkInfo> = callbackFlow {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
         fun getCurrentNetworkInfo(): NetworkInfo {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
 
             val isConnected = networkCapabilities != null &&
-                            networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            val isWifi = networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            val isWifi =
+                networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
             val ipAddress = if (isWifi) DeviceInfoUtil.getWifiIpAddress(context) else null
 
             return NetworkInfo(isConnected, isWifi, ipAddress)
@@ -48,7 +50,10 @@ object NetworkMonitor {
                 trySend(getCurrentNetworkInfo())
             }
 
-            override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
+            override fun onCapabilitiesChanged(
+                network: Network,
+                networkCapabilities: NetworkCapabilities
+            ) {
                 Log.d(TAG, "Network capabilities changed: $network")
                 trySend(getCurrentNetworkInfo())
             }

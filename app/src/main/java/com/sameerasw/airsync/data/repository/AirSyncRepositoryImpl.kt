@@ -76,8 +76,26 @@ class AirSyncRepositoryImpl(
     }
 
     // Network-aware device connections
-    override suspend fun saveNetworkDeviceConnection(deviceName: String, ourIp: String, clientIp: String, port: String, isPlus: Boolean, symmetricKey: String?, model: String?, deviceType: String?) {
-        dataStoreManager.saveNetworkDeviceConnection(deviceName, ourIp, clientIp, port, isPlus, symmetricKey, model, deviceType)
+    override suspend fun saveNetworkDeviceConnection(
+        deviceName: String,
+        ourIp: String,
+        clientIp: String,
+        port: String,
+        isPlus: Boolean,
+        symmetricKey: String?,
+        model: String?,
+        deviceType: String?
+    ) {
+        dataStoreManager.saveNetworkDeviceConnection(
+            deviceName,
+            ourIp,
+            clientIp,
+            port,
+            isPlus,
+            symmetricKey,
+            model,
+            deviceType
+        )
     }
 
     override fun getNetworkDeviceConnection(deviceName: String): Flow<NetworkDeviceConnection?> {
@@ -115,7 +133,7 @@ class AirSyncRepositoryImpl(
     override fun getClipboardSyncEnabled(): Flow<Boolean> {
         return dataStoreManager.getClipboardSyncEnabled()
     }
-    
+
     override suspend fun setClipboardHistoryEnabled(enabled: Boolean) {
         dataStoreManager.setClipboardHistoryEnabled(enabled)
     }

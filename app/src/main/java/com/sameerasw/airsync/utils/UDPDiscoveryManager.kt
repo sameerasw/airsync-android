@@ -9,15 +9,13 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
-import org.json.JSONObject
-import org.json.JSONArray
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import org.json.JSONObject
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
-import java.util.concurrent.atomic.AtomicBoolean
 
 data class DiscoveredDevice(
     val id: String,
@@ -29,7 +27,7 @@ data class DiscoveredDevice(
 ) {
     //check if it has a local IP (non-Tailscale)
     fun hasLocalIp(): Boolean = ips.any { !it.startsWith("100.") }
-    
+
     //check if it has a Tailscale IP
     fun hasTailscaleIp(): Boolean = ips.any { it.startsWith("100.") }
 
@@ -56,12 +54,15 @@ object UDPDiscoveryManager {
     private var broadcastJob: Job? = null
     private var pruningJob: Job? = null
     private var burstJob: Job? = null
-    
-    @Volatile private var isRunning = false
-    @Volatile private var currentMode = DiscoveryMode.ACTIVE
-    
+
+    @Volatile
+    private var isRunning = false
+    @Volatile
+    private var currentMode = DiscoveryMode.ACTIVE
+
     // We need to keep track if discovery was explicitly enabled/disabled by the user/system
-    @Volatile private var isDiscoveryEnabled = true
+    @Volatile
+    private var isDiscoveryEnabled = true
 
     fun start(context: Context, discoveryEnabled: Boolean = true) {
         isDiscoveryEnabled = discoveryEnabled
@@ -69,9 +70,12 @@ object UDPDiscoveryManager {
             updateBroadcastingState(context)
             return
         }
-        
+
         isRunning = true
-        Log.d(TAG, "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled, Mode: $currentMode)")
+        Log.d(
+            TAG,
+            "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled, Mode: $currentMode)"
+        )
 
         startListening(context)
         updateBroadcastingState(context)
@@ -100,7 +104,7 @@ object UDPDiscoveryManager {
 
     private fun updateBroadcastingState(context: Context) {
         broadcastJob?.cancel()
-        
+
         if (!isDiscoveryEnabled) {
             Log.d(TAG, "Discovery broadcasting disabled completely")
             _discoveredDevices.value = emptyList()
@@ -127,7 +131,7 @@ object UDPDiscoveryManager {
         broadcastJob?.cancel()
         pruningJob?.cancel()
         burstJob?.cancel()
-        
+
         try {
             socket?.close()
         } catch (e: Exception) {
@@ -136,14 +140,14 @@ object UDPDiscoveryManager {
         socket = null
         _discoveredDevices.value = emptyList()
     }
-    
+
     fun setDiscoveryEnabled(context: Context, enabled: Boolean) {
         if (isDiscoveryEnabled == enabled) return
         Log.d(TAG, "Discovery enabled changed to: $enabled")
         isDiscoveryEnabled = enabled
-        
+
         updateBroadcastingState(context)
-        
+
         if (!enabled) {
             broadcastGoodbye(context)
             _discoveredDevices.value = emptyList()
@@ -158,22 +162,22 @@ object UDPDiscoveryManager {
                 socket?.close()
                 socket = DatagramSocket(BROADCAST_PORT).apply {
                     broadcast = true
-                    reuseAddress = true 
+                    reuseAddress = true
                     soTimeout = 0
                 }
- 
+
                 val buffer = ByteArray(4096)
                 while (isRunning) {
                     try {
                         val packet = DatagramPacket(buffer, buffer.size)
                         socket?.receive(packet)
- 
+
                         val jsonString = String(packet.data, 0, packet.length)
                         handleIncomingTraffic(appContext, jsonString, packet.address.hostAddress)
                     } catch (e: Exception) {
                         if (isRunning) {
-                             Log.e(TAG, "Error receiving packet: ${e.message}")
-                             delay(1000)
+                            Log.e(TAG, "Error receiving packet: ${e.message}")
+                            delay(1000)
                         }
                     }
                 }
@@ -187,13 +191,13 @@ object UDPDiscoveryManager {
         try {
             val json = JSONObject(message)
             val type = json.optString("type")
-            
+
             when (type) {
                 "presence" -> {
                     val deviceType = json.optString("deviceType")
                     if (deviceType == "mac") {
                         handlePresenceMessage(context, json, sourceIp)
-                        
+
                         // Optimization: If we receive a presence packet in PASSIVE mode, 
                         // we might want to respond once so the Mac knows we are here,
                         // essentially performing a "lazy handshake"
@@ -204,6 +208,7 @@ object UDPDiscoveryManager {
                         }
                     }
                 }
+
                 "bye" -> {
                     val deviceType = json.optString("deviceType")
                     if (deviceType == "mac") {
@@ -212,20 +217,21 @@ object UDPDiscoveryManager {
                         _discoveredDevices.value = currentList
                     }
                 }
+
                 "wakeUpRequest" -> {
                     // Handle wake-up logic shifted from WakeupService
                     val data = if (json.has("data")) json.getJSONObject("data") else json
                     val macIp = data.optString("macIP", data.optString("macIp", ""))
                     val macPort = data.optInt("macPort", 6996)
                     val macName = data.optString("macName", "Mac")
-                    
+
                     CoroutineScope(Dispatchers.IO).launch {
                         WakeupHandler.processWakeupRequest(context, macIp, macPort, macName)
                     }
                 }
             }
         } catch (e: Exception) {
-            
+
         }
     }
 
@@ -317,17 +323,19 @@ object UDPDiscoveryManager {
         val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
         val customName = try {
             runBlocking { ds.getDeviceName().first() }
-        } catch (e: Exception) { "" }
-        
+        } catch (e: Exception) {
+            ""
+        }
+
         val deviceName = if (customName.isNotBlank()) customName else android.os.Build.MODEL
 
         val knownTargetIps = try {
-            val connections = runBlocking { 
-                ds.getAllNetworkDeviceConnections().first() 
+            val connections = runBlocking {
+                ds.getAllNetworkDeviceConnections().first()
             }
             // Extract all known IPs from all network connections
-            connections.flatMap { connection -> 
-                connection.networkConnections.values 
+            connections.flatMap { connection ->
+                connection.networkConnections.values
             }.toSet()
         } catch (e: Exception) {
             emptySet<String>()
@@ -335,14 +343,17 @@ object UDPDiscoveryManager {
 
         val expandNetworkingEnabled = try {
             runBlocking { ds.getExpandNetworkingEnabled().first() }
-        } catch (e: Exception) { true }
+        } catch (e: Exception) {
+            true
+        }
 
         // Filter out Tailscale IPs if Expanded Networking is disabled
-        val filteredLocalIps = if (expandNetworkingEnabled) allIps else allIps.filter { !it.startsWith("100.") }
+        val filteredLocalIps =
+            if (expandNetworkingEnabled) allIps else allIps.filter { !it.startsWith("100.") }
         if (filteredLocalIps.isEmpty()) return
 
         val deviceId = DeviceInfoUtil.getDeviceId(context)
-        
+
         val json = JSONObject()
         json.put("type", "presence")
         json.put("deviceType", "android")
@@ -369,15 +380,15 @@ object UDPDiscoveryManager {
                 // Log.e(TAG, "Failed broadcast from $bindIp: ${e.message}")
             }
         }
-        
+
         // 2. Send Unicast (Remote/VPN)
         if (knownTargetIps.isNotEmpty()) {
             for (targetIp in knownTargetIps) {
                 if (allIps.contains(targetIp)) continue
-                
+
                 // If Expanded Networking is disabled, don't ping Tailscale targets
                 if (!expandNetworkingEnabled && targetIp.startsWith("100.")) continue
-                
+
                 sendUnicast(targetIp, payload)
             }
         }
@@ -387,9 +398,9 @@ object UDPDiscoveryManager {
         val allIps = getAllIpAddresses()
         if (allIps.isEmpty()) return
 
-        val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+        com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
         val deviceId = DeviceInfoUtil.getDeviceId(context)
-        
+
         val json = JSONObject()
         json.put("type", "bye")
         json.put("deviceType", "android")
@@ -411,7 +422,8 @@ object UDPDiscoveryManager {
                             sender.broadcast = true
                             sender.send(packet)
                         }
-                    } catch (e: Exception) {}
+                    } catch (e: Exception) {
+                    }
                 }
                 delay(100)
             }
@@ -427,7 +439,7 @@ object UDPDiscoveryManager {
                 InetAddress.getByName(targetIp),
                 BROADCAST_PORT
             )
-            
+
             // Let OS route the unicast packet
             DatagramSocket().use { sender ->
                 sender.send(packet)
@@ -452,7 +464,10 @@ object UDPDiscoveryManager {
                 if (networkInterface.isLoopback || !networkInterface.isUp) continue
 
                 val name = networkInterface.name.lowercase()
-                if (name.contains("rmnet") || name.contains("ccmni") || name.contains("pdp") || name.contains("ppp")) {
+                if (name.contains("rmnet") || name.contains("ccmni") || name.contains("pdp") || name.contains(
+                        "ppp"
+                    )
+                ) {
                     continue
                 }
 
@@ -475,11 +490,12 @@ object UDPDiscoveryManager {
             while (isRunning) {
                 delay(PRUNE_INTERVAL_MS)
                 val now = System.currentTimeMillis()
-                val active = _discoveredDevices.value.filter { now - it.lastSeen < DEVICE_TIMEOUT_MS }
+                val active =
+                    _discoveredDevices.value.filter { now - it.lastSeen < DEVICE_TIMEOUT_MS }
                 if (active.size != _discoveredDevices.value.size) {
                     _discoveredDevices.value = active
                 }
-                
+
                 // Smart Auto-Connect logic trigger
                 // When in PASSIVE mode, if we see a device we know, try to connect!
                 if (currentMode == DiscoveryMode.PASSIVE && active.isNotEmpty()) {

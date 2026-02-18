@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -46,7 +45,9 @@ fun NotificationSyncCard(
                     checked = isNotificationSyncEnabled && isNotificationEnabled,
                     onCheckedChange = { enabled ->
                         if (isNotificationEnabled) {
-                            if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(haptics)
+                            if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
+                                haptics
+                            )
                             onToggleSync(enabled)
                         } else {
                             HapticUtil.performClick(haptics)

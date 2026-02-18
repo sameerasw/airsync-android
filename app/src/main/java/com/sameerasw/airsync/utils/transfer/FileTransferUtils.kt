@@ -1,7 +1,7 @@
 package com.sameerasw.airsync.utils.transfer
 
-import android.net.Uri
 import android.content.ContentResolver
+import android.net.Uri
 
 object FileTransferUtils {
     fun sha256Hex(bytes: ByteArray): String {

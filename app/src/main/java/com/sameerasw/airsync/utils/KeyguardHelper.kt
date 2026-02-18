@@ -18,7 +18,8 @@ object KeyguardHelper {
      */
     fun isKeyguardLocked(context: Context): Boolean {
         return try {
-            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val keyguardManager =
+                context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             keyguardManager.isKeyguardLocked
         } catch (e: Exception) {
             Log.e(TAG, "Error checking keyguard status", e)
@@ -31,7 +32,8 @@ object KeyguardHelper {
      */
     fun isKeyguardSecure(context: Context): Boolean {
         return try {
-            val keyguardManager = context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val keyguardManager =
+                context.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
             keyguardManager.isKeyguardSecure
         } catch (e: Exception) {
             Log.e(TAG, "Error checking keyguard secure status", e)
@@ -55,7 +57,8 @@ object KeyguardHelper {
         }
 
         try {
-            val keyguardManager = activity.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
+            val keyguardManager =
+                activity.getSystemService(Context.KEYGUARD_SERVICE) as KeyguardManager
 
             keyguardManager.requestDismissKeyguard(
                 activity,

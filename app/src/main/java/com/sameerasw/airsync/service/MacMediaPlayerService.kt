@@ -13,7 +13,6 @@ import android.support.v4.media.session.MediaSessionCompat
 import android.support.v4.media.session.PlaybackStateCompat
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.utils.WebSocketMessageHandler
@@ -35,7 +34,13 @@ class MacMediaPlayerService : Service() {
 
         private var serviceInstance: MacMediaPlayerService? = null
 
-        fun startMacMedia(context: android.content.Context, title: String, artist: String, isPlaying: Boolean, albumArt: Bitmap?) {
+        fun startMacMedia(
+            context: android.content.Context,
+            title: String,
+            artist: String,
+            isPlaying: Boolean,
+            albumArt: Bitmap?
+        ) {
             val intent = Intent(context, MacMediaPlayerService::class.java).apply {
                 action = ACTION_START_MAC_MEDIA
                 putExtra(EXTRA_TITLE, title)
@@ -47,7 +52,13 @@ class MacMediaPlayerService : Service() {
             serviceInstance?.updateAlbumArt(albumArt)
         }
 
-        fun updateMacMedia(context: android.content.Context, title: String, artist: String, isPlaying: Boolean, albumArt: Bitmap?) {
+        fun updateMacMedia(
+            context: android.content.Context,
+            title: String,
+            artist: String,
+            isPlaying: Boolean,
+            albumArt: Bitmap?
+        ) {
             val intent = Intent(context, MacMediaPlayerService::class.java).apply {
                 action = ACTION_UPDATE_MAC_MEDIA
                 putExtra(EXTRA_TITLE, title)
@@ -84,12 +95,14 @@ class MacMediaPlayerService : Service() {
                 val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
                 startMacMediaSession(title, artist, isPlaying)
             }
+
             ACTION_UPDATE_MAC_MEDIA -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: ""
                 val artist = intent.getStringExtra(EXTRA_ARTIST) ?: ""
                 val isPlaying = intent.getBooleanExtra(EXTRA_IS_PLAYING, false)
                 updateMacMediaSession(title, artist, isPlaying)
             }
+
             ACTION_STOP_MAC_MEDIA -> {
                 stopMacMediaSession()
             }
@@ -98,16 +111,20 @@ class MacMediaPlayerService : Service() {
                 sendMacMediaControl("play")
                 updatePlaybackState(true)
             }
+
             "MAC_MEDIA_pause" -> {
                 sendMacMediaControl("pause")
                 updatePlaybackState(false)
             }
+
             "MAC_MEDIA_next" -> {
                 sendMacMediaControl("next")
             }
+
             "MAC_MEDIA_previous" -> {
                 sendMacMediaControl("previous")
             }
+
             "MAC_MEDIA_stop" -> {
                 sendMacMediaControl("stop")
                 stopMacMediaSession()
@@ -139,7 +156,7 @@ class MacMediaPlayerService : Service() {
                 mediaSession = MediaSessionCompat(this, "MacMediaPlayer").apply {
                     setFlags(
                         MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-                        MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
+                                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
                     )
 
                     setCallback(object : MediaSessionCompat.Callback() {
@@ -212,7 +229,8 @@ class MacMediaPlayerService : Service() {
     }
 
     private fun updatePlaybackState(isPlaying: Boolean) {
-        val state = if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
+        val state =
+            if (isPlaying) PlaybackStateCompat.STATE_PLAYING else PlaybackStateCompat.STATE_PAUSED
         val actions = PlaybackStateCompat.ACTION_PLAY_PAUSE or
                 PlaybackStateCompat.ACTION_SKIP_TO_NEXT or
                 PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS or
@@ -226,7 +244,11 @@ class MacMediaPlayerService : Service() {
         )
     }
 
-    private fun createMediaNotification(title: String, artist: String, isPlaying: Boolean): Notification {
+    private fun createMediaNotification(
+        title: String,
+        artist: String,
+        isPlaying: Boolean
+    ): Notification {
         val activityIntent = Intent(this, MainActivity::class.java)
         val activityPendingIntent = PendingIntent.getActivity(
             this, 0, activityIntent, PendingIntent.FLAG_IMMUTABLE
@@ -305,7 +327,10 @@ class MacMediaPlayerService : Service() {
         try {
             // Check if we should send media control to prevent feedback loop
             if (!WebSocketMessageHandler.shouldSendMediaControl()) {
-                Log.d(TAG, "Skipping media control '$action' - currently receiving playing media from Mac")
+                Log.d(
+                    TAG,
+                    "Skipping media control '$action' - currently receiving playing media from Mac"
+                )
                 return
             }
 
@@ -325,7 +350,8 @@ class MacMediaPlayerService : Service() {
             if (metadata != null) {
                 val title = metadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE) ?: ""
                 val artist = metadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST) ?: ""
-                val isPlaying = it.controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING
+                val isPlaying =
+                    it.controller.playbackState?.state == PlaybackStateCompat.STATE_PLAYING
                 updateMacMediaSession(title, artist, isPlaying)
             }
         }

@@ -1,7 +1,6 @@
 package com.sameerasw.airsync.service
 
 import android.app.PendingIntent
-import android.content.ClipboardManager
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
@@ -9,22 +8,20 @@ import android.util.Log
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.sameerasw.airsync.R
-import com.sameerasw.airsync.utils.ClipboardSyncManager
-import com.sameerasw.airsync.utils.ClipboardUtil
+import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.cancel
-import com.sameerasw.airsync.data.local.DataStoreManager
 
 @RequiresApi(Build.VERSION_CODES.N)
 class ClipboardTileService : TileService() {
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
-    
+
     companion object {
         private const val TAG = "ClipboardTileService"
     }
@@ -58,35 +55,43 @@ class ClipboardTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        
+
         serviceScope.launch {
             val isConnected = WebSocketUtil.isConnected()
             if (isConnected) {
                 try {
                     val intent = android.content.Intent(
-                        this@ClipboardTileService, 
+                        this@ClipboardTileService,
                         com.sameerasw.airsync.presentation.ui.activities.ClipboardActionActivity::class.java
                     )
                     intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                    
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                         val pendingIntent = PendingIntent.getActivity(
-                             this@ClipboardTileService,
-                             0,
-                             intent,
-                             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                         )
-                         startActivityAndCollapse(pendingIntent)
+                        val pendingIntent = PendingIntent.getActivity(
+                            this@ClipboardTileService,
+                            0,
+                            intent,
+                            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                        )
+                        startActivityAndCollapse(pendingIntent)
                     } else {
-                         @Suppress("DEPRECATION")
-                         startActivityAndCollapse(intent)
+                        @Suppress("DEPRECATION")
+                        startActivityAndCollapse(intent)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error launching clipboard activity", e)
-                    Toast.makeText(this@ClipboardTileService, "Error launching action", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        this@ClipboardTileService,
+                        "Error launching action",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             } else {
-                Toast.makeText(this@ClipboardTileService, "Not connected to any device", Toast.LENGTH_SHORT).show()
+                Toast.makeText(
+                    this@ClipboardTileService,
+                    "Not connected to any device",
+                    Toast.LENGTH_SHORT
+                ).show()
                 updateTileState(false)
             }
         }
@@ -103,14 +108,15 @@ class ClipboardTileService : TileService() {
 
                 qsTile?.apply {
                     state = if (isConnected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-                    
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                         subtitle = if (isConnected) deviceName else getString(R.string.disconnected)
                     } else {
-                        val labelText = if (isConnected) "Send Clipboard ($deviceName)" else "Not Connected"
+                        val labelText =
+                            if (isConnected) "Send Clipboard ($deviceName)" else "Not Connected"
                         label = labelText
                     }
-                    
+
                     updateTile()
                 }
             } catch (e: Exception) {

@@ -13,9 +13,8 @@ import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
 import com.sameerasw.airsync.domain.model.NotificationApp
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import org.json.JSONObject
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "airsync_settings")
@@ -33,43 +32,54 @@ class DataStoreManager(private val context: Context) {
         private val LAST_CONNECTED_PC_PORT = stringPreferencesKey("last_connected_pc_port")
         private val LAST_CONNECTED_TIMESTAMP = stringPreferencesKey("last_connected_timestamp")
         private val LAST_CONNECTED_PC_PLUS = booleanPreferencesKey("last_connected_pc_plus")
-        private val LAST_CONNECTED_SYMMETRIC_KEY = stringPreferencesKey("last_connected_symmetric_key")
+        private val LAST_CONNECTED_SYMMETRIC_KEY =
+            stringPreferencesKey("last_connected_symmetric_key")
         private val LAST_CONNECTED_MODEL = stringPreferencesKey("last_connected_model")
         private val LAST_CONNECTED_DEVICE_TYPE = stringPreferencesKey("last_connected_device_type")
-    private val LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
-    // Widget-visible Mac status keys
-    private val MAC_BATTERY_LEVEL = intPreferencesKey("mac_battery_level")
-    private val MAC_BATTERY_CHARGING = booleanPreferencesKey("mac_battery_charging")
-    private val MAC_MUSIC_TITLE = stringPreferencesKey("mac_music_title")
-    private val MAC_MUSIC_ARTIST = stringPreferencesKey("mac_music_artist")
-    private val MAC_WIDGET_REFRESH_AT = longPreferencesKey("mac_widget_refresh_at")
+        private val LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
+
+        // Widget-visible Mac status keys
+        private val MAC_BATTERY_LEVEL = intPreferencesKey("mac_battery_level")
+        private val MAC_BATTERY_CHARGING = booleanPreferencesKey("mac_battery_charging")
+        private val MAC_MUSIC_TITLE = stringPreferencesKey("mac_music_title")
+        private val MAC_MUSIC_ARTIST = stringPreferencesKey("mac_music_artist")
+        private val MAC_WIDGET_REFRESH_AT = longPreferencesKey("mac_widget_refresh_at")
         private val NOTIFICATION_SYNC_ENABLED = booleanPreferencesKey("notification_sync_enabled")
         private val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
         private val CLIPBOARD_SYNC_ENABLED = booleanPreferencesKey("clipboard_sync_enabled")
         private val CLIPBOARD_HISTORY_ENABLED = booleanPreferencesKey("clipboard_history_enabled")
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
         private val LAST_ICON_SYNC_DATE = stringPreferencesKey("last_icon_sync_date")
-    private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
+        private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
+
         // Auto reconnect toggle
         private val AUTO_RECONNECT_ENABLED = booleanPreferencesKey("auto_reconnect_enabled")
+
         // Continue Browsing feature toggle
         private val CONTINUE_BROWSING_ENABLED = booleanPreferencesKey("continue_browsing_enabled")
+
         // Send now playing toggle
         private val SEND_NOW_PLAYING_ENABLED = booleanPreferencesKey("send_now_playing_enabled")
+
         // Keep previous link toggle
         private val KEEP_PREVIOUS_LINK_ENABLED = booleanPreferencesKey("keep_previous_link_enabled")
+
         // Always show in Smartspacer toggle
-        private val SMARTSPACER_SHOW_WHEN_DISCONNECTED = booleanPreferencesKey("smartspacer_show_when_disconnected")
+        private val SMARTSPACER_SHOW_WHEN_DISCONNECTED =
+            booleanPreferencesKey("smartspacer_show_when_disconnected")
         private val EXPAND_NETWORKING_ENABLED = booleanPreferencesKey("expand_networking_enabled")
+
         // Mac Media controls toggle (for user-initiated proof for Play Store)
         private val MAC_MEDIA_CONTROLS_ENABLED = booleanPreferencesKey("mac_media_controls_enabled")
-        
+
         // Essentials Bridge
-        private val ESSENTIALS_CONNECTION_ENABLED = booleanPreferencesKey("essentials_connection_enabled")
-        
+        private val ESSENTIALS_CONNECTION_ENABLED =
+            booleanPreferencesKey("essentials_connection_enabled")
+
         private val DEFAULT_TAB = stringPreferencesKey("default_tab")
         private val FIRST_MAC_CONNECTION_TIME = longPreferencesKey("first_mac_connection_time")
-        private val LAST_PROMPT_DISMISSED_VERSION = intPreferencesKey("last_prompt_dismissed_version")
+        private val LAST_PROMPT_DISMISSED_VERSION =
+            intPreferencesKey("last_prompt_dismissed_version")
         private val HAS_RATED_APP = booleanPreferencesKey("has_rated_app")
 
 
@@ -399,7 +409,12 @@ class DataStoreManager(private val context: Context) {
     }
 
     // --- Mac status persisted for widget ---
-    suspend fun saveMacStatusForWidget(batteryLevel: Int, isCharging: Boolean, title: String, artist: String) {
+    suspend fun saveMacStatusForWidget(
+        batteryLevel: Int,
+        isCharging: Boolean,
+        title: String,
+        artist: String
+    ) {
         context.dataStore.edit { preferences ->
             preferences[MAC_BATTERY_LEVEL] = batteryLevel
             preferences[MAC_BATTERY_CHARGING] = isCharging
@@ -427,14 +442,15 @@ class DataStoreManager(private val context: Context) {
         val artist: String?
     )
 
-    fun getMacStatusForWidget(): Flow<MacStatusSnapshot> = context.dataStore.data.map { preferences ->
-        MacStatusSnapshot(
-            batteryLevel = preferences[MAC_BATTERY_LEVEL],
-            isCharging = preferences[MAC_BATTERY_CHARGING],
-            title = preferences[MAC_MUSIC_TITLE],
-            artist = preferences[MAC_MUSIC_ARTIST]
-        )
-    }
+    fun getMacStatusForWidget(): Flow<MacStatusSnapshot> =
+        context.dataStore.data.map { preferences ->
+            MacStatusSnapshot(
+                batteryLevel = preferences[MAC_BATTERY_LEVEL],
+                isCharging = preferences[MAC_BATTERY_CHARGING],
+                title = preferences[MAC_MUSIC_TITLE],
+                artist = preferences[MAC_MUSIC_ARTIST]
+            )
+        }
 
     suspend fun saveNotificationApps(apps: List<NotificationApp>) {
         context.dataStore.edit { preferences ->
@@ -522,12 +538,23 @@ class DataStoreManager(private val context: Context) {
     }
 
     // Network-aware device connections
-    suspend fun saveNetworkDeviceConnection(deviceName: String, ourIp: String, clientIp: String, port: String, isPlus: Boolean, symmetricKey: String?, model: String? = null, deviceType: String? = null) {
+    suspend fun saveNetworkDeviceConnection(
+        deviceName: String,
+        ourIp: String,
+        clientIp: String,
+        port: String,
+        isPlus: Boolean,
+        symmetricKey: String?,
+        model: String? = null,
+        deviceType: String? = null
+    ) {
         context.dataStore.edit { preferences ->
             // Load existing connections for this device
-            val existingConnectionsJson = preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")] ?: "{}"
+            val existingConnectionsJson =
+                preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")]
+                    ?: "{}"
             val existingConnections = try {
-                val json = org.json.JSONObject(existingConnectionsJson)
+                val json = JSONObject(existingConnectionsJson)
                 val map = mutableMapOf<String, String>()
                 json.keys().forEach { key ->
                     map[key] = json.getString(key)
@@ -541,40 +568,58 @@ class DataStoreManager(private val context: Context) {
             existingConnections[ourIp] = clientIp
 
             // Convert back to JSON
-            val updatedJson = org.json.JSONObject(existingConnections).toString()
+            val updatedJson = JSONObject(existingConnections).toString()
 
             // Save device info
-            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")] = deviceName
+            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")] =
+                deviceName
             preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")] = port
-            preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")] = isPlus
+            preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")] =
+                isPlus
             symmetricKey?.let {
-                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")] = it
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")] =
+                    it
             }
             model?.let {
-                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")] = it
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")] =
+                    it
             }
             deviceType?.let {
-                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")] = it
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")] =
+                    it
             }
-            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")] = System.currentTimeMillis().toString()
-            preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")] = updatedJson
+            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")] =
+                System.currentTimeMillis().toString()
+            preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")] =
+                updatedJson
         }
     }
 
     fun getNetworkDeviceConnection(deviceName: String): Flow<NetworkDeviceConnection?> {
         return context.dataStore.data.map { preferences ->
-            val name = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")]
-            val port = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")]
-            val isPlus = preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")] ?: false
-            val symmetricKey = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
-            val model = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
-            val deviceType = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")]
-            val lastConnected = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")]?.toLongOrNull() ?: 0L
-            val connectionsJson = preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")] ?: "{}"
+            val name =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")]
+            val port =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")]
+            val isPlus =
+                preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")]
+                    ?: false
+            val symmetricKey =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
+            val model =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
+            val deviceType =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")]
+            val lastConnected =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")]?.toLongOrNull()
+                    ?: 0L
+            val connectionsJson =
+                preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")]
+                    ?: "{}"
 
             if (name != null && port != null) {
                 val connections = try {
-                    val json = org.json.JSONObject(connectionsJson)
+                    val json = JSONObject(connectionsJson)
                     val map = mutableMapOf<String, String>()
                     json.keys().forEach { key ->
                         map[key] = json.getString(key)
@@ -608,25 +653,37 @@ class DataStoreManager(private val context: Context) {
             // Extract device names from preference keys
             preferences.asMap().keys.forEach { key ->
                 if (key.name.startsWith(NETWORK_DEVICES_PREFIX) && key.name.endsWith("_name")) {
-                    val deviceName = key.name.removePrefix(NETWORK_DEVICES_PREFIX).removeSuffix("_name")
+                    val deviceName =
+                        key.name.removePrefix(NETWORK_DEVICES_PREFIX).removeSuffix("_name")
                     deviceNames.add(deviceName)
                 }
             }
 
             // Build device objects
             deviceNames.forEach { deviceName ->
-                val name = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")]
-                val port = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")]
-                val isPlus = preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")] ?: false
-                val symmetricKey = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
-                val model = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
-                val deviceType = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")]
-                val lastConnected = preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")]?.toLongOrNull() ?: 0L
-                val connectionsJson = preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")] ?: "{}"
+                val name =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")]
+                val port =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")]
+                val isPlus =
+                    preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")]
+                        ?: false
+                val symmetricKey =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
+                val model =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
+                val deviceType =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_type")]
+                val lastConnected =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")]?.toLongOrNull()
+                        ?: 0L
+                val connectionsJson =
+                    preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")]
+                        ?: "{}"
 
                 if (name != null && port != null) {
                     val connections = try {
-                        val json = org.json.JSONObject(connectionsJson)
+                        val json = JSONObject(connectionsJson)
                         val map = mutableMapOf<String, String>()
                         json.keys().forEach { key ->
                             map[key] = json.getString(key)
@@ -657,7 +714,8 @@ class DataStoreManager(private val context: Context) {
 
     suspend fun updateNetworkDeviceLastConnected(deviceName: String, timestamp: Long) {
         context.dataStore.edit { preferences ->
-            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")] = timestamp.toString()
+            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_last_connected")] =
+                timestamp.toString()
         }
     }
 
@@ -700,18 +758,22 @@ class DataStoreManager(private val context: Context) {
                         entry.put("type", "string")
                         entry.put("value", value)
                     }
+
                     is Boolean -> {
                         entry.put("type", "boolean")
                         entry.put("value", value)
                     }
+
                     is Int -> {
                         entry.put("type", "int")
                         entry.put("value", value)
                     }
+
                     is Long -> {
                         entry.put("type", "long")
                         entry.put("value", value)
                     }
+
                     else -> {
                         // Fallback to string representation
                         entry.put("type", "string")
@@ -743,7 +805,10 @@ class DataStoreManager(private val context: Context) {
             val mutedJson = root.optJSONArray("muted_apps")
             if (mutedJson != null) {
                 for (i in 0 until mutedJson.length()) {
-                    try { mutedApps.add(mutedJson.getString(i)) } catch (_: Exception) {}
+                    try {
+                        mutedApps.add(mutedJson.getString(i))
+                    } catch (_: Exception) {
+                    }
                 }
             }
 
@@ -760,16 +825,19 @@ class DataStoreManager(private val context: Context) {
                                 val v = entry.getBoolean("value")
                                 preferences[key] = v
                             }
+
                             "int" -> {
                                 val key = intPreferencesKey(keyName)
                                 val v = entry.getInt("value")
                                 preferences[key] = v
                             }
+
                             "long" -> {
                                 val key = longPreferencesKey(keyName)
                                 val v = entry.getLong("value")
                                 preferences[key] = v
                             }
+
                             else -> {
                                 val key = stringPreferencesKey(keyName)
                                 val v = entry.optString("value", "")
@@ -792,7 +860,8 @@ class DataStoreManager(private val context: Context) {
                     try {
                         val enabledKey = booleanPreferencesKey("app_${pkg}_enabled")
                         preferences[enabledKey] = false
-                    } catch (_: Exception) {}
+                    } catch (_: Exception) {
+                    }
                 }
             }
 
@@ -860,7 +929,7 @@ class DataStoreManager(private val context: Context) {
 
     fun getEssentialsConnectionEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { prefs ->
-            prefs[ESSENTIALS_CONNECTION_ENABLED] ?: false 
+            prefs[ESSENTIALS_CONNECTION_ENABLED] ?: false
         }
     }
 }

@@ -90,7 +90,10 @@ class ContactLookupHelper(private val context: Context) {
         // Check negative cache (contact doesn't exist)
         val negativeTimeMillis = negativeCache[normalizedNumber]
         if (negativeTimeMillis != null && System.currentTimeMillis() - negativeTimeMillis < NEGATIVE_CACHE_TTL) {
-            Log.d("ContactLookupHelper", "✓ Negative cache hit for: $normalizedNumber (no contact found)")
+            Log.d(
+                "ContactLookupHelper",
+                "✓ Negative cache hit for: $normalizedNumber (no contact found)"
+            )
             return@withContext null
         }
 
@@ -98,7 +101,10 @@ class ContactLookupHelper(private val context: Context) {
         val cached = contactCache[normalizedNumber]
         if (cached != null && System.currentTimeMillis() - cached.cachedAtMillis < CONTACT_CACHE_TTL) {
             if (cached.displayName != null && cached.displayName.isNotEmpty()) {
-                Log.d("ContactLookupHelper", "✓ Cache hit for: $normalizedNumber -> ${cached.displayName}")
+                Log.d(
+                    "ContactLookupHelper",
+                    "✓ Cache hit for: $normalizedNumber -> ${cached.displayName}"
+                )
                 return@withContext cached.displayName
             } else {
                 Log.d("ContactLookupHelper", "✓ Cache hit (no name) for: $normalizedNumber")
@@ -115,13 +121,17 @@ class ContactLookupHelper(private val context: Context) {
         return@withContext if (!displayName.isNullOrEmpty()) {
             // Verify the name is not just the number itself
             if (displayName == normalizedNumber || displayName == number) {
-                Log.d("ContactLookupHelper", "⚠ Lookup returned number as name, treating as unknown: $number")
+                Log.d(
+                    "ContactLookupHelper",
+                    "⚠ Lookup returned number as name, treating as unknown: $number"
+                )
                 negativeCache[normalizedNumber] = System.currentTimeMillis()
                 null
             } else {
                 // Cache the valid result
                 Log.d("ContactLookupHelper", "✓ Found contact for $normalizedNumber: $displayName")
-                contactCache[normalizedNumber] = CachedContact(displayName, System.currentTimeMillis())
+                contactCache[normalizedNumber] =
+                    CachedContact(displayName, System.currentTimeMillis())
                 negativeCache.remove(normalizedNumber)
                 displayName
             }

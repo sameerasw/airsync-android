@@ -3,12 +3,12 @@ package com.sameerasw.airsync.service
 import android.content.Context
 import android.telephony.TelephonyManager
 import android.util.Log
+import com.google.gson.Gson
 import com.sameerasw.airsync.domain.model.CallDirection
 import com.sameerasw.airsync.domain.model.CallEvent
+import com.sameerasw.airsync.utils.ContactLookupHelper
 import com.sameerasw.airsync.utils.ContactPhotoUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
-import com.google.gson.Gson
-import com.sameerasw.airsync.utils.ContactLookupHelper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -20,10 +20,10 @@ import java.util.UUID
 /**
  * Manages call state transitions and sends call events to the Mac app via WebSocket.
  * Tracks the state machine: IDLE -> RINGING -> OFFHOOK -> IDLE
- * 
+ *
  * Receives state changes from CallReceiver (BroadcastReceiver) which listens to
  * PHONE_STATE and NEW_OUTGOING_CALL broadcasts.
- * 
+ *
  * Uses debouncing to wait for complete call information before sending events.
  */
 class CallStateListener(private val context: Context) {
@@ -34,7 +34,7 @@ class CallStateListener(private val context: Context) {
         private var isIncomingCall = false
         private var callStartTime = 0L
         private var currentPhoneNumber: String? = null
-        
+
         // Debouncing: wait this long for phone number to arrive after state change
         private const val PHONE_NUMBER_WAIT_MS = 500L
         private var pendingSendJob: Job? = null
@@ -67,10 +67,13 @@ class CallStateListener(private val context: Context) {
         pendingSendJob = scope.launch {
             // Wait a bit for phone number to potentially arrive
             delay(PHONE_NUMBER_WAIT_MS)
-            
+
             // Use the stored number or the one just provided
             val phoneNumber = currentPhoneNumber
-            Log.d(TAG, "Processing state transition after delay - state: $state, phone: $phoneNumber")
+            Log.d(
+                TAG,
+                "Processing state transition after delay - state: $state, phone: $phoneNumber"
+            )
 
             when (state) {
                 TelephonyManager.CALL_STATE_RINGING -> {
@@ -83,12 +86,22 @@ class CallStateListener(private val context: Context) {
                 TelephonyManager.CALL_STATE_OFFHOOK -> {
                     if (lastState == TelephonyManager.CALL_STATE_RINGING) {
                         Log.d(TAG, "OFFHOOK: Incoming call answered - $phoneNumber")
-                        sendCallEvent(context, "offhook", CallDirection.INCOMING.apiValue, phoneNumber)
+                        sendCallEvent(
+                            context,
+                            "offhook",
+                            CallDirection.INCOMING.apiValue,
+                            phoneNumber
+                        )
                     } else {
                         isIncomingCall = false
                         callStartTime = System.currentTimeMillis()
                         Log.d(TAG, "OFFHOOK: Outgoing call started to $phoneNumber")
-                        sendCallEvent(context, "offhook", CallDirection.OUTGOING.apiValue, phoneNumber)
+                        sendCallEvent(
+                            context,
+                            "offhook",
+                            CallDirection.OUTGOING.apiValue,
+                            phoneNumber
+                        )
                     }
                 }
 
@@ -96,15 +109,31 @@ class CallStateListener(private val context: Context) {
                     when (lastState) {
                         TelephonyManager.CALL_STATE_RINGING -> {
                             Log.d(TAG, "IDLE: Missed call from $phoneNumber")
-                            sendCallEvent(context, "missed", CallDirection.INCOMING.apiValue, phoneNumber)
+                            sendCallEvent(
+                                context,
+                                "missed",
+                                CallDirection.INCOMING.apiValue,
+                                phoneNumber
+                            )
                         }
+
                         TelephonyManager.CALL_STATE_OFFHOOK -> {
                             if (isIncomingCall) {
                                 Log.d(TAG, "IDLE: Incoming call ended - $phoneNumber")
-                                sendCallEvent(context, "idle", CallDirection.INCOMING.apiValue, phoneNumber)
+                                sendCallEvent(
+                                    context,
+                                    "idle",
+                                    CallDirection.INCOMING.apiValue,
+                                    phoneNumber
+                                )
                             } else {
                                 Log.d(TAG, "IDLE: Outgoing call ended - $phoneNumber")
-                                sendCallEvent(context, "idle", CallDirection.OUTGOING.apiValue, phoneNumber)
+                                sendCallEvent(
+                                    context,
+                                    "idle",
+                                    CallDirection.OUTGOING.apiValue,
+                                    phoneNumber
+                                )
                             }
                         }
                     }
@@ -129,9 +158,12 @@ class CallStateListener(private val context: Context) {
     ) {
         try {
             val displayNumber = phoneNumber?.takeIf { it.isNotBlank() } ?: "Unknown"
-            
-            Log.d(TAG, "Preparing call event - state: $state, direction: $direction, number: $displayNumber")
-            
+
+            Log.d(
+                TAG,
+                "Preparing call event - state: $state, direction: $direction, number: $displayNumber"
+            )
+
             // Lookup contact name
             val contactName = if (displayNumber != "Unknown") {
                 try {
@@ -142,7 +174,10 @@ class CallStateListener(private val context: Context) {
                         name
                     } else {
                         if (!name.isNullOrEmpty()) {
-                            Log.d(TAG, "⚠ Contact name equals phone number, treating as unknown: $displayNumber")
+                            Log.d(
+                                TAG,
+                                "⚠ Contact name equals phone number, treating as unknown: $displayNumber"
+                            )
                         }
                         null
                     }
@@ -153,7 +188,7 @@ class CallStateListener(private val context: Context) {
             } else {
                 null
             }
-            
+
             Log.d(TAG, "Contact lookup complete - name: ${contactName ?: "Unknown"}")
 
             // Normalize phone number - validate that result is actually normalized
@@ -165,7 +200,10 @@ class CallStateListener(private val context: Context) {
                         Log.d(TAG, "✓ Number normalized: $displayNumber -> $normalized")
                         normalized
                     } else {
-                        Log.w(TAG, "⚠ Normalization failed or returned invalid format: $normalized, using original: $displayNumber")
+                        Log.w(
+                            TAG,
+                            "⚠ Normalization failed or returned invalid format: $normalized, using original: $displayNumber"
+                        )
                         displayNumber
                     }
                 } catch (e: Exception) {
@@ -210,24 +248,36 @@ class CallStateListener(private val context: Context) {
             Log.d(TAG, "  - number: ${callEvent.number}")
             Log.d(TAG, "  - normalizedNumber: ${callEvent.normalizedNumber ?: "null"}")
             Log.d(TAG, "  - contactName: ${callEvent.contactName ?: "null"}")
-            Log.d(TAG, "  - contactPhoto: ${if (callEvent.contactPhoto != null) "${callEvent.contactPhoto.length} bytes" else "null"}")
+            Log.d(
+                TAG,
+                "  - contactPhoto: ${if (callEvent.contactPhoto != null) "${callEvent.contactPhoto.length} bytes" else "null"}"
+            )
 
             // Send to Mac via WebSocket
             val gson = Gson()
             val eventJson = gson.toJson(callEvent)
-            
+
             val json = JSONObject()
             json.put("type", "call_event")
             json.put("data", JSONObject(eventJson))
 
             val messageStr = json.toString()
-            Log.d(TAG, "Sending complete call event to Mac (event_size=${messageStr.length} bytes): state=$state, number=$displayNumber")
+            Log.d(
+                TAG,
+                "Sending complete call event to Mac (event_size=${messageStr.length} bytes): state=$state, number=$displayNumber"
+            )
 
             val sent = WebSocketUtil.sendMessage(messageStr)
             if (sent) {
-                Log.d(TAG, "✅ Successfully sent call_event: state=$state, direction=$direction, number=$displayNumber, contact=$contactName, normalized=$normalizedNumber, photo=${if (contactPhoto != null) "yes" else "no"}")
+                Log.d(
+                    TAG,
+                    "✅ Successfully sent call_event: state=$state, direction=$direction, number=$displayNumber, contact=$contactName, normalized=$normalizedNumber, photo=${if (contactPhoto != null) "yes" else "no"}"
+                )
             } else {
-                Log.w(TAG, "❌ Failed to send call_event - WebSocket not connected. Will retry on next broadcast.")
+                Log.w(
+                    TAG,
+                    "❌ Failed to send call_event - WebSocket not connected. Will retry on next broadcast."
+                )
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending call event", e)

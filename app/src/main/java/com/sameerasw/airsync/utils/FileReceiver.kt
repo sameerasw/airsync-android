@@ -1,7 +1,5 @@
 package com.sameerasw.airsync.utils
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -9,15 +7,13 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
-import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.utils.transfer.FileTransferProtocol
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import java.io.OutputStream
 import java.util.concurrent.ConcurrentHashMap
-import com.sameerasw.airsync.utils.transfer.FileTransferProtocol
 
 object FileReceiver {
     private const val CHANNEL_ID = "airsync_file_transfer"
@@ -46,7 +42,9 @@ object FileReceiver {
             incoming.remove(id)?.let { state ->
                 try {
                     state.pfd?.close()
-                } catch (e: Exception) { e.printStackTrace() }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
             }
         }
     }
@@ -59,7 +57,7 @@ object FileReceiver {
     fun cancelTransfer(context: Context, id: String) {
         val state = incoming.remove(id) ?: return
         Log.d("FileReceiver", "Cancelling incoming transfer $id")
-        
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Close and delete
@@ -67,7 +65,7 @@ object FileReceiver {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     state.uri?.let { context.contentResolver.delete(it, null, null) }
                 }
-                
+
                 // Cancel notification
                 NotificationManagerCompat.from(context).cancel(id.hashCode())
 
@@ -79,7 +77,16 @@ object FileReceiver {
         }
     }
 
-    fun handleInit(context: Context, id: String, name: String, size: Int, mime: String, chunkSize: Int, checksum: String? = null, isClipboard: Boolean = false) {
+    fun handleInit(
+        context: Context,
+        id: String,
+        name: String,
+        size: Int,
+        mime: String,
+        chunkSize: Int,
+        checksum: String? = null,
+        isClipboard: Boolean = false
+    ) {
         ensureChannel(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -100,7 +107,16 @@ object FileReceiver {
                 val pfd = uri?.let { resolver.openFileDescriptor(it, "rw") }
 
                 if (uri != null && pfd != null) {
-                    incoming[id] = IncomingFileState(name = name, size = size, mime = mime, chunkSize = chunkSize, isClipboard = isClipboard, checksum = checksum, pfd = pfd, uri = uri)
+                    incoming[id] = IncomingFileState(
+                        name = name,
+                        size = size,
+                        mime = mime,
+                        chunkSize = chunkSize,
+                        isClipboard = isClipboard,
+                        checksum = checksum,
+                        pfd = pfd,
+                        uri = uri
+                    )
                     if (!isClipboard) {
                         NotificationUtil.showFileProgress(context, id.hashCode(), name, 0, id)
                     }
@@ -116,7 +132,7 @@ object FileReceiver {
             try {
                 val state = incoming[id] ?: return@launch
                 val bytes = android.util.Base64.decode(base64Chunk, android.util.Base64.NO_WRAP)
-                
+
                 synchronized(state) {
                     state.pfd?.fileDescriptor?.let { fd ->
                         val channel = java.io.FileOutputStream(fd).channel
@@ -127,7 +143,7 @@ object FileReceiver {
                         state.index = index
                     }
                 }
-                
+
                 updateProgressNotification(context, id, state)
                 // send ack for this chunk
                 try {
@@ -175,7 +191,8 @@ object FileReceiver {
                                 digest.update(buffer, 0, read)
                                 read = input.read(buffer)
                             }
-                            val computed = digest.digest().joinToString("") { String.format("%02x", it) }
+                            val computed =
+                                digest.digest().joinToString("") { String.format("%02x", it) }
                             val expected = state.checksum
                             if (expected != null && expected != computed) {
                                 verified = false
@@ -189,7 +206,14 @@ object FileReceiver {
                 // Notify user with an action to open the file
                 val notifId = id.hashCode()
                 if (!state.isClipboard) {
-                    NotificationUtil.showFileComplete(context, notifId, state.name, verified, isSending = false, contentUri = state.uri)
+                    NotificationUtil.showFileComplete(
+                        context,
+                        notifId,
+                        state.name,
+                        verified,
+                        isSending = false,
+                        contentUri = state.uri
+                    )
                 }
 
                 // If this was a clipboard sync request, copy image to clipboard
@@ -199,12 +223,20 @@ object FileReceiver {
                             val copied = ClipboardUtil.copyUriToClipboard(context, uri)
                             if (copied) {
                                 launch(Dispatchers.Main) {
-                                    Toast.makeText(context, context.getString(R.string.image_copied_to_clipboard), Toast.LENGTH_SHORT).show()
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.image_copied_to_clipboard),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
                                 }
                             }
                         } else {
                             launch(Dispatchers.Main) {
-                                Toast.makeText(context, context.getString(R.string.file_received_from_clipboard), Toast.LENGTH_SHORT).show()
+                                Toast.makeText(
+                                    context,
+                                    context.getString(R.string.file_received_from_clipboard),
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         }
                     }
@@ -212,7 +244,11 @@ object FileReceiver {
 
                 // Send transferVerified back to sender
                 try {
-                    val verifyJson = com.sameerasw.airsync.utils.transfer.FileTransferProtocol.buildTransferVerified(id, verified)
+                    val verifyJson =
+                        FileTransferProtocol.buildTransferVerified(
+                            id,
+                            verified
+                        )
                     WebSocketUtil.sendMessage(verifyJson)
                 } catch (e: Exception) {
                     e.printStackTrace()
@@ -226,17 +262,16 @@ object FileReceiver {
     }
 
 
-
     private fun updateProgressNotification(context: Context, id: String, state: IncomingFileState) {
         if (state.isClipboard) return
-        
+
         val now = System.currentTimeMillis()
         val timeDiff = (now - state.lastUpdateTime) / 1000.0
-        
+
         if (timeDiff >= 1.0) {
             val bytesDiff = state.receivedBytes - state.bytesAtLastUpdate
             val intervalSpeed = if (timeDiff > 0) bytesDiff / timeDiff else 0.0
-            
+
             val alpha = 0.4
             val lastSpeed = state.smoothedSpeed
             val newSpeed = if (lastSpeed != null) {
@@ -245,12 +280,12 @@ object FileReceiver {
                 intervalSpeed
             }
             state.smoothedSpeed = newSpeed
-            
+
             var etaString: String? = null
             if (newSpeed > 0) {
                 val remainingBytes = (state.size - state.receivedBytes).coerceAtLeast(0)
                 val secondsRemaining = (remainingBytes / newSpeed).toLong()
-                
+
                 etaString = if (secondsRemaining < 60) {
                     "$secondsRemaining sec remaining"
                 } else {
@@ -258,15 +293,31 @@ object FileReceiver {
                     "$mins min remaining"
                 }
             }
-            
+
             state.lastUpdateTime = now
             state.bytesAtLastUpdate = state.receivedBytes
-            
+
             val percent = if (state.size > 0) (state.receivedBytes * 100 / state.size) else 0
-            NotificationUtil.showFileProgress(context, id.hashCode(), state.name, percent, id, isSending = false, etaString = etaString)
+            NotificationUtil.showFileProgress(
+                context,
+                id.hashCode(),
+                state.name,
+                percent,
+                id,
+                isSending = false,
+                etaString = etaString
+            )
         } else if (state.receivedBytes == 0) {
             // Initial
-            NotificationUtil.showFileProgress(context, id.hashCode(), state.name, 0, id, isSending = false, etaString = "Calculating...")
+            NotificationUtil.showFileProgress(
+                context,
+                id.hashCode(),
+                state.name,
+                0,
+                id,
+                isSending = false,
+                etaString = "Calculating..."
+            )
             state.lastUpdateTime = now
             state.bytesAtLastUpdate = 0
         }

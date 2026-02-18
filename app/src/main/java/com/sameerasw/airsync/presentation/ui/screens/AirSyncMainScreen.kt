@@ -11,85 +11,109 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.draw.alpha
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Gamepad
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Phonelink
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.LinkOff
+import androidx.compose.material.icons.filled.Phonelink
+import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Phonelink
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Gamepad
-import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
-import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
-import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
+import androidx.core.net.toUri
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
-import com.sameerasw.airsync.utils.ClipboardSyncManager
-import com.sameerasw.airsync.utils.JsonUtil
-import com.sameerasw.airsync.utils.WebSocketUtil
-import com.sameerasw.airsync.utils.HapticUtil
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
-import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
-import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
-import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
-import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
-import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
-import org.json.JSONObject
-import kotlinx.coroutines.Job
-import java.net.URLDecoder
-import androidx.core.net.toUri
 import androidx.navigation.compose.rememberNavController
+import com.sameerasw.airsync.R
+import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
+import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
+import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
+import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
+import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
+import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.components.sheets.AboutBottomSheet
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
+import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
+import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
+import com.sameerasw.airsync.utils.ClipboardSyncManager
+import com.sameerasw.airsync.utils.HapticUtil
+import com.sameerasw.airsync.utils.JsonUtil
+import com.sameerasw.airsync.utils.WebSocketUtil
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import com.sameerasw.airsync.R
+import java.net.URLDecoder
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3ExpressiveApi::class
+)
 @Composable
 fun AirSyncMainScreen(
     modifier: Modifier = Modifier,
@@ -125,7 +149,8 @@ fun AirSyncMainScreen(
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
     var hasAppliedInitialTab by remember { mutableStateOf(false) }
-    val pagerState = rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
+    val pagerState =
+        rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
@@ -151,6 +176,7 @@ fun AirSyncMainScreen(
                         // Check if music is playing on Mac
                         if (uiState.macDeviceStatus?.music?.isPlaying == true) 1 else 2
                     }
+
                     else -> 0
                 }
                 if (targetPage > 0 && targetPage < (if (uiState.isConnected) 4 else 2)) {
@@ -164,13 +190,14 @@ fun AirSyncMainScreen(
     // For export/import flow
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
 
-    val navController = rememberNavController()
-    var showAboutDialogState by remember { mutableStateOf(false) }
-    val exitAlwaysScrollBehavior = FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
+    rememberNavController()
+    val exitAlwaysScrollBehavior =
+        FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
 
     fun connect(deviceId: String? = null) {
         // Check if critical permissions are missing
-        val criticalPermissions = com.sameerasw.airsync.utils.PermissionUtil.getCriticalMissingPermissions(context)
+        val criticalPermissions =
+            com.sameerasw.airsync.utils.PermissionUtil.getCriticalMissingPermissions(context)
         if (criticalPermissions.isNotEmpty()) {
             Toast.makeText(context, "Missing permissions", Toast.LENGTH_SHORT).show()
             return
@@ -191,7 +218,10 @@ fun AirSyncMainScreen(
                     manualAttempt = true,
                     onHandshakeTimeout = {
                         scope.launch(Dispatchers.Main) {
-                            try { haptics.performHapticFeedback(HapticFeedbackType.LongPress) } catch (_: Exception) {}
+                            try {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            } catch (_: Exception) {
+                            }
                             viewModel.setConnectionStatus(isConnected = false, isConnecting = false)
                             WebSocketUtil.disconnect(context)
                             viewModel.showAuthFailure(
@@ -209,7 +239,7 @@ fun AirSyncMainScreen(
                         }
                     }
                 )
-                
+
                 // Wait for the connection result
                 while (connectionResult == null) {
                     delay(100)
@@ -219,7 +249,10 @@ fun AirSyncMainScreen(
 
             if (result == null) {
                 // Timeout occurred
-                try { haptics.performHapticFeedback(HapticFeedbackType.LongPress) } catch (_: Exception) {}
+                try {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                } catch (_: Exception) {
+                }
                 viewModel.setConnectionStatus(isConnected = false, isConnecting = false)
                 WebSocketUtil.disconnect(context)
                 Toast.makeText(context, "Connection Timed Out", Toast.LENGTH_SHORT).show()
@@ -286,7 +319,8 @@ fun AirSyncMainScreen(
         viewModel.setLoading(true)
         scope.launch(Dispatchers.IO) {
             try {
-                val input = context.contentResolver.openInputStream(uri)?.bufferedReader()?.use { it.readText() }
+                val input = context.contentResolver.openInputStream(uri)?.bufferedReader()
+                    ?.use { it.readText() }
                 if (input == null) {
                     scope.launch(Dispatchers.Main) {
                         Toast.makeText(context, "Failed to read file", Toast.LENGTH_LONG).show()
@@ -301,7 +335,8 @@ fun AirSyncMainScreen(
                         Toast.makeText(context, "Import successful", Toast.LENGTH_SHORT).show()
                         viewModel.initializeState(context)
                     } else {
-                        Toast.makeText(context, "Import failed or invalid file", Toast.LENGTH_LONG).show()
+                        Toast.makeText(context, "Import failed or invalid file", Toast.LENGTH_LONG)
+                            .show()
                     }
                     viewModel.setLoading(false)
                 }
@@ -325,11 +360,11 @@ fun AirSyncMainScreen(
                 // Parse the QR code (expected format: airsync://ip:port?name=...&plus=...&key=...)
                 try {
                     val uri = qrCode.toUri()
-                    
+
                     // Handle potential multiple IPs in host part (e.g., ip1,ip2,ip3)
                     var ip = uri.host ?: ""
                     var port = uri.port.takeIf { it != -1 }?.toString() ?: ""
-                    
+
                     if (ip.isEmpty() || port.isEmpty()) {
                         // Fallback manual parsing if URI host is null due to commas
                         val authority = qrCode.substringAfter("://").substringBefore("?")
@@ -379,7 +414,11 @@ fun AirSyncMainScreen(
                         Toast.makeText(context, "Invalid QR code format", Toast.LENGTH_SHORT).show()
                     }
                 } catch (e: Exception) {
-                    Toast.makeText(context, "Failed to parse QR code: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(
+                        context,
+                        "Failed to parse QR code: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
                 }
             }
         }
@@ -397,7 +436,15 @@ fun AirSyncMainScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.initializeState(context, initialIp, initialPort, showConnectionDialog && !hasProcessedQrDialog, pcName, isPlus, symmetricKey)
+        viewModel.initializeState(
+            context,
+            initialIp,
+            initialPort,
+            showConnectionDialog && !hasProcessedQrDialog,
+            pcName,
+            isPlus,
+            symmetricKey
+        )
 
         // Start network monitoring for dynamic Wi-Fi changes
         viewModel.startNetworkMonitoring(context)
@@ -474,7 +521,10 @@ fun AirSyncMainScreen(
 
     LaunchedEffect(Unit) {
         com.sameerasw.airsync.utils.WebSocketMessageHandler.setOnClipboardEntryCallback { text ->
-            Log.d("AirSyncMainScreen", "Incoming clipboard update via WebSocketMessageHandler: ${text.take(50)}")
+            Log.d(
+                "AirSyncMainScreen",
+                "Incoming clipboard update via WebSocketMessageHandler: ${text.take(50)}"
+            )
             viewModel.addClipboardEntry(text, isFromPc = true)
         }
     }
@@ -542,48 +592,50 @@ fun AirSyncMainScreen(
         }
     }
 
-        // Define tabs
-        val tabs = remember(uiState.isConnected) {
-            if (uiState.isConnected) {
-                listOf(
-                    AirSyncTab("Connect", Icons.Outlined.Phonelink, 0),
-                    AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
-                    AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
-                    AirSyncTab("Settings", Icons.Filled.Settings, 3)
-                )
-            } else {
-                listOf(
-                     AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
-                     AirSyncTab("Settings", Icons.Filled.Settings, 1)
-                )
-            }
+    // Define tabs
+    val tabs = remember(uiState.isConnected) {
+        if (uiState.isConnected) {
+            listOf(
+                AirSyncTab("Connect", Icons.Outlined.Phonelink, 0),
+                AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
+                AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
+                AirSyncTab("Settings", Icons.Filled.Settings, 3)
+            )
+        } else {
+            listOf(
+                AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
+                AirSyncTab("Settings", Icons.Filled.Settings, 1)
+            )
         }
+    }
 
-        // Update title based on current tab
-        LaunchedEffect(pagerState.currentPage, tabs) {
-            val currentTab = tabs.getOrNull(pagerState.currentPage)
-            if (currentTab != null) {
-                val title = if (currentTab.title == "Connect") "AirSync" else currentTab.title
-                onTitleChange(title)
-            }
+    // Update title based on current tab
+    LaunchedEffect(pagerState.currentPage, tabs) {
+        val currentTab = tabs.getOrNull(pagerState.currentPage)
+        if (currentTab != null) {
+            val title = if (currentTab.title == "Connect") "AirSync" else currentTab.title
+            onTitleChange(title)
         }
+    }
 
-        Scaffold(
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(
-                    if (pagerState.currentPage != 2) exitAlwaysScrollBehavior
-                    else remember { object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {} }
-                ),
-            containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ) { innerPadding ->
-            // Track page changes for haptic feedback on swipe
-            LaunchedEffect(pagerState.currentPage) {
-                snapshotFlow { pagerState.currentPage }.collect { _ ->
-                    HapticUtil.performLightTick(haptics)
+    Scaffold(
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(
+                if (pagerState.currentPage != 2) exitAlwaysScrollBehavior
+                else remember {
+                    object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
                 }
+            ),
+        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+    ) { innerPadding ->
+        // Track page changes for haptic feedback on swipe
+        LaunchedEffect(pagerState.currentPage) {
+            snapshotFlow { pagerState.currentPage }.collect { _ ->
+                HapticUtil.performLightTick(haptics)
             }
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             HorizontalPager(
@@ -602,11 +654,11 @@ fun AirSyncMainScreen(
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
-    
+
                             Spacer(modifier = Modifier.height(0.dp))
-    
+
                             RoundedCardContainer {
-    
+
                                 // Rating Prompt Card
                                 AnimatedVisibility(
                                     visible = uiState.shouldShowRatingPrompt,
@@ -629,8 +681,8 @@ fun AirSyncMainScreen(
                                     uiState = uiState,
                                 )
                             }
-    
-                            RoundedCardContainer{
+
+                            RoundedCardContainer {
                                 // Nearby Devices (UDP Discovery)
                                 val discoveredDevices by viewModel.discoveredDevices.collectAsState()
 
@@ -681,7 +733,9 @@ fun AirSyncMainScreen(
                                     ) {
                                         Column(modifier = Modifier.padding(16.dp)) {
                                             Row(
-                                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(bottom = 12.dp),
                                                 horizontalArrangement = Arrangement.SpaceBetween,
                                                 verticalAlignment = Alignment.CenterVertically
                                             ) {
@@ -690,19 +744,24 @@ fun AirSyncMainScreen(
                                                     style = MaterialTheme.typography.titleMedium,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
-                                                
+
                                                 Switch(
                                                     checked = uiState.isDeviceDiscoveryEnabled,
                                                     onCheckedChange = { enabled ->
                                                         HapticUtil.performClick(haptics)
-                                                        viewModel.setDeviceDiscoveryEnabled(context, enabled)
+                                                        viewModel.setDeviceDiscoveryEnabled(
+                                                            context,
+                                                            enabled
+                                                        )
                                                     },
                                                     thumbContent = if (uiState.isDeviceDiscoveryEnabled) {
                                                         {
                                                             Icon(
                                                                 painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
                                                                 contentDescription = null,
-                                                                modifier = Modifier.size(SwitchDefaults.IconSize),
+                                                                modifier = Modifier.size(
+                                                                    SwitchDefaults.IconSize
+                                                                ),
                                                             )
                                                         }
                                                     } else null
@@ -718,7 +777,9 @@ fun AirSyncMainScreen(
                                                     if (discoveredDevices.isEmpty()) {
                                                         Row(
                                                             verticalAlignment = Alignment.CenterVertically,
-                                                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                                                            horizontalArrangement = Arrangement.spacedBy(
+                                                                4.dp
+                                                            )
                                                         ) {
                                                             LoadingIndicator()
 
@@ -736,7 +797,9 @@ fun AirSyncMainScreen(
                                                             HorizontalDivider(
                                                                 modifier = Modifier.padding(vertical = 8.dp),
                                                                 thickness = 0.5.dp,
-                                                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                                                                color = MaterialTheme.colorScheme.outlineVariant.copy(
+                                                                    alpha = 0.5f
+                                                                )
                                                             )
                                                         }
 
@@ -747,7 +810,9 @@ fun AirSyncMainScreen(
                                                                     HapticUtil.performClick(haptics)
                                                                     viewModel.updateIpAddress(device.getBestIp())
                                                                     viewModel.updatePort(device.port.toString())
-                                                                    viewModel.updateManualPcName(device.name)
+                                                                    viewModel.updateManualPcName(
+                                                                        device.name
+                                                                    )
                                                                     connect(device.id)
                                                                 }
                                                                 .padding(vertical = 4.dp),
@@ -761,22 +826,41 @@ fun AirSyncMainScreen(
                                                             Spacer(modifier = Modifier.width(12.dp))
                                                             Column {
                                                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                    Text(text = device.name, style = MaterialTheme.typography.bodyLarge)
-                                                                    Spacer(modifier = Modifier.width(8.dp))
+                                                                    Text(
+                                                                        text = device.name,
+                                                                        style = MaterialTheme.typography.bodyLarge
+                                                                    )
+                                                                    Spacer(
+                                                                        modifier = Modifier.width(
+                                                                            8.dp
+                                                                        )
+                                                                    )
                                                                     if (device.hasLocalIp()) {
                                                                         Icon(
-                                                                            painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
+                                                                            painter = painterResource(
+                                                                                R.drawable.rounded_android_wifi_3_bar_24
+                                                                            ),
                                                                             contentDescription = "Wi-Fi",
-                                                                            modifier = Modifier.size(14.dp),
+                                                                            modifier = Modifier.size(
+                                                                                14.dp
+                                                                            ),
                                                                             tint = MaterialTheme.colorScheme.primary
                                                                         )
                                                                     }
                                                                     if (device.hasTailscaleIp()) {
-                                                                        if (device.hasLocalIp()) Spacer(modifier = Modifier.width(4.dp))
+                                                                        if (device.hasLocalIp()) Spacer(
+                                                                            modifier = Modifier.width(
+                                                                                4.dp
+                                                                            )
+                                                                        )
                                                                         Icon(
-                                                                            painter = painterResource(R.drawable.rounded_network_node_24),
+                                                                            painter = painterResource(
+                                                                                R.drawable.rounded_network_node_24
+                                                                            ),
                                                                             contentDescription = "Tailscale",
-                                                                            modifier = Modifier.size(14.dp),
+                                                                            modifier = Modifier.size(
+                                                                                14.dp
+                                                                            ),
                                                                             tint = MaterialTheme.colorScheme.secondary
                                                                         )
                                                                     }
@@ -829,10 +913,11 @@ fun AirSyncMainScreen(
                                     }
                                 }
                             }
-    
+
                             Spacer(modifier = Modifier.height(24.dp))
                         }
                     }
+
                     1 -> {
                         if (uiState.isConnected) {
                             // When connected: page 1 = Remote
@@ -865,6 +950,7 @@ fun AirSyncMainScreen(
                             )
                         }
                     }
+
                     2 -> {
                         if (uiState.isConnected) {
                             // When connected: page 2 = Clipboard
@@ -887,6 +973,7 @@ fun AirSyncMainScreen(
                             Box(Modifier.fillMaxSize())
                         }
                     }
+
                     3 -> {
                         // Page 3 only exists when connected = Settings tab
                         SettingsView(
@@ -938,9 +1025,11 @@ fun AirSyncMainScreen(
                                 "Remote" -> {
                                     showKeyboard = !showKeyboard
                                 }
+
                                 "Clipboard" -> {
                                     viewModel.clearClipboardHistory()
                                 }
+
                                 else -> { // Connect or Settings
                                     if (uiState.isConnected) {
                                         disconnect()
@@ -955,14 +1044,22 @@ fun AirSyncMainScreen(
                             "Remote" -> {
                                 Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
                             }
+
                             "Clipboard" -> {
                                 Icon(Icons.Rounded.Delete, contentDescription = "Clear History")
                             }
+
                             else -> { // Connect or Settings
                                 if (uiState.isConnected) {
-                                    Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
+                                    Icon(
+                                        imageVector = Icons.Filled.LinkOff,
+                                        contentDescription = "Disconnect"
+                                    )
                                 } else {
-                                    Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
+                                    Icon(
+                                        imageVector = Icons.Filled.QrCodeScanner,
+                                        contentDescription = "Scan QR"
+                                    )
                                 }
                             }
                         }

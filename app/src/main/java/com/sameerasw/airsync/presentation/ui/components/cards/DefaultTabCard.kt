@@ -1,20 +1,33 @@
 package com.sameerasw.airsync.presentation.ui.components.cards
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Phonelink
-import androidx.compose.material3.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.utils.HapticUtil
-import androidx.compose.ui.platform.LocalHapticFeedback
 
 @Composable
 fun DefaultTabCard(
@@ -40,9 +53,9 @@ fun DefaultTabCard(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(18.dp, Alignment.CenterHorizontally)
@@ -51,36 +64,36 @@ fun DefaultTabCard(
                     title = "Connect",
                     icon = Icons.Filled.Phonelink,
                     isSelected = currentDefaultTab == "connect",
-                    onClick = { 
+                    onClick = {
                         HapticUtil.performClick(haptics)
-                        onDefaultTabChange("connect") 
+                        onDefaultTabChange("connect")
                     }
                 )
                 TabOption(
                     title = "Remote",
                     icon = Icons.Filled.Gamepad,
                     isSelected = currentDefaultTab == "remote",
-                    onClick = { 
+                    onClick = {
                         HapticUtil.performClick(haptics)
-                        onDefaultTabChange("remote") 
+                        onDefaultTabChange("remote")
                     }
                 )
                 TabOption(
                     title = "Clipboard",
                     icon = Icons.Filled.ContentPaste,
                     isSelected = currentDefaultTab == "clipboard",
-                    onClick = { 
+                    onClick = {
                         HapticUtil.performClick(haptics)
-                        onDefaultTabChange("clipboard") 
+                        onDefaultTabChange("clipboard")
                     }
                 )
                 TabOption(
                     title = "Dynamic",
                     iconRes = R.drawable.rounded_asterisk_24,
                     isSelected = currentDefaultTab == "dynamic",
-                    onClick = { 
+                    onClick = {
                         HapticUtil.performClick(haptics)
-                        onDefaultTabChange("dynamic") 
+                        onDefaultTabChange("dynamic")
                     }
                 )
             }

@@ -9,7 +9,8 @@ object FileTransferProtocol {
         chunkSize: Int,
         checksum: String?
     ): String {
-        val checksumLine = if (checksum.isNullOrBlank()) "" else "\n            ,\"checksum\": \"$checksum\""
+        val checksumLine =
+            if (checksum.isNullOrBlank()) "" else "\n            ,\"checksum\": \"$checksum\""
         return """
         {
             "type": "fileTransferInit",
@@ -36,7 +37,8 @@ object FileTransferProtocol {
     """.trimIndent()
 
     fun buildComplete(id: String, name: String, size: Long, checksum: String?): String {
-        val checksumLine = if (checksum.isNullOrBlank()) "" else "\n                ,\"checksum\": \"$checksum\""
+        val checksumLine =
+            if (checksum.isNullOrBlank()) "" else "\n                ,\"checksum\": \"$checksum\""
         return """
         {
             "type": "fileTransferComplete",

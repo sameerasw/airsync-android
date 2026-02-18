@@ -7,16 +7,16 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import com.sameerasw.airsync.R
 import androidx.core.net.toUri
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.service.NotificationActionReceiver
 
 object NotificationUtil {
     private const val FILE_CHANNEL_ID = "airsync_file_transfer"
+
     // New: Continue Browsing channel
     private const val CONTINUE_CHANNEL_ID = "airsync_continue_browsing"
 
@@ -53,10 +53,18 @@ object NotificationUtil {
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showFileProgress(context: Context, notifId: Int, fileName: String, percent: Int, transferId: String, isSending: Boolean = false, etaString: String? = null) {
+    fun showFileProgress(
+        context: Context,
+        notifId: Int,
+        fileName: String,
+        percent: Int,
+        transferId: String,
+        isSending: Boolean = false,
+        etaString: String? = null
+    ) {
         createFileChannel(context)
         val manager = NotificationManagerCompat.from(context)
-        
+
         // Cancel intent
         val cancelIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = NotificationActionReceiver.ACTION_CANCEL_TRANSFER
@@ -71,8 +79,9 @@ object NotificationUtil {
 
         val modeTitle = if (isSending) "Sending" else "Receiving"
         val title = "$modeTitle: $fileName"
-        val icon = if (isSending) android.R.drawable.stat_sys_upload else android.R.drawable.stat_sys_download
-        
+        val icon =
+            if (isSending) android.R.drawable.stat_sys_upload else android.R.drawable.stat_sys_download
+
         val chipText = "$percent%"
         val bodyText = if (etaString != null) "$percent% • $etaString" else "$percent%"
 
@@ -90,25 +99,36 @@ object NotificationUtil {
             .setColorized(false)
             .setShowWhen(false)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPending)
-        
+
         try {
-            builder.javaClass.getMethod("setRequestPromotedOngoing", Boolean::class.javaPrimitiveType)
+            builder.javaClass.getMethod(
+                "setRequestPromotedOngoing",
+                Boolean::class.javaPrimitiveType
+            )
                 .invoke(builder, true)
             builder.javaClass.getMethod("setShortCriticalText", CharSequence::class.java)
                 .invoke(builder, chipText)
-        } catch (_: Throwable) {}
+        } catch (_: Throwable) {
+        }
 
         // Extras for Promoted Ongoing
         val extras = android.os.Bundle()
         extras.putBoolean("android.requestPromotedOngoing", true)
         extras.putString("android.shortCriticalText", chipText)
         builder.addExtras(extras)
-        
+
         manager.notify(notifId, builder.build())
     }
 
     @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
-    fun showFileComplete(context: Context, notifId: Int, fileName: String, success: Boolean, isSending: Boolean = false, contentUri: Uri? = null) {
+    fun showFileComplete(
+        context: Context,
+        notifId: Int,
+        fileName: String,
+        success: Boolean,
+        isSending: Boolean = false,
+        contentUri: Uri? = null
+    ) {
         createFileChannel(context)
         val manager = NotificationManagerCompat.from(context)
         manager.cancel(notifId)
@@ -120,11 +140,13 @@ object NotificationUtil {
         if (isSending) {
             title = if (success) "Sent: $fileName" else "Sending failed: $fileName"
             text = if (success) "Transfer complete" else "Could not send file"
-            icon = if (success) android.R.drawable.stat_sys_upload_done else android.R.drawable.stat_notify_error
+            icon =
+                if (success) android.R.drawable.stat_sys_upload_done else android.R.drawable.stat_notify_error
         } else {
             title = if (success) "Received: $fileName" else "Download failed: $fileName"
             text = if (success) "Saved to Downloads" else "Verification failed"
-            icon = if (success) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error
+            icon =
+                if (success) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error
         }
 
         val builder = NotificationCompat.Builder(context, FILE_CHANNEL_ID)
@@ -149,7 +171,7 @@ object NotificationUtil {
             builder.setContentIntent(pending)
             builder.addAction(android.R.drawable.ic_menu_view, "Open", pending)
         }
-        
+
         val notif = builder.build()
         manager.notify(notifId, notif)
     }
@@ -167,7 +189,8 @@ object NotificationUtil {
 
         // Normalize only for the open intent (keep text as-is)
         val trimmed = url.trim()
-        val normalized = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "http://$trimmed"
+        val normalized =
+            if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "http://$trimmed"
 
         val openIntent = Intent(Intent.ACTION_VIEW, normalized.toUri())
         val openPending = PendingIntent.getActivity(
@@ -204,7 +227,10 @@ object NotificationUtil {
         try {
             manager.notify(notifId, builder.build())
         } catch (e: SecurityException) {
-            android.util.Log.w("NotificationUtil", "Failed to show continue-browsing notification: ${e.message}")
+            android.util.Log.w(
+                "NotificationUtil",
+                "Failed to show continue-browsing notification: ${e.message}"
+            )
         }
     }
 
@@ -217,7 +243,10 @@ object NotificationUtil {
                 }
             }
         } catch (e: Exception) {
-            android.util.Log.w("NotificationUtil", "Failed to clear continue-browsing notifications: ${e.message}")
+            android.util.Log.w(
+                "NotificationUtil",
+                "Failed to clear continue-browsing notifications: ${e.message}"
+            )
         }
     }
 }

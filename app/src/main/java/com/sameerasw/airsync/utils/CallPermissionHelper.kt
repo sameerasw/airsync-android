@@ -32,7 +32,10 @@ object CallPermissionHelper {
      * Check if a specific permission is granted
      */
     fun hasPermission(context: Context, permission: String): Boolean {
-        return ContextCompat.checkSelfPermission(context, permission) == PackageManager.PERMISSION_GRANTED
+        return ContextCompat.checkSelfPermission(
+            context,
+            permission
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     /**
@@ -51,12 +54,15 @@ object CallPermissionHelper {
         Manifest.permission.READ_CALL_LOG -> {
             "Call logs access allows AirSync to detect incoming, outgoing, and missed calls to sync with your Mac."
         }
+
         Manifest.permission.READ_CONTACTS -> {
             "Contacts access helps match phone numbers to contact names for better readability."
         }
+
         Manifest.permission.READ_PHONE_STATE -> {
             "Phone state access enables real-time detection of incoming and outgoing calls."
         }
+
         else -> "This permission is required for call monitoring."
     }
 }

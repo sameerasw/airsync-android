@@ -1,8 +1,8 @@
-import android.util.Log
 import android.os.Environment
-import java.io.File
+import android.util.Log
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 
 object FileBrowserUtil {
     private const val TAG = "FileBrowserUtil"
@@ -10,29 +10,32 @@ object FileBrowserUtil {
 
     fun listDirectory(path: String?, showHidden: Boolean = false): String {
         var targetPath = if (path.isNullOrBlank()) ROOT_PATH else path
-        
+
         if (!targetPath.startsWith("/")) {
             targetPath = ROOT_PATH + (if (targetPath.startsWith("/")) "" else "/") + targetPath
         }
-        
+
         val directory = File(targetPath)
 
         if (!directory.exists()) {
             Log.e(TAG, "Directory does not exist: $targetPath")
             return createErrorResponse(targetPath, "Directory does not exist")
         }
-        
+
         if (!directory.isDirectory) {
-             Log.e(TAG, "Not a directory: $targetPath")
-             return createErrorResponse(targetPath, "Not a directory")
+            Log.e(TAG, "Not a directory: $targetPath")
+            return createErrorResponse(targetPath, "Not a directory")
         }
 
         val items = directory.listFiles()
         if (items == null) {
             Log.e(TAG, "Access denied or I/O error for: $targetPath")
-            return createErrorResponse(targetPath, "Access denied. Please ensure 'All Files Access' permission is granted.")
+            return createErrorResponse(
+                targetPath,
+                "Access denied. Please ensure 'All Files Access' permission is granted."
+            )
         }
-        
+
         val jsonItems = JSONArray()
         for (file in items.sortedBy { it.name.lowercase() }.sortedByDescending { it.isDirectory }) {
             if (!showHidden && file.name.startsWith(".") && file.name != ".") {

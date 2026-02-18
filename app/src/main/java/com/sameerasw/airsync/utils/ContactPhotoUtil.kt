@@ -90,7 +90,13 @@ object ContactPhotoUtil {
                 Uri.encode(phoneNumber)
             )
 
-            context.contentResolver.query(uri, arrayOf(ContactsContract.PhoneLookup._ID), null, null, null).use { cursor ->
+            context.contentResolver.query(
+                uri,
+                arrayOf(ContactsContract.PhoneLookup._ID),
+                null,
+                null,
+                null
+            ).use { cursor ->
                 if (cursor != null && cursor.moveToFirst()) {
                     cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.PhoneLookup._ID))
                 } else {
@@ -121,7 +127,8 @@ object ContactPhotoUtil {
                 null
             ).use { cursor ->
                 if (cursor != null && cursor.moveToFirst()) {
-                    val photoUri = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI))
+                    val photoUri =
+                        cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI))
                     if (!photoUri.isNullOrEmpty()) Uri.parse(photoUri) else null
                 } else {
                     null

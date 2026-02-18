@@ -121,10 +121,10 @@ object TestNotificationUtil {
         val randomId = Random.nextInt(100000, 999999).toString()
         val randomTitle = selectedApp.sampleTitles.random()
         val randomBody = selectedApp.sampleBodies.random()
-        
+
         // Randomly choose priority
         val priority = if (Random.nextBoolean()) "alerting" else "silent"
-        
+
         // Add random mock actions
         val actions = mutableListOf<Pair<String, String>>()
         if (Random.nextBoolean()) {
