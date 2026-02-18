@@ -33,14 +33,20 @@ class AdbMdnsDiscovery(context: Context) {
                 // Resolve the service to get host and port information
                 nsdManager.resolveService(serviceInfo, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
-                        Log.e(TAG, "Resolve failed for ${serviceInfo.serviceName}: Error code $errorCode")
+                        Log.e(
+                            TAG,
+                            "Resolve failed for ${serviceInfo.serviceName}: Error code $errorCode"
+                        )
                     }
 
                     override fun onServiceResolved(resolvedInfo: NsdServiceInfo) {
                         val host = resolvedInfo.host
                         val port = resolvedInfo.port
                         val hostAddress = host?.hostAddress ?: "unknown"
-                        Log.i(TAG, "ADB Device Found: $hostAddress:$port (${resolvedInfo.serviceName})")
+                        Log.i(
+                            TAG,
+                            "ADB Device Found: $hostAddress:$port (${resolvedInfo.serviceName})"
+                        )
 
                         // Store the discovered service
                         discoveredServices.add(
@@ -133,7 +139,10 @@ class AdbMdnsDiscovery(context: Context) {
         } else {
             Log.i(TAG, "=== Discovered ADB Wireless Services ===")
             discoveredServices.forEach { service ->
-                Log.i(TAG, "Service: ${service.serviceName} | Host: ${service.hostAddress} | Port: ${service.port}")
+                Log.i(
+                    TAG,
+                    "Service: ${service.serviceName} | Host: ${service.hostAddress} | Port: ${service.port}"
+                )
             }
             Log.i(TAG, "=========================================")
         }

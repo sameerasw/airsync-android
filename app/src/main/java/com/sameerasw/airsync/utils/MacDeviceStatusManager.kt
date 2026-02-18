@@ -10,14 +10,12 @@ import com.sameerasw.airsync.domain.model.MacBattery
 import com.sameerasw.airsync.domain.model.MacDeviceStatus
 import com.sameerasw.airsync.domain.model.MacMusicInfo
 import com.sameerasw.airsync.service.MacMediaPlayerService
-import com.sameerasw.airsync.utils.WebSocketUtil
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 object MacDeviceStatusManager {
@@ -84,7 +82,10 @@ object MacDeviceStatusManager {
                 } else {
                     MacMediaPlayerService.stopMacMedia(context)
                     if (!isMediaControlsEnabled) {
-                        Log.d(TAG, "Stopped Mac media player service - controls explicitly disabled by user")
+                        Log.d(
+                            TAG,
+                            "Stopped Mac media player service - controls explicitly disabled by user"
+                        )
                     } else if (!isConnected) {
                         Log.d(TAG, "Stopped Mac media player service - device disconnected")
                     } else {
@@ -98,7 +99,10 @@ object MacDeviceStatusManager {
                 }
             }
 
-            Log.d(TAG, "Mac device status updated - Playing: $isPlaying, Title: $title, Artist: $artist")
+            Log.d(
+                TAG,
+                "Mac device status updated - Playing: $isPlaying, Title: $title, Artist: $artist"
+            )
         } catch (e: Exception) {
             Log.e(TAG, "Error updating Mac device status: ${e.message}")
         }
@@ -118,15 +122,21 @@ object MacDeviceStatusManager {
         }
     }
 
-    private fun broadcastToEssentials(context: Context, level: Int, isCharging: Boolean, isConnected: Boolean) {
+    private fun broadcastToEssentials(
+        context: Context,
+        level: Int,
+        isCharging: Boolean,
+        isConnected: Boolean
+    ) {
         try {
-            val intent = android.content.Intent("com.sameerasw.essentials.action.UPDATE_MAC_BATTERY").apply {
-                putExtra("level", level)
-                putExtra("isCharging", isCharging)
-                putExtra("lastUpdated", System.currentTimeMillis())
-                putExtra("isConnected", isConnected)
-                setPackage("com.sameerasw.essentials")
-            }
+            val intent =
+                android.content.Intent("com.sameerasw.essentials.action.UPDATE_MAC_BATTERY").apply {
+                    putExtra("level", level)
+                    putExtra("isCharging", isCharging)
+                    putExtra("lastUpdated", System.currentTimeMillis())
+                    putExtra("isConnected", isConnected)
+                    setPackage("com.sameerasw.essentials")
+                }
             context.sendBroadcast(intent, "com.sameerasw.permission.ESSENTIALS_AIRSYNC_BRIDGE")
             Log.d(TAG, "Broadcasted Mac status to Essentials (connected: $isConnected)")
         } catch (e: Exception) {
@@ -167,13 +177,13 @@ object MacDeviceStatusManager {
                 // Check current state
                 val isConnected = WebSocketUtil.isConnected()
                 val currentStatus = _macDeviceStatus.value
-                
+
                 if (isConnected && currentStatus != null) {
                     // Send actual data with connected = true
                     broadcastToEssentials(
-                        context, 
-                        currentStatus.battery.level, 
-                        currentStatus.battery.isCharging, 
+                        context,
+                        currentStatus.battery.level,
+                        currentStatus.battery.isCharging,
                         true
                     )
                 } else {
@@ -191,7 +201,7 @@ object MacDeviceStatusManager {
             _albumArt.value = null
             _macDeviceStatus.value = null
             Log.d(TAG, "Mac device status cleaned up")
-            
+
             // If context is provided, broadcast disconnection to Essentials
             if (context != null) {
                 CoroutineScope(Dispatchers.IO).launch {

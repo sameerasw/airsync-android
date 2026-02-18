@@ -7,15 +7,22 @@ object JsonUtil {
      */
     fun toSingleLine(json: String): String {
         return json.replace(Regex("\\s*\\n\\s*"), " ")
-                  .replace(Regex("\\s+"), " ")
-                  .trim()
+            .replace(Regex("\\s+"), " ")
+            .trim()
     }
 
     /**
      * Creates a single-line JSON string for device info
      */
-    fun createDeviceInfoJson(name: String, ipAddress: String, port: Int, version: String, targetIpAddress: String? = null): String {
-        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+    fun createDeviceInfoJson(
+        name: String,
+        ipAddress: String,
+        port: Int,
+        version: String,
+        targetIpAddress: String? = null
+    ): String {
+        val targetIpJson =
+            if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
         return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[]$targetIpJson}}"""
     }
 
@@ -25,9 +32,18 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info with ADB ports
      */
-    fun createDeviceInfoJson(id: String, name: String, ipAddress: String, port: Int, version: String, adbPorts: List<String>, targetIpAddress: String? = null): String {
+    fun createDeviceInfoJson(
+        id: String,
+        name: String,
+        ipAddress: String,
+        port: Int,
+        version: String,
+        adbPorts: List<String>,
+        targetIpAddress: String? = null
+    ): String {
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
-        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+        val targetIpJson =
+            if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
         return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
@@ -37,21 +53,37 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info with wallpaper
      */
-    fun createDeviceInfoJson(id: String, name: String, ipAddress: String, port: Int, version: String, wallpaperBase64: String?, adbPorts: List<String>, targetIpAddress: String? = null): String {
+    fun createDeviceInfoJson(
+        id: String,
+        name: String,
+        ipAddress: String,
+        port: Int,
+        version: String,
+        wallpaperBase64: String?,
+        adbPorts: List<String>,
+        targetIpAddress: String? = null
+    ): String {
         val wallpaperJson = if (wallpaperBase64 != null) {
             ""","wallpaper":"$wallpaperBase64""""
         } else {
             ""
         }
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
-        val targetIpJson = if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
+        val targetIpJson =
+            if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
         return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson$targetIpJson}}"""
     }
 
     /**
      * Creates a single-line JSON string for notifications with unique ID
      */
-    fun createNotificationJson(id: String, title: String, body: String, app: String, packageName: String): String {
+    fun createNotificationJson(
+        id: String,
+        title: String,
+        body: String,
+        app: String,
+        packageName: String
+    ): String {
         return """{"type":"notification","data":{"id":"$id","title":"$title","body":"$body","app":"$app","package":"$packageName"}}"""
     }
 
@@ -76,14 +108,22 @@ object JsonUtil {
         } else {
             ""
         }
-        return """{"type":"notification","data":{"id":"$id","title":"${escape(title)}","body":"${escape(body)}","app":"${escape(app)}","package":"${escape(packageName)}","priority":"$priority"$actionsJson}}"""
+        return """{"type":"notification","data":{"id":"$id","title":"${escape(title)}","body":"${
+            escape(
+                body
+            )
+        }","app":"${escape(app)}","package":"${escape(packageName)}","priority":"$priority"$actionsJson}}"""
     }
 
     /**
      * Creates a one-line JSON for Android->Mac notification state updates (e.g., dismissals).
      * If action is not provided, defaults to "dismiss" when dismissed=true.
      */
-    fun createNotificationUpdateJson(id: String, dismissed: Boolean = true, action: String? = null): String {
+    fun createNotificationUpdateJson(
+        id: String,
+        dismissed: Boolean = true,
+        action: String? = null
+    ): String {
         val safeAction = action ?: if (dismissed) "dismiss" else null
         val actionPart = safeAction?.let { ",\"action\":\"${escape(it)}\"" } ?: ""
         return """{"type":"notificationUpdate","data":{"id":"$id","dismissed":$dismissed$actionPart}}"""
@@ -119,15 +159,28 @@ object JsonUtil {
     /**
      * Creates a response JSON for notification dismissal result
      */
-    fun createNotificationDismissalResponse(id: String, success: Boolean, message: String = ""): String {
+    fun createNotificationDismissalResponse(
+        id: String,
+        success: Boolean,
+        message: String = ""
+    ): String {
         return """{"type":"dismissalResponse","data":{"id":"$id","success":$success,"message":"$message"}}"""
     }
 
     /**
      * Creates a response JSON for notification action result
      */
-    fun createNotificationActionResponse(id: String, actionName: String, success: Boolean, message: String = ""): String {
-        return """{"type":"notificationActionResponse","data":{"id":"$id","action":"${escape(actionName)}","success":$success,"message":"${escape(message)}"}}"""
+    fun createNotificationActionResponse(
+        id: String,
+        actionName: String,
+        success: Boolean,
+        message: String = ""
+    ): String {
+        return """{"type":"notificationActionResponse","data":{"id":"$id","action":"${
+            escape(
+                actionName
+            )
+        }","success":$success,"message":"${escape(message)}"}}"""
     }
 
     /**
@@ -140,14 +193,21 @@ object JsonUtil {
     /**
      * Creates a response JSON for volume control result
      */
-    fun createVolumeControlResponse(action: String, success: Boolean, message: String = ""): String {
+    fun createVolumeControlResponse(
+        action: String,
+        success: Boolean,
+        message: String = ""
+    ): String {
         return """{"type":"volumeControlResponse","data":{"action":"$action","success":$success,"message":"$message"}}"""
     }
 
     /**
      * Creates a JSON string for app icons
      */
-    fun createAppIconsJson(apps: List<com.sameerasw.airsync.domain.model.NotificationApp>, iconMap: Map<String, String>): String {
+    fun createAppIconsJson(
+        apps: List<com.sameerasw.airsync.domain.model.NotificationApp>,
+        iconMap: Map<String, String>
+    ): String {
         val appEntries = apps.joinToString(",") { app ->
             val iconData = iconMap[app.packageName] ?: ""
             """
@@ -186,8 +246,16 @@ object JsonUtil {
     /**
      * Creates a response JSON for toggleNowPlaying command
      */
-    fun createToggleNowPlayingResponse(success: Boolean, newState: Boolean?, message: String = ""): String {
+    fun createToggleNowPlayingResponse(
+        success: Boolean,
+        newState: Boolean?,
+        message: String = ""
+    ): String {
         val statePart = newState?.let { ",\"state\":$it" } ?: ""
-        return """{"type":"toggleNowPlayingResponse","data":{"success":$success$statePart,"message":"${escape(message)}"}}"""
+        return """{"type":"toggleNowPlayingResponse","data":{"success":$success$statePart,"message":"${
+            escape(
+                message
+            )
+        }"}}"""
     }
 }

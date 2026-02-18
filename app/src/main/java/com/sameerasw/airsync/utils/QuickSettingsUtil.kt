@@ -12,7 +12,10 @@ import com.sameerasw.airsync.R
 import com.sameerasw.airsync.service.AirSyncTileService
 
 object QuickSettingsUtil {
-    fun isQSTileAdded(context: Context, serviceClass: Class<*> = AirSyncTileService::class.java): Boolean {
+    fun isQSTileAdded(
+        context: Context,
+        serviceClass: Class<*> = AirSyncTileService::class.java
+    ): Boolean {
         return try {
             val componentName = ComponentName(context, serviceClass)
             val tiles = Settings.Secure.getString(context.contentResolver, "sysui_qs_tiles") ?: ""
@@ -23,14 +26,29 @@ object QuickSettingsUtil {
     }
 
     fun requestAddQuickSettingsTile(context: Context) {
-        requestAddTile(context, AirSyncTileService::class.java, context.getString(R.string.app_name), DeviceIconResolver.getLastDeviceIconRes(context))
+        requestAddTile(
+            context,
+            AirSyncTileService::class.java,
+            context.getString(R.string.app_name),
+            DeviceIconResolver.getLastDeviceIconRes(context)
+        )
     }
 
     fun requestAddClipboardTile(context: Context) {
-        requestAddTile(context, com.sameerasw.airsync.service.ClipboardTileService::class.java, "Send Clipboard", R.drawable.ic_clipboard_24)
+        requestAddTile(
+            context,
+            com.sameerasw.airsync.service.ClipboardTileService::class.java,
+            "Send Clipboard",
+            R.drawable.ic_clipboard_24
+        )
     }
 
-    private fun requestAddTile(context: Context, serviceClass: Class<*>, label: String, iconRes: Int) {
+    private fun requestAddTile(
+        context: Context,
+        serviceClass: Class<*>,
+        label: String,
+        iconRes: Int
+    ) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val statusBarManager = context.getSystemService(StatusBarManager::class.java)
             val componentName = ComponentName(context, serviceClass)
@@ -46,9 +64,15 @@ object QuickSettingsUtil {
                     StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ADDED -> {
                         Toast.makeText(context, "$label tile added", Toast.LENGTH_SHORT).show()
                     }
+
                     StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_ALREADY_ADDED -> {
-                        Toast.makeText(context, "Tile is already in Quick Settings", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(
+                            context,
+                            "Tile is already in Quick Settings",
+                            Toast.LENGTH_SHORT
+                        ).show()
                     }
+
                     StatusBarManager.TILE_ADD_REQUEST_RESULT_TILE_NOT_ADDED -> {
                     }
                 }

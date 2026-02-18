@@ -47,7 +47,9 @@ fun SendNowPlayingCard(
             Switch(
                 checked = isSendNowPlayingEnabled,
                 onCheckedChange = { enabled ->
-                    if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(haptics)
+                    if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
+                        haptics
+                    )
                     onToggleSendNowPlaying(enabled)
                 }
             )

@@ -8,17 +8,16 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.sameerasw.airsync.MainActivity
-import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class AirSyncTileService : TileService() {
 
@@ -68,7 +67,10 @@ class AirSyncTileService : TileService() {
         pollJob?.cancel()
         pollJob = serviceScope.launch {
             while (true) {
-                try { updateTileState() } catch (_: Exception) {}
+                try {
+                    updateTileState()
+                } catch (_: Exception) {
+                }
                 kotlinx.coroutines.delay(600)
             }
         }
@@ -126,12 +128,18 @@ class AirSyncTileService : TileService() {
                     onHandshakeTimeout = {
                         try {
                             val v = getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator
-                            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                                v.vibrate(android.os.VibrationEffect.createOneShot(150, android.os.VibrationEffect.DEFAULT_AMPLITUDE))
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                v.vibrate(
+                                    android.os.VibrationEffect.createOneShot(
+                                        150,
+                                        android.os.VibrationEffect.DEFAULT_AMPLITUDE
+                                    )
+                                )
                             } else {
                                 @Suppress("DEPRECATION") v.vibrate(150)
                             }
-                        } catch (_: Exception) {}
+                        } catch (_: Exception) {
+                        }
                         WebSocketUtil.disconnect(this@AirSyncTileService)
                         serviceScope.launch { updateTileState() }
                     },
@@ -175,7 +183,8 @@ class AirSyncTileService : TileService() {
             val macStatus = MacDeviceStatusManager.macDeviceStatus.value
 
             qsTile?.apply {
-                val dynamicIcon = com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(lastDevice)
+                val dynamicIcon =
+                    com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(lastDevice)
                 icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
 
                 if (isAuto) {

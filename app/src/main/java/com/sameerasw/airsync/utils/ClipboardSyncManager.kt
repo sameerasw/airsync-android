@@ -3,13 +3,12 @@ package com.sameerasw.airsync.utils
 import android.content.ClipboardManager
 import android.content.Context
 import android.util.Log
-import android.util.Patterns
+import com.sameerasw.airsync.data.local.DataStoreManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import com.sameerasw.airsync.data.local.DataStoreManager
 
 object ClipboardSyncManager {
     private const val TAG = "ClipboardSyncManager"
@@ -106,41 +105,42 @@ object ClipboardSyncManager {
     private fun isLinkOnly(text: String): Boolean {
         val trimmed = text.trim()
         if (trimmed.isEmpty()) return false
-        
+
         // Split by whitespace to check if it's only a single token (no other text)
         val tokens = trimmed.split("\\s+".toRegex())
         if (tokens.size != 1) return false
-        
+
         val url = tokens[0]
-        
+
         // Check for explicit protocols
-        if (url.startsWith("http://", ignoreCase = true) || 
+        if (url.startsWith("http://", ignoreCase = true) ||
             url.startsWith("https://", ignoreCase = true) ||
-            url.startsWith("ftp://", ignoreCase = true)) {
+            url.startsWith("ftp://", ignoreCase = true)
+        ) {
             return true
         }
-        
+
         // Check for www prefix without protocol
         if (url.startsWith("www.", ignoreCase = true)) {
             return isValidDomainFormat(url.substring(4))
         }
-        
+
         // Check if it looks like a domain name (no protocol, no www)
         return isValidDomainFormat(url)
     }
-    
+
     private fun isValidDomainFormat(domain: String): Boolean {
         if (domain.isEmpty()) return false
-        
+
         // Basic domain validation regex
         // Matches: domain.com, sub.domain.com, domain.co.uk, etc.
         val domainRegex = Regex(
             "^[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?" +
-            "(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*" +
-            "\\.[a-zA-Z]{2,}$",
+                    "(\\.[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*" +
+                    "\\.[a-zA-Z]{2,}$",
             RegexOption.IGNORE_CASE
         )
-        
+
         return domainRegex.matches(domain)
     }
 
@@ -162,11 +162,23 @@ object ClipboardSyncManager {
             // Check Continue Browsing setting and show notification only if the text is a pure link
             val dataStoreManager = DataStoreManager(context)
             syncScope.launch {
-                val continueEnabled = try { dataStoreManager.getContinueBrowsingEnabled().first() } catch (_: Exception) { true }
-                val keepPrevious = try { dataStoreManager.getKeepPreviousLinkEnabled().first() } catch (_: Exception) { true }
+                val continueEnabled = try {
+                    dataStoreManager.getContinueBrowsingEnabled().first()
+                } catch (_: Exception) {
+                    true
+                }
+                val keepPrevious = try {
+                    dataStoreManager.getKeepPreviousLinkEnabled().first()
+                } catch (_: Exception) {
+                    true
+                }
                 // Only for Plus and while connected
                 val isConnected = WebSocketUtil.isConnected()
-                val last = try { dataStoreManager.getLastConnectedDevice().first() } catch (_: Exception) { null }
+                val last = try {
+                    dataStoreManager.getLastConnectedDevice().first()
+                } catch (_: Exception) {
+                    null
+                }
                 val isPlus = last?.isPlus == true
                 if (continueEnabled && isConnected && isPlus && isLinkOnly(text)) {
                     NotificationUtil.showContinueBrowsingLink(context, text.trim(), keepPrevious)

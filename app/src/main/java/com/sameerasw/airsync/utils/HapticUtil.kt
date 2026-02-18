@@ -2,13 +2,13 @@ package com.sameerasw.airsync.utils
 
 import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
+import androidx.lifecycle.Lifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
-import androidx.lifecycle.Lifecycle
+import kotlinx.coroutines.launch
 
 object HapticUtil {
     /**
@@ -17,7 +17,8 @@ object HapticUtil {
     fun performLightTick(haptics: HapticFeedback?) {
         try {
             haptics?.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -26,7 +27,8 @@ object HapticUtil {
     fun performClick(haptics: HapticFeedback?) {
         try {
             haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -35,7 +37,8 @@ object HapticUtil {
     fun performToggleOn(haptics: HapticFeedback?) {
         try {
             haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -44,7 +47,8 @@ object HapticUtil {
     fun performToggleOff(haptics: HapticFeedback?) {
         try {
             haptics?.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -59,7 +63,8 @@ object HapticUtil {
                 delay(50)
                 haptics?.performHapticFeedback(HapticFeedbackType.LongPress)
             }
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
     }
 
     /**
@@ -74,7 +79,8 @@ object HapticUtil {
         return CoroutineScope(Dispatchers.Main).launch {
             while (isActive) {
                 try {
-                    val shouldRun = lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) ?: true
+                    val shouldRun =
+                        lifecycle?.currentState?.isAtLeast(Lifecycle.State.STARTED) ?: true
                     if (shouldRun) {
                         performLightTick(haptics)
                         delay(200) // 5 times per second

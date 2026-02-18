@@ -4,9 +4,9 @@ import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.SystemBarStyle
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
@@ -14,7 +14,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,11 +44,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
@@ -63,7 +60,7 @@ import kotlinx.coroutines.delay
 
 class ClipboardActionActivity : ComponentActivity() {
 
-    private val _windowFocus =  mutableStateOf(false)
+    private val _windowFocus = mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -196,36 +193,39 @@ fun ClipboardActionScreenContent(
                             Box(
                                 modifier = Modifier
                                     .size(56.dp)
-                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, shape = CircleShape)
+                                    .background(
+                                        MaterialTheme.colorScheme.surfaceContainerHigh,
+                                        shape = CircleShape
+                                    )
                             ) {
-                            // Overlay icon/indicator
-                            when (state) {
-                                is ClipboardUiState.Loading -> {
-                                    LoadingIndicator(
-                                        modifier = Modifier.size(56.dp),
-                                        color = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                // Overlay icon/indicator
+                                when (state) {
+                                    is ClipboardUiState.Loading -> {
+                                        LoadingIndicator(
+                                            modifier = Modifier.size(56.dp),
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
 
-                                is ClipboardUiState.Success -> {
-                                    Icon(
-                                        imageVector = Icons.Rounded.CheckCircle,
-                                        contentDescription = "Success",
-                                        modifier = Modifier.size(56.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
-                                }
+                                    is ClipboardUiState.Success -> {
+                                        Icon(
+                                            imageVector = Icons.Rounded.CheckCircle,
+                                            contentDescription = "Success",
+                                            modifier = Modifier.size(56.dp),
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
 
-                                is ClipboardUiState.Error -> {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Error,
-                                        contentDescription = "Error",
-                                        tint = MaterialTheme.colorScheme.error,
-                                        modifier = Modifier.size(56.dp)
-                                    )
+                                    is ClipboardUiState.Error -> {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Error,
+                                            contentDescription = "Error",
+                                            tint = MaterialTheme.colorScheme.error,
+                                            modifier = Modifier.size(56.dp)
+                                        )
+                                    }
                                 }
                             }
-                        }
                         }
 
                         Text(
@@ -233,7 +233,10 @@ fun ClipboardActionScreenContent(
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier
-                                .background(MaterialTheme.colorScheme.primary, shape = RoundedCornerShape(32.dp))
+                                .background(
+                                    MaterialTheme.colorScheme.primary,
+                                    shape = RoundedCornerShape(32.dp)
+                                )
                                 .padding(horizontal = 16.dp, vertical = 4.dp),
                         )
 
@@ -266,7 +269,10 @@ sealed class ClipboardUiState {
 @Composable
 private fun ClipboardActionScreenPreviewLoading() {
     AirSyncTheme {
-        ClipboardActionScreenContent(uiState = ClipboardUiState.Loading, connectedDevice = null, onFinished = {})
+        ClipboardActionScreenContent(
+            uiState = ClipboardUiState.Loading,
+            connectedDevice = null,
+            onFinished = {})
     }
 }
 
@@ -274,7 +280,10 @@ private fun ClipboardActionScreenPreviewLoading() {
 @Composable
 private fun ClipboardActionScreenPreviewSuccess() {
     AirSyncTheme {
-        ClipboardActionScreenContent(uiState = ClipboardUiState.Success, connectedDevice = null, onFinished = {})
+        ClipboardActionScreenContent(
+            uiState = ClipboardUiState.Success,
+            connectedDevice = null,
+            onFinished = {})
     }
 }
 
@@ -282,6 +291,9 @@ private fun ClipboardActionScreenPreviewSuccess() {
 @Composable
 private fun ClipboardActionScreenPreviewError() {
     AirSyncTheme {
-        ClipboardActionScreenContent(uiState = ClipboardUiState.Error("Failed to sync"), connectedDevice = null, onFinished = {})
+        ClipboardActionScreenContent(
+            uiState = ClipboardUiState.Error("Failed to sync"),
+            connectedDevice = null,
+            onFinished = {})
     }
 }

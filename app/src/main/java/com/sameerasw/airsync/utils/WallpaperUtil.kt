@@ -8,9 +8,9 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import android.util.Base64
 import android.util.Log
-import java.io.ByteArrayOutputStream
 import androidx.core.graphics.createBitmap
 import androidx.core.graphics.scale
+import java.io.ByteArrayOutputStream
 
 object WallpaperUtil {
     private const val TAG = "WallpaperUtil"
@@ -38,6 +38,7 @@ object WallpaperUtil {
                         // Android 14+ - Use FLAG_SYSTEM explicitly
                         wallpaperManager.getDrawable(WallpaperManager.FLAG_SYSTEM)
                     }
+
                     else -> {
                         // Android 13 and below
                         wallpaperManager.drawable
@@ -64,14 +65,18 @@ object WallpaperUtil {
             val resizedBitmap = resizeBitmapIfNeeded(bitmap)
 
             // Convert to base64
-            val base64String = bitmapToBase64(resizedBitmap, Bitmap.CompressFormat.JPEG, JPEG_QUALITY)
+            val base64String =
+                bitmapToBase64(resizedBitmap, Bitmap.CompressFormat.JPEG, JPEG_QUALITY)
 
             if (resizedBitmap != bitmap) {
                 resizedBitmap.recycle()
             }
             bitmap.recycle()
 
-            Log.d(TAG, "Successfully encoded wallpaper to base64 (${base64String?.length ?: 0} chars)")
+            Log.d(
+                TAG,
+                "Successfully encoded wallpaper to base64 (${base64String?.length ?: 0} chars)"
+            )
             return base64String
 
         } catch (e: Exception) {
@@ -142,7 +147,11 @@ object WallpaperUtil {
     /**
      * Convert Bitmap to Base64 string
      */
-    private fun bitmapToBase64(bitmap: Bitmap, format: Bitmap.CompressFormat, quality: Int): String? {
+    private fun bitmapToBase64(
+        bitmap: Bitmap,
+        format: Bitmap.CompressFormat,
+        quality: Int
+    ): String? {
         return try {
             val byteArrayOutputStream = ByteArrayOutputStream()
             bitmap.compress(format, quality, byteArrayOutputStream)

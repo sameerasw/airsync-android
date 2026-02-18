@@ -1,13 +1,30 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -16,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.dialogs.PermissionExplanationDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.PermissionType
-import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.HapticUtil
+import com.sameerasw.airsync.utils.PermissionUtil
 
 @Composable
 fun PermissionsScreen(
@@ -75,134 +92,137 @@ fun PermissionsScreen(
                     }
                 }
             } else {
-                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.extraSmall,
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.errorContainer
-                            )
-                        ) {
-                            Row(modifier = Modifier.padding(16.dp)) {
-                                Column {
-                                    Text(
-                                        text = "Missing permissions",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = if (criticalPermissions.isNotEmpty())
-                                            MaterialTheme.colorScheme.onErrorContainer
-                                        else MaterialTheme.colorScheme.onSecondaryContainer
-                                    )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(modifier = Modifier.padding(16.dp)) {
+                            Column {
+                                Text(
+                                    text = "Missing permissions",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    color = if (criticalPermissions.isNotEmpty())
+                                        MaterialTheme.colorScheme.onErrorContainer
+                                    else MaterialTheme.colorScheme.onSecondaryContainer
+                                )
 
-                                    Text(
-                                        text = "Open to read more and grant",
-                                        style = MaterialTheme.typography.bodySmall,
-                                    )
-                                }
+                                Text(
+                                    text = "Open to read more and grant",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
 
-                                Spacer(modifier = Modifier.weight(1f))
+                            Spacer(modifier = Modifier.weight(1f))
 
-                                OutlinedButton(onClick = {
-                                    HapticUtil.performClick(haptics)
-                                    // Force recomposition by incrementing refreshTrigger through parent
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Refresh,
-                                        contentDescription = "Refresh"
-                                    )
-                                }
+                            OutlinedButton(onClick = {
+                                HapticUtil.performClick(haptics)
+                                // Force recomposition by incrementing refreshTrigger through parent
+                            }) {
+                                Icon(
+                                    imageVector = Icons.Default.Refresh,
+                                    contentDescription = "Refresh"
+                                )
                             }
                         }
+                    }
 
-                        // Show critical permissions first
-                        if (criticalPermissions.isNotEmpty()) {
+                    // Show critical permissions first
+                    if (criticalPermissions.isNotEmpty()) {
 
-                            criticalPermissions.forEach { permission ->
-                                when (permission) {
-                                    "Notification Access" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Required for syncing notifications",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.NOTIFICATION_ACCESS
-                                            },
-                                            isCritical = true
-                                        )
-                                    }
-                                }
-                            }
-                        }
-
-                        // Show optional permissions
-                        if (optionalPermissions.isNotEmpty()) {
-                            optionalPermissions.forEach { permission ->
-                                when (permission) {
-                                    "Post Notifications" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Show connection status and alerts",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.POST_NOTIFICATIONS
-                                            },
-                                            isCritical = false
-                                        )
-                                    }
-
-                                    "Background App Usage" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Keep the app alive when inactive",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.BACKGROUND_USAGE
-                                            },
-                                            isCritical = false
-                                        )
-                                    }
-
-                                    "Wallpaper Access" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Enables wallpaper sync",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.WALLPAPER_ACCESS
-                                            },
-                                            isCritical = false
-                                        )
-                                    }
-
-                                    "Call Log Access" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Enables call log sync",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.CALL_LOG
-                                            },
-                                            isCritical = false
-                                        )
-                                    }
-
-                                    "Contacts Access" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Enables contacts sync",
-                                            onExplainClick = {
-                                                showDialog = PermissionType.CONTACTS
-                                            },
-                                            isCritical = false
-                                        )
-                                    }
-
-                                    "Phone Access" -> {
-                                        PermissionButton(
-                                            permissionName = permission,
-                                            description = "Enables phone state access",
-                                            onExplainClick = { showDialog = PermissionType.PHONE },
-                                            isCritical = false
-                                        )
-                                    }
+                        criticalPermissions.forEach { permission ->
+                            when (permission) {
+                                "Notification Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Required for syncing notifications",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.NOTIFICATION_ACCESS
+                                        },
+                                        isCritical = true
+                                    )
                                 }
                             }
                         }
                     }
+
+                    // Show optional permissions
+                    if (optionalPermissions.isNotEmpty()) {
+                        optionalPermissions.forEach { permission ->
+                            when (permission) {
+                                "Post Notifications" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Show connection status and alerts",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.POST_NOTIFICATIONS
+                                        },
+                                        isCritical = false
+                                    )
+                                }
+
+                                "Background App Usage" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Keep the app alive when inactive",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.BACKGROUND_USAGE
+                                        },
+                                        isCritical = false
+                                    )
+                                }
+
+                                "Wallpaper Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Enables wallpaper sync",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.WALLPAPER_ACCESS
+                                        },
+                                        isCritical = false
+                                    )
+                                }
+
+                                "Call Log Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Enables call log sync",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.CALL_LOG
+                                        },
+                                        isCritical = false
+                                    )
+                                }
+
+                                "Contacts Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Enables contacts sync",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.CONTACTS
+                                        },
+                                        isCritical = false
+                                    )
+                                }
+
+                                "Phone Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Enables phone state access",
+                                        onExplainClick = { showDialog = PermissionType.PHONE },
+                                        isCritical = false
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
@@ -219,21 +239,27 @@ fun PermissionsScreen(
                     PermissionType.NOTIFICATION_ACCESS -> {
                         PermissionUtil.openNotificationListenerSettings(context)
                     }
+
                     PermissionType.POST_NOTIFICATIONS -> {
                         onRequestNotificationPermission?.invoke()
                     }
+
                     PermissionType.BACKGROUND_USAGE -> {
                         PermissionUtil.openBatteryOptimizationSettings(context)
                     }
+
                     PermissionType.WALLPAPER_ACCESS -> {
                         PermissionUtil.openManageExternalStorageSettings(context)
                     }
+
                     PermissionType.CALL_LOG -> {
                         onRequestCallLogPermission?.invoke()
                     }
+
                     PermissionType.CONTACTS -> {
                         onRequestContactsPermission?.invoke()
                     }
+
                     PermissionType.PHONE -> {
                         onRequestPhonePermission?.invoke()
                     }

@@ -7,7 +7,7 @@ class AirSyncTargetUpdateReceiver : SmartspacerTargetUpdateReceiver() {
 
     override fun onRequestSmartspaceTargetUpdate(
         context: Context,
-        requestTargets: List<SmartspacerTargetUpdateReceiver.RequestTarget>
+        requestTargets: List<RequestTarget>
     ) {
         // Notify all AirSync device targets to update
         AirSyncDeviceTarget.notifyChange(context)

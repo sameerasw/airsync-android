@@ -1,8 +1,8 @@
 package com.sameerasw.airsync.domain.repository
 
 import com.sameerasw.airsync.domain.model.ConnectedDevice
-import com.sameerasw.airsync.domain.model.NotificationApp
 import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
+import com.sameerasw.airsync.domain.model.NotificationApp
 import kotlinx.coroutines.flow.Flow
 
 interface AirSyncRepository {
@@ -31,7 +31,17 @@ interface AirSyncRepository {
     fun getLastConnectedDevice(): Flow<ConnectedDevice?>
 
     // Network-aware device connections
-    suspend fun saveNetworkDeviceConnection(deviceName: String, ourIp: String, clientIp: String, port: String, isPlus: Boolean, symmetricKey: String?, model: String? = null, deviceType: String? = null)
+    suspend fun saveNetworkDeviceConnection(
+        deviceName: String,
+        ourIp: String,
+        clientIp: String,
+        port: String,
+        isPlus: Boolean,
+        symmetricKey: String?,
+        model: String? = null,
+        deviceType: String? = null
+    )
+
     fun getNetworkDeviceConnection(deviceName: String): Flow<NetworkDeviceConnection?>
     fun getAllNetworkDeviceConnections(): Flow<List<NetworkDeviceConnection>>
     suspend fun updateNetworkDeviceLastConnected(deviceName: String, timestamp: Long)

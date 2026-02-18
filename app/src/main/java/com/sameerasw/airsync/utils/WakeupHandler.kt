@@ -8,7 +8,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 /**
  * Shared logic for processing wake-up requests from Mac clients.
@@ -17,7 +16,12 @@ import org.json.JSONObject
 object WakeupHandler {
     private const val TAG = "WakeupHandler"
 
-    suspend fun processWakeupRequest(context: Context, macIp: String, macPort: Int, macName: String) {
+    suspend fun processWakeupRequest(
+        context: Context,
+        macIp: String,
+        macPort: Int,
+        macName: String
+    ) {
         try {
             Log.i(TAG, "Processing wake-up request from $macName at $macIp:$macPort")
 
@@ -37,13 +41,14 @@ object WakeupHandler {
             dataStoreManager.setUserManuallyDisconnected(false)
 
             // Look up stored encryption key
-            val encryptionKey = findStoredEncryptionKey(context, dataStoreManager, macIp, macPort, macName)
-            
+            val encryptionKey =
+                findStoredEncryptionKey(context, dataStoreManager, macIp, macPort, macName)
+
             if (encryptionKey == null) {
                 Log.w(TAG, "No stored encryption key found for $macName at $macIp:$macPort")
                 return
             }
-            
+
             Log.d(TAG, "Found stored encryption key for $macName")
 
             // Update device information
@@ -59,7 +64,7 @@ object WakeupHandler {
                     model = "Mac",
                     deviceType = "desktop"
                 )
-                
+
                 val connectedDevice = ConnectedDevice(
                     name = macName,
                     ipAddress = macIp,
@@ -85,8 +90,12 @@ object WakeupHandler {
                         Log.i(TAG, "Successfully connected after wake-up")
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                dataStoreManager.updateNetworkDeviceLastConnected(macName, System.currentTimeMillis())
-                            } catch (e: Exception) {}
+                                dataStoreManager.updateNetworkDeviceLastConnected(
+                                    macName,
+                                    System.currentTimeMillis()
+                                )
+                            } catch (e: Exception) {
+                            }
                         }
                     }
                 }
@@ -106,19 +115,19 @@ object WakeupHandler {
         try {
             val networkDevices = dataStoreManager.getAllNetworkDeviceConnections().first()
             val ourIp = DeviceInfoUtil.getWifiIpAddress(context)
-            
+
             if (ourIp != null) {
                 val networkDevice = networkDevices.firstOrNull { device ->
                     device.deviceName == macName && device.getClientIpForNetwork(ourIp) == macIp
                 }
                 if (networkDevice?.symmetricKey != null) return networkDevice.symmetricKey
             }
-            
+
             val lastConnectedDevice = dataStoreManager.getLastConnectedDevice().first()
             if (lastConnectedDevice?.name == macName && lastConnectedDevice.symmetricKey != null) {
                 return lastConnectedDevice.symmetricKey
             }
-            
+
             return networkDevices.firstOrNull { it.deviceName == macName }?.symmetricKey
         } catch (e: Exception) {
             return null

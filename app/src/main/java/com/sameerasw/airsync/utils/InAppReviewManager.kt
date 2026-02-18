@@ -11,14 +11,14 @@ object InAppReviewManager {
     /**
      * Triggers the In-App Review flow.
      * Note: This should be called with an Activity context.
-     * 
+     *
      * @param context The context to use. Must be or contain an Activity.
      * @param onComplete Callback when the flow is finished (regardless of success/failure)
      */
     fun launchReviewFlow(context: Context, onComplete: () -> Unit = {}) {
         val manager = ReviewManagerFactory.create(context)
         val request = manager.requestReviewFlow()
-        
+
         request.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val reviewInfo = task.result

@@ -2,25 +2,51 @@ package com.sameerasw.airsync.presentation.ui.components
 
 import android.view.HapticFeedbackConstants
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import kotlinx.coroutines.delay
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
-import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.automirrored.filled.KeyboardReturn
+import androidx.compose.material.icons.automirrored.rounded.Backspace
 import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Keyboard
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -29,14 +55,11 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.material.icons.automirrored.rounded.Backspace
-import androidx.compose.ui.res.painterResource
 import com.sameerasw.airsync.R
+import kotlinx.coroutines.delay
 
 enum class ShiftState {
     OFF,
@@ -58,14 +81,74 @@ data class KeyboardModifiers(
 
 object MacKeycodes {
     private val keycodeMap = mapOf(
-        'a' to 0, 's' to 1, 'd' to 2, 'f' to 3, 'h' to 4, 'g' to 5, 'z' to 6, 'x' to 7, 'c' to 8, 'v' to 9,
-        'b' to 11, 'q' to 12, 'w' to 13, 'e' to 14, 'r' to 15, 'y' to 16, 't' to 17, '1' to 18, '2' to 19,
-        '3' to 20, '4' to 21, '6' to 22, '5' to 23, '=' to 24, '9' to 25, '7' to 26, '-' to 27, '8' to 28,
-        '0' to 29, ']' to 30, 'o' to 31, 'u' to 32, '[' to 33, 'i' to 34, 'p' to 35, 'l' to 37, 'j' to 38,
-        '\'' to 39, 'k' to 40, ';' to 41, '\\' to 42, ',' to 43, '/' to 44, 'n' to 45, 'm' to 46, '.' to 47,
-        ' ' to 49, '`' to 50, '!' to 18, '@' to 19, '#' to 20, '$' to 21, '%' to 23, '^' to 22, '&' to 26,
-        '*' to 28, '(' to 25, ')' to 29, '_' to 27, '+' to 24, '{' to 33, '}' to 30, '|' to 42, ':' to 41,
-        '\"' to 39, '<' to 43, '>' to 47, '?' to 44
+        'a' to 0,
+        's' to 1,
+        'd' to 2,
+        'f' to 3,
+        'h' to 4,
+        'g' to 5,
+        'z' to 6,
+        'x' to 7,
+        'c' to 8,
+        'v' to 9,
+        'b' to 11,
+        'q' to 12,
+        'w' to 13,
+        'e' to 14,
+        'r' to 15,
+        'y' to 16,
+        't' to 17,
+        '1' to 18,
+        '2' to 19,
+        '3' to 20,
+        '4' to 21,
+        '6' to 22,
+        '5' to 23,
+        '=' to 24,
+        '9' to 25,
+        '7' to 26,
+        '-' to 27,
+        '8' to 28,
+        '0' to 29,
+        ']' to 30,
+        'o' to 31,
+        'u' to 32,
+        '[' to 33,
+        'i' to 34,
+        'p' to 35,
+        'l' to 37,
+        'j' to 38,
+        '\'' to 39,
+        'k' to 40,
+        ';' to 41,
+        '\\' to 42,
+        ',' to 43,
+        '/' to 44,
+        'n' to 45,
+        'm' to 46,
+        '.' to 47,
+        ' ' to 49,
+        '`' to 50,
+        '!' to 18,
+        '@' to 19,
+        '#' to 20,
+        '$' to 21,
+        '%' to 23,
+        '^' to 22,
+        '&' to 26,
+        '*' to 28,
+        '(' to 25,
+        ')' to 29,
+        '_' to 27,
+        '+' to 24,
+        '{' to 33,
+        '}' to 30,
+        '|' to 42,
+        ':' to 41,
+        '\"' to 39,
+        '<' to 43,
+        '>' to 47,
+        '?' to 44
     )
 
     fun getKeyCode(char: Char): Int? = keycodeMap[char.lowercaseChar()]
@@ -125,7 +208,7 @@ fun KeyboardInputSheet(
             ModifierRow(
                 modifiers = modifiers,
                 onToggleModifier = onToggleModifier,
-                onKeyPress = { 
+                onKeyPress = {
                     onKeyPress(it, isSystemKeyboard, getActiveModifiers())
                     if (!isSystemKeyboard) onClearModifiers()
                 }
@@ -136,15 +219,21 @@ fun KeyboardInputSheet(
                 // System Keyboard mode
                 SystemInputArea(
                     onType = { text, isSystem -> onType(text, isSystem, getActiveModifiers()) },
-                    onKeyPress = { code, isSystem -> onKeyPress(code, isSystem, getActiveModifiers()) }
+                    onKeyPress = { code, isSystem ->
+                        onKeyPress(
+                            code,
+                            isSystem,
+                            getActiveModifiers()
+                        )
+                    }
                 )
             } else {
                 // Custom/AirSync Keyboard
                 CustomKeyboard(
                     onType = { text -> onType(text, false, getActiveModifiers()) },
-                    onKeyPress = { code, isShifted -> 
+                    onKeyPress = { code, isShifted ->
                         val extras = if (isShifted) listOf("shift") else emptyList()
-                        onKeyPress(code, false, getActiveModifiers(extras)) 
+                        onKeyPress(code, false, getActiveModifiers(extras))
                     },
                     onClearModifiers = onClearModifiers,
                     onSwitchToSystem = { isSystemKeyboard = true },
@@ -160,14 +249,14 @@ private fun SystemInputArea(
     onKeyPress: (Int, Boolean) -> Unit
 ) {
     // Sentinel strategy for System Keyboard
-    val sentinel = "\u200B" 
+    val sentinel = "\u200B"
     var text by remember { mutableStateOf(sentinel) }
     val focusRequester = remember { FocusRequester() }
-    
+
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()
     }
-    
+
     Box(modifier = Modifier.padding(0.dp)) {
         // Invisible but focused text field
         OutlinedTextField(
@@ -207,6 +296,7 @@ private fun CustomKeyboard(
     fun performLightHaptic() {
         view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
     }
+
     fun performHeavyHaptic() {
         view.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
     }
@@ -216,15 +306,15 @@ private fun CustomKeyboard(
 
     // Layers
     val numberRow = listOf("1", "2", "3", "4", "5", "6", "7", "8", "9", "0")
-    
+
     val row1Letters = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
     val row2Letters = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
     val row3Letters = listOf("z", "x", "c", "v", "b", "n", "m")
-    
+
     val row1Symbols = listOf("!", "@", "#", "$", "%", "^", "&", "*", "(", ")")
     val row2Symbols = listOf("-", "_", "+", "=", "[", "]", "{", "}", "\\", "|")
     // Adjusted row 3 symbols (8 items to roughly match letter row width when no shift)
-    val row3Symbols = listOf(";", ":", "'", "\"", ",", ".", "<", ">") 
+    val row3Symbols = listOf(";", ":", "'", "\"", ",", ".", "<", ">")
 
     val currentRow1 = if (isSymbols) row1Symbols else row1Letters
     val currentRow2 = if (isSymbols) row2Symbols else row2Letters
@@ -235,7 +325,7 @@ private fun CustomKeyboard(
             .fillMaxWidth()
             .padding(horizontal = 4.dp)
             .pointerInput(Unit) {
-                detectDragGestures { _, _ -> 
+                detectDragGestures { _, _ ->
                     // Consume drag gestures on the keyboard to prevent accidental sheet dismissal
                 }
             },
@@ -294,14 +384,16 @@ private fun CustomKeyboard(
             horizontalArrangement = Arrangement.spacedBy(4.dp),
             content = {
                 currentRow1.forEach { char ->
-                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val displayLabel =
+                        if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
                     val row1Interaction = remember { MutableInteractionSource() }
                     FilledTonalIconButton(
                         onClick = {
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                val isShifted =
+                                    shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
                                 onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
@@ -340,14 +432,16 @@ private fun CustomKeyboard(
             content = {
                 if (!isSymbols) Spacer(modifier = Modifier.weight(0.5f)) // Indent for letters
                 currentRow2.forEach { char ->
-                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val displayLabel =
+                        if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
                     val row2Interaction = remember { MutableInteractionSource() }
                     FilledTonalIconButton(
                         onClick = {
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                val isShifted =
+                                    shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
                                 onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
@@ -397,7 +491,8 @@ private fun CustomKeyboard(
                             .combinedClickable(
                                 onClick = {
                                     performLightHaptic()
-                                    shiftState = if (shiftState == ShiftState.OFF) ShiftState.ON else ShiftState.OFF
+                                    shiftState =
+                                        if (shiftState == ShiftState.OFF) ShiftState.ON else ShiftState.OFF
                                 },
                                 onLongClick = {
                                     performHeavyHaptic()
@@ -418,23 +513,25 @@ private fun CustomKeyboard(
                             contentDescription = "Shift",
                             modifier = Modifier.size(24.dp),
                             tint = if (shiftState != ShiftState.OFF) MaterialTheme.colorScheme.onPrimary
-                                else MaterialTheme.colorScheme.onPrimaryContainer
+                            else MaterialTheme.colorScheme.onPrimaryContainer
                         )
                     }
                 } else {
-                     // Spacing balance for symbols mode
-                     Spacer(modifier = Modifier.weight(0.5f))
+                    // Spacing balance for symbols mode
+                    Spacer(modifier = Modifier.weight(0.5f))
                 }
 
                 currentRow3.forEach { char ->
-                    val displayLabel = if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
+                    val displayLabel =
+                        if (shiftState != ShiftState.OFF && !isSymbols) char.uppercase() else char
                     val row3Interaction = remember { MutableInteractionSource() }
                     FilledTonalIconButton(
                         onClick = {
                             performLightHaptic()
                             val keycode = MacKeycodes.getKeyCode(displayLabel.first())
                             if (keycode != null) {
-                                val isShifted = shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
+                                val isShifted =
+                                    shiftState == ShiftState.ON || shiftState == ShiftState.LOCKED
                                 onKeyPress(keycode, isShifted)
                             } else {
                                 onType(displayLabel)
@@ -479,7 +576,8 @@ private fun CustomKeyboard(
                                     delAccumulatedDx += dragAmount
                                     // Moving left (negative dx) for delete
                                     if (delAccumulatedDx <= -delSweepThreshold) {
-                                        val steps = (kotlin.math.abs(delAccumulatedDx) / delSweepThreshold).toInt()
+                                        val steps =
+                                            (kotlin.math.abs(delAccumulatedDx) / delSweepThreshold).toInt()
                                         repeat(steps) {
                                             performLightHaptic()
                                             performLightHaptic()
@@ -581,7 +679,8 @@ private fun CustomKeyboard(
                                     val absDx = kotlin.math.abs(accumulatedDx)
                                     if (absDx >= sweepThreshold) {
                                         val steps = (absDx / sweepThreshold).toInt()
-                                        val keycode = if (accumulatedDx > 0) MacKeycodes.RIGHT else MacKeycodes.LEFT
+                                        val keycode =
+                                            if (accumulatedDx > 0) MacKeycodes.RIGHT else MacKeycodes.LEFT
                                         repeat(steps) {
                                             performLightHaptic()
                                             performLightHaptic()
@@ -715,11 +814,11 @@ private fun NavigationRow(
                     tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                 )
             }
-            
+
             navKeys.forEach { (name, icon, keycode) ->
                 val interaction = remember { MutableInteractionSource() }
                 val isPressed by interaction.collectIsPressedAsState()
-                
+
                 LaunchedEffect(isPressed) {
                     if (isPressed) {
                         performLightHaptic()
@@ -809,7 +908,7 @@ private fun ModifierRow(
                 Triple("option", R.drawable.key_option, modifiers.option),
                 Triple("command", R.drawable.key_command, modifiers.command)
             )
-            
+
             modifierList.forEach { (type, iconOrText, status) ->
                 val interaction = remember { MutableInteractionSource() }
                 Box(
@@ -839,7 +938,7 @@ private fun ModifierRow(
                                 contentDescription = type,
                                 modifier = Modifier.size(24.dp),
                                 tint = if (status.active) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         } else {
                             Text(
@@ -847,7 +946,7 @@ private fun ModifierRow(
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
                                 color = if (status.active) MaterialTheme.colorScheme.onPrimary
-                                        else MaterialTheme.colorScheme.onSurface
+                                else MaterialTheme.colorScheme.onSurface
                             )
                         }
                     }

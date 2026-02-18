@@ -11,14 +11,15 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.text.TextUtils
 import androidx.core.content.ContextCompat
-import com.sameerasw.airsync.service.MediaNotificationListener
 import androidx.core.net.toUri
+import com.sameerasw.airsync.service.MediaNotificationListener
 
 object PermissionUtil {
 
     fun isNotificationListenerEnabled(context: Context): Boolean {
         val componentName = ComponentName(context, MediaNotificationListener::class.java)
-        val flat = Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
+        val flat =
+            Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
         return !TextUtils.isEmpty(flat) && flat.contains(componentName.flattenToString())
     }
 
@@ -26,8 +27,8 @@ object PermissionUtil {
      * Check if the app is whitelisted from battery optimization
      */
     fun isBatteryOptimizationDisabled(context: Context): Boolean {
-            val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
-            return powerManager.isIgnoringBatteryOptimizations(context.packageName)
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
+        return powerManager.isIgnoringBatteryOptimizations(context.packageName)
     }
 
     /**
@@ -118,28 +119,28 @@ object PermissionUtil {
      * Check if MANAGE_EXTERNAL_STORAGE permission is granted (Android 11+)
      */
     fun hasManageExternalStoragePermission(): Boolean {
-            return try {
-                android.os.Environment.isExternalStorageManager()
-            } catch (_: Exception) {
-                false
-            }
+        return try {
+            android.os.Environment.isExternalStorageManager()
+        } catch (_: Exception) {
+            false
         }
+    }
 
     /**
      * Open MANAGE_EXTERNAL_STORAGE permission settings
      */
     fun openManageExternalStorageSettings(context: Context) {
-            try {
-                val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
-                    data = "package:${context.packageName}".toUri()
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                }
-                context.startActivity(intent)
-            } catch (_: Exception) {
-                // Fallback to app settings
-                openAppSpecificBatterySettings(context)
+        try {
+            val intent = Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION).apply {
+                data = "package:${context.packageName}".toUri()
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            // Fallback to app settings
+            openAppSpecificBatterySettings(context)
         }
+    }
 
     /**
      * Check if wallpaper access is available

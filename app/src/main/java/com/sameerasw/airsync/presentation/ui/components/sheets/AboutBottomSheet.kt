@@ -1,24 +1,38 @@
 package com.sameerasw.airsync.presentation.ui.components.sheets
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.util.Log
 import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material3.*
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -27,8 +41,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.sameerasw.airsync.R
-import com.sameerasw.airsync.utils.HapticUtil
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -42,7 +54,7 @@ fun AboutBottomSheet(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     val scrollState = rememberScrollState()
-    
+
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
     } catch (_: Exception) {
@@ -68,7 +80,7 @@ fun AboutBottomSheet(
                 style = MaterialTheme.typography.headlineLarge,
                 textAlign = TextAlign.Center
             )
-            
+
             Text(
                 text = description,
                 style = MaterialTheme.typography.bodyMedium,
@@ -90,7 +102,8 @@ fun AboutBottomSheet(
                         onClick = { },
                         onLongClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            Toast.makeText(context, "Developer mode toggled", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "Developer mode toggled", Toast.LENGTH_SHORT)
+                                .show()
                             onToggleDeveloperMode()
                         }
                     )
@@ -181,7 +194,7 @@ fun AboutBottomSheet(
             }
 
             Spacer(modifier = Modifier.height(0.dp))
-            
+
             Text(
                 text = "With ❤\uFE0F from \uD83C\uDDF1\uD83C\uDDF0",
                 style = MaterialTheme.typography.bodyMedium,
@@ -205,7 +218,11 @@ private fun ActionButton(
             modifier = Modifier.padding(horizontal = 4.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Icon(painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
@@ -215,7 +232,11 @@ private fun ActionButton(
             modifier = Modifier.padding(horizontal = 4.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            Icon(painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(
+                painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
             Spacer(modifier = Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.labelLarge)
         }
@@ -233,7 +254,11 @@ private fun OtherAppButton(
         modifier = Modifier.padding(horizontal = 4.dp),
         contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
     ) {
-        Icon(painterResource(id = iconRes), contentDescription = null, modifier = Modifier.size(18.dp))
+        Icon(
+            painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp)
+        )
         Spacer(modifier = Modifier.width(8.dp))
         Text(text, style = MaterialTheme.typography.labelLarge)
     }

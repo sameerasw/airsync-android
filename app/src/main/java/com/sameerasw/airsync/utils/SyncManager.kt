@@ -5,8 +5,13 @@ import android.util.Log
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.domain.model.AudioInfo
 import com.sameerasw.airsync.domain.model.BatteryInfo
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
 
 object SyncManager {
@@ -84,7 +89,8 @@ object SyncManager {
                         last.artist != currentAudio.artist ||
                         last.volume != currentAudio.volume ||
                         last.isMuted != currentAudio.isMuted ||
-                        last.likeStatus != currentAudio.likeStatus) {
+                        last.likeStatus != currentAudio.likeStatus
+                    ) {
                         shouldSync = true
                         Log.d(TAG, "Audio info changed, syncing device status")
                     }
@@ -95,7 +101,8 @@ object SyncManager {
                 // Check if battery info changed significantly
                 lastBatteryInfo?.let { last ->
                     if (last.isCharging != currentBattery.isCharging ||
-                        kotlin.math.abs(last.level - currentBattery.level) >= 1) {
+                        kotlin.math.abs(last.level - currentBattery.level) >= 1
+                    ) {
                         shouldSync = true
                         Log.d(TAG, "Battery info changed significantly, syncing device status")
                     }
@@ -144,12 +151,14 @@ object SyncManager {
 
                 // Prefer the persisted device name set in the app. Fall back to system device name only if empty.
                 val persistedName = dataStoreManager.getDeviceName().first().ifBlank { null }
-                val deviceName = persistedName ?: DeviceInfoUtil.getDeviceName(context).also { sysName ->
-                    // Only save system name if no persisted name exists
-                    try {
-                        dataStoreManager.saveDeviceName(sysName)
-                    } catch (_: Exception) { }
-                }
+                val deviceName =
+                    persistedName ?: DeviceInfoUtil.getDeviceName(context).also { sysName ->
+                        // Only save system name if no persisted name exists
+                        try {
+                            dataStoreManager.saveDeviceName(sysName)
+                        } catch (_: Exception) {
+                        }
+                    }
                 Log.d(TAG, "Using device name for sync: $deviceName")
 
                 val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: "Unknown"
@@ -160,10 +169,17 @@ object SyncManager {
                 // Get discovered ADB ports from the running mDNS discovery
                 val adbPorts = try {
                     // Access the discovery holder directly - it's a true singleton object
-                    val discoveredServices = com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
-                    Log.d(TAG, "Retrieved ${discoveredServices.size} discovered ADB services from holder")
+                    val discoveredServices =
+                        com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
+                    Log.d(
+                        TAG,
+                        "Retrieved ${discoveredServices.size} discovered ADB services from holder"
+                    )
                     discoveredServices.forEach { service ->
-                        Log.d(TAG, "  - Service: ${service.serviceName} at ${service.hostAddress}:${service.port}")
+                        Log.d(
+                            TAG,
+                            "  - Service: ${service.serviceName} at ${service.hostAddress}:${service.port}"
+                        )
                     }
                     discoveredServices.map { it.port.toString() }
                 } catch (e: Exception) {
@@ -173,7 +189,15 @@ object SyncManager {
                 Log.d(TAG, "Discovered ADB ports: $adbPorts")
 
                 val deviceId = DeviceInfoUtil.getDeviceId(context)
-                val liteDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, adbPorts, WebSocketUtil.currentIpAddress)
+                val liteDeviceInfoJson = JsonUtil.createDeviceInfoJson(
+                    deviceId,
+                    deviceName,
+                    localIp,
+                    port,
+                    version,
+                    adbPorts,
+                    WebSocketUtil.currentIpAddress
+                )
                 if (WebSocketUtil.sendMessage(liteDeviceInfoJson)) {
                     Log.d(TAG, "Lite device info sent to trigger macInfo")
                 } else {
@@ -184,16 +208,32 @@ object SyncManager {
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         delay(1500)
-                        val wallpaperBase64 = try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
+                        val wallpaperBase64 = try {
+                            WallpaperUtil.getWallpaperAsBase64(context)
+                        } catch (_: Exception) {
+                            null
+                        }
                         val discoveredServices = try {
                             AdbMdnsDiscovery(context).getDiscoveredServices()
                         } catch (e: Exception) {
                             emptyList()
                         }
                         val currentAdbPorts = discoveredServices.map { it.port.toString() }
-                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, wallpaperBase64, currentAdbPorts, WebSocketUtil.currentIpAddress)
+                        val fullDeviceInfoJson = JsonUtil.createDeviceInfoJson(
+                            deviceId,
+                            deviceName,
+                            localIp,
+                            port,
+                            version,
+                            wallpaperBase64,
+                            currentAdbPorts,
+                            WebSocketUtil.currentIpAddress
+                        )
                         if (WebSocketUtil.sendMessage(fullDeviceInfoJson)) {
-                            Log.d(TAG, "Full device info sent with wallpaper: ${if (wallpaperBase64 != null) "included" else "not available"}")
+                            Log.d(
+                                TAG,
+                                "Full device info sent with wallpaper: ${if (wallpaperBase64 != null) "included" else "not available"}"
+                            )
                         }
                     } catch (e: Exception) {
                         Log.w(TAG, "Failed to send full device info later: ${e.message}")
@@ -215,7 +255,10 @@ object SyncManager {
                 }
 
                 // 3. Defer icon sync to macInfo handler to avoid unnecessary extraction
-                Log.d(TAG, "Deferring app icon sync until macInfo arrives (to compare package lists first)")
+                Log.d(
+                    TAG,
+                    "Deferring app icon sync until macInfo arrives (to compare package lists first)"
+                )
 
                 Log.d(TAG, "Initial sync sequence completed (handshake depends on macInfo)")
 
@@ -232,7 +275,8 @@ object SyncManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ds = DataStoreManager(context)
-                val deviceName = name ?: ds.getDeviceName().first().ifBlank { DeviceInfoUtil.getDeviceName(context) }
+                val deviceName = name ?: ds.getDeviceName().first()
+                    .ifBlank { DeviceInfoUtil.getDeviceName(context) }
                 val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: "Unknown"
                 val port = ds.getPort().first().toIntOrNull() ?: 6996
                 val version = try {
@@ -243,15 +287,29 @@ object SyncManager {
 
                 // Get discovered ADB ports from the running mDNS discovery
                 val adbPorts = try {
-                    val discoveredServices = com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
+                    val discoveredServices =
+                        com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
                     discoveredServices.map { it.port.toString() }
                 } catch (e: Exception) {
                     emptyList()
                 }
 
-                val wallpaperBase64 = try { WallpaperUtil.getWallpaperAsBase64(context) } catch (_: Exception) { null }
+                val wallpaperBase64 = try {
+                    WallpaperUtil.getWallpaperAsBase64(context)
+                } catch (_: Exception) {
+                    null
+                }
                 val deviceId = DeviceInfoUtil.getDeviceId(context)
-                val deviceInfoJson = JsonUtil.createDeviceInfoJson(deviceId, deviceName, localIp, port, version, wallpaperBase64, adbPorts, WebSocketUtil.currentIpAddress)
+                val deviceInfoJson = JsonUtil.createDeviceInfoJson(
+                    deviceId,
+                    deviceName,
+                    localIp,
+                    port,
+                    version,
+                    wallpaperBase64,
+                    adbPorts,
+                    WebSocketUtil.currentIpAddress
+                )
 
                 if (WebSocketUtil.sendMessage(deviceInfoJson)) {
                     Log.d(TAG, "Sent updated device info: $deviceName")
@@ -285,7 +343,10 @@ object SyncManager {
 
             // Check if under daily limit
             val isUnderLimit = lastDevice.iconSyncCount < MAX_DAILY_ICON_SYNCS
-            Log.d(TAG, "Icon sync count for today: ${lastDevice.iconSyncCount}/$MAX_DAILY_ICON_SYNCS")
+            Log.d(
+                TAG,
+                "Icon sync count for today: ${lastDevice.iconSyncCount}/$MAX_DAILY_ICON_SYNCS"
+            )
 
             return isUnderLimit
         } catch (e: Exception) {
@@ -375,7 +436,10 @@ object SyncManager {
             // Save the merged list back to DataStore
             dataStoreManager.saveNotificationApps(allApps)
 
-            Log.d(TAG, "Collecting icons for ${allApps.size} apps (${allApps.count { it.isEnabled }} enabled)")
+            Log.d(
+                TAG,
+                "Collecting icons for ${allApps.size} apps (${allApps.count { it.isEnabled }} enabled)"
+            )
 
             // Get package names for icon collection
             val allPackages = allApps.map { it.packageName }
@@ -388,7 +452,10 @@ object SyncManager {
                 val appIconsJson = JsonUtil.createAppIconsJson(allApps, iconMap)
 
                 if (WebSocketUtil.sendMessage(appIconsJson)) {
-                    Log.d(TAG, "✅ App icons sent successfully (${iconMap.size} icons with full app details)")
+                    Log.d(
+                        TAG,
+                        "✅ App icons sent successfully (${iconMap.size} icons with full app details)"
+                    )
 
                     // Update counter only for automatic syncs
                     if (!isManualSync) {
@@ -416,7 +483,11 @@ object SyncManager {
     /**
      * Send optimized app icons for a subset of packages (triggered by macInfo)
      */
-    fun sendOptimizedAppIcons(context: Context, packageNames: List<String>, fetchIcons: Boolean = true) {
+    fun sendOptimizedAppIcons(
+        context: Context,
+        packageNames: List<String>,
+        fetchIcons: Boolean = true
+    ) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 if (!WebSocketUtil.isConnected()) {
@@ -431,7 +502,7 @@ object SyncManager {
 
                 val pm = context.packageManager
                 val apps = mutableListOf<com.sameerasw.airsync.domain.model.NotificationApp>()
-                
+
                 val ds = DataStoreManager(context)
                 val savedApps = ds.getNotificationApps().first()
                 val savedAppsMap = savedApps.associateBy { it.packageName }
@@ -440,12 +511,13 @@ object SyncManager {
                     try {
                         val ai = pm.getApplicationInfo(pkg, 0)
                         val appName = pm.getApplicationLabel(ai).toString()
-                        val isSystem = (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
-                                (ai.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
-                        
+                        val isSystem =
+                            (ai.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM) != 0 ||
+                                    (ai.flags and android.content.pm.ApplicationInfo.FLAG_UPDATED_SYSTEM_APP) != 0
+
                         // Use saved preference if available, default to true
                         val isEnabled = savedAppsMap[pkg]?.isEnabled ?: true
-                        
+
                         apps.add(
                             com.sameerasw.airsync.domain.model.NotificationApp(
                                 packageName = pkg,
@@ -456,7 +528,10 @@ object SyncManager {
                             )
                         )
                     } catch (e: Exception) {
-                        Log.w(TAG, "Skipping package $pkg (not found or inaccessible): ${e.message}")
+                        Log.w(
+                            TAG,
+                            "Skipping package $pkg (not found or inaccessible): ${e.message}"
+                        )
                     }
                 }
 
@@ -481,7 +556,10 @@ object SyncManager {
 
                 val appIconsJson = JsonUtil.createAppIconsJson(apps, iconMap)
                 if (WebSocketUtil.sendMessage(appIconsJson)) {
-                    Log.d(TAG, "✅ Optimized app icons sent: ${apps.size} apps (icons included: $fetchIcons)")
+                    Log.d(
+                        TAG,
+                        "✅ Optimized app icons sent: ${apps.size} apps (icons included: $fetchIcons)"
+                    )
                 } else {
                     Log.e(TAG, "Failed to send optimized app icons")
                 }

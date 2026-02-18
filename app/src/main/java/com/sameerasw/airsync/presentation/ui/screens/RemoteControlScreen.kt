@@ -1,71 +1,101 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Circle
-import androidx.compose.material.icons.filled.SpaceBar
-import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.filled.VolumeOff
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import com.sameerasw.airsync.R
-import com.sameerasw.airsync.utils.HapticUtil
-import com.sameerasw.airsync.utils.WebSocketUtil
-import com.sameerasw.airsync.utils.WebSocketMessageHandler
-import com.sameerasw.airsync.utils.MacDeviceStatusManager
-import kotlinx.coroutines.launch
-import org.json.JSONObject
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.ui.draw.alpha
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Circle
+import androidx.compose.material.icons.filled.SpaceBar
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material3.ButtonGroup
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
+import androidx.compose.material3.FilledIconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.presentation.ui.components.KeyboardInputSheet
 import com.sameerasw.airsync.presentation.ui.components.KeyboardModifiers
 import com.sameerasw.airsync.presentation.ui.components.ModifierStatus
+import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
+import com.sameerasw.airsync.utils.HapticUtil
+import com.sameerasw.airsync.utils.MacDeviceStatusManager
+import com.sameerasw.airsync.utils.WebSocketMessageHandler
+import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import org.json.JSONArray
+import org.json.JSONObject
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -76,8 +106,8 @@ fun RemoteControlScreen(
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
-    
+    LocalContext.current
+
     // Volume state (0-100)
     var volume by remember { mutableFloatStateOf(50f) }
     var isMuted by remember { mutableStateOf(false) }
@@ -86,7 +116,7 @@ fun RemoteControlScreen(
     // Observe Mac Status
     val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
     val musicInfo = macStatus?.music
-    
+
     // Use the centrally managed bitmap flow
     val albumArtBitmap by MacDeviceStatusManager.albumArt.collectAsState()
 
@@ -101,7 +131,12 @@ fun RemoteControlScreen(
         }
     }
 
-    fun sendRemoteAction(action: String, value: Any? = null, extras: Map<String, Any> = emptyMap(), performHaptic: Boolean = true) {
+    fun sendRemoteAction(
+        action: String,
+        value: Any? = null,
+        extras: Map<String, Any> = emptyMap(),
+        performHaptic: Boolean = true
+    ) {
         scope.launch {
             try {
                 if (performHaptic) {
@@ -139,19 +174,19 @@ fun RemoteControlScreen(
 
     val moveChannel = remember { Channel<Offset>(Channel.UNLIMITED) }
     val scrollChannel = remember { Channel<Offset>(Channel.UNLIMITED) }
-    
+
     // movement batching at 100Hz with smoothing
     LaunchedEffect(isMouseMode) {
         if (!isMouseMode) return@LaunchedEffect
-        
+
         var pendingMove = Offset.Zero
         var pendingScroll = Offset.Zero
         var lastSentMove = Offset.Zero
         val smoothing = 0.7f // 0-1, higher = smoother but more lag
-        
+
         while (true) {
             delay(10)
-            
+
             // Conserving moves
             while (true) {
                 val poll = moveChannel.tryReceive().getOrNull() ?: break
@@ -161,7 +196,7 @@ fun RemoteControlScreen(
                 // Apply subtle smoothing (Low-pass filter)
                 val smoothedX = pendingMove.x * (1f - smoothing) + lastSentMove.x * smoothing
                 val smoothedY = pendingMove.y * (1f - smoothing) + lastSentMove.y * smoothing
-                
+
                 sendRemoteAction(
                     "mouse_move",
                     extras = mapOf(
@@ -173,7 +208,7 @@ fun RemoteControlScreen(
                 lastSentMove = Offset(smoothedX.toFloat(), smoothedY.toFloat())
                 pendingMove = Offset.Zero
             }
-            
+
             // Conserving scrolls
             while (true) {
                 val poll = scrollChannel.tryReceive().getOrNull() ?: break
@@ -298,7 +333,7 @@ fun RemoteControlScreen(
                     }
                     Column(
                         modifier = Modifier.padding(
-                            horizontal = 24.dp, 
+                            horizontal = 24.dp,
                             vertical = if (isPlayerExpanded) 32.dp else 16.dp
                         ),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -326,7 +361,9 @@ fun RemoteControlScreen(
                                     text = musicInfo?.artist?.takeIf { it.isNotEmpty() }
                                         ?: "from your Mac",
                                     style = MaterialTheme.typography.titleMedium,
-                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground.copy(
+                                        alpha = 0.7f
+                                    ) else MaterialTheme.colorScheme.onSurfaceVariant,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -334,8 +371,6 @@ fun RemoteControlScreen(
                         }
 
                         // ButtonGroup
-                        val isBuffering = false // Placeholder
-                        val playWhenReady = true // Placeholder
 
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -422,7 +457,9 @@ fun RemoteControlScreen(
                             exit = shrinkVertically() + fadeOut()
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
@@ -448,7 +485,9 @@ fun RemoteControlScreen(
                                     colors = SliderDefaults.colors(
                                         thumbColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
                                         activeTrackColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                                        inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant
+                                        inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(
+                                            alpha = 0.3f
+                                        ) else MaterialTheme.colorScheme.surfaceVariant
                                     )
                                 )
                             }
@@ -472,11 +511,11 @@ fun RemoteControlScreen(
             ) {
                 Text("Esc")
             }
-            
-           OutlinedButton(
-               onClick = { sendRemoteAction("space") },
-               modifier = Modifier.padding(horizontal = 4.dp)
-           ) {
+
+            OutlinedButton(
+                onClick = { sendRemoteAction("space") },
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
             }
             // Mouse Toggle
@@ -485,7 +524,9 @@ fun RemoteControlScreen(
                 modifier = Modifier.padding(horizontal = 4.dp)
             ) {
                 Icon(
-                    painter = if (isMouseMode) painterResource(id = R.drawable.rounded_drag_click_24) else painterResource(id = R.drawable.rounded_gamepad_circle_up_24),
+                    painter = if (isMouseMode) painterResource(id = R.drawable.rounded_drag_click_24) else painterResource(
+                        id = R.drawable.rounded_gamepad_circle_up_24
+                    ),
                     contentDescription = if (isMouseMode) "Touchpad Mode" else "Mouse Mode",
                     modifier = Modifier.size(20.dp)
                 )
@@ -500,40 +541,41 @@ fun RemoteControlScreen(
                     .heightIn(min = if (isPlayerExpanded) 300.dp else 450.dp, max = 800.dp)
                     .pointerInput(isMouseMode) {
                         if (!isMouseMode) return@pointerInput
-                        
+
                         awaitEachGesture {
                             val firstDown = awaitFirstDown()
                             var totalMoved = 0f
                             var totalHapticDistance = 0f
                             var lastPosition = firstDown.position
                             var isTwoFinger = false
-                            
+
                             val dragThreshold = 10f
                             val hapticInterval = 25f
 
                             while (true) {
                                 val event = awaitPointerEvent()
                                 val pointers = event.changes
-                                
+
                                 if (pointers.size >= 2) {
                                     isTwoFinger = true
                                     val change1 = pointers[0]
                                     val change2 = pointers[1]
-                                    
+
                                     val currentCenter = (change1.position + change2.position) / 2f
-                                    val prevCenter = (change1.previousPosition + change2.previousPosition) / 2f
+                                    val prevCenter =
+                                        (change1.previousPosition + change2.previousPosition) / 2f
                                     val scrollDelta = currentCenter - prevCenter
                                     val scrollDist = scrollDelta.getDistance()
-                                    
-                                        if (scrollDist > 0.5f) {
-                                            totalMoved += scrollDist
-                                            totalHapticDistance += scrollDist
-                                            if (totalHapticDistance > hapticInterval) {
-                                                performLightHaptic()
-                                                totalHapticDistance = 0f
-                                            }
-                                            scrollChannel.trySend(scrollDelta * 2f)
+
+                                    if (scrollDist > 0.5f) {
+                                        totalMoved += scrollDist
+                                        totalHapticDistance += scrollDist
+                                        if (totalHapticDistance > hapticInterval) {
+                                            performLightHaptic()
+                                            totalHapticDistance = 0f
                                         }
+                                        scrollChannel.trySend(scrollDelta * 2f)
+                                    }
                                     pointers.forEach { it.consume() }
                                 } else if (pointers.size == 1) {
                                     val change = pointers[0]
@@ -541,7 +583,7 @@ fun RemoteControlScreen(
                                         val delta = change.position - lastPosition
                                         val dist = delta.getDistance()
                                         lastPosition = change.position
-                                        
+
                                         if (!isTwoFinger) {
                                             if (dist > 0.1f) {
                                                 totalMoved += dist
@@ -559,20 +601,44 @@ fun RemoteControlScreen(
                                         if (isTwoFinger) {
                                             if (totalMoved < 30f) {
                                                 performLightHaptic()
-                                                sendRemoteAction("mouse_click", extras = mapOf("button" to "right", "isDown" to true))
+                                                sendRemoteAction(
+                                                    "mouse_click",
+                                                    extras = mapOf(
+                                                        "button" to "right",
+                                                        "isDown" to true
+                                                    )
+                                                )
                                                 scope.launch {
                                                     delay(50)
-                                                    sendRemoteAction("mouse_click", extras = mapOf("button" to "right", "isDown" to false))
+                                                    sendRemoteAction(
+                                                        "mouse_click",
+                                                        extras = mapOf(
+                                                            "button" to "right",
+                                                            "isDown" to false
+                                                        )
+                                                    )
                                                 }
                                             }
                                         } else {
                                             if (totalMoved < dragThreshold) {
                                                 // CLICK
                                                 performLightHaptic()
-                                                sendRemoteAction("mouse_click", extras = mapOf("button" to "left", "isDown" to true))
+                                                sendRemoteAction(
+                                                    "mouse_click",
+                                                    extras = mapOf(
+                                                        "button" to "left",
+                                                        "isDown" to true
+                                                    )
+                                                )
                                                 scope.launch {
                                                     delay(50)
-                                                    sendRemoteAction("mouse_click", extras = mapOf("button" to "left", "isDown" to false))
+                                                    sendRemoteAction(
+                                                        "mouse_click",
+                                                        extras = mapOf(
+                                                            "button" to "left",
+                                                            "isDown" to false
+                                                        )
+                                                    )
                                                 }
                                             }
                                         }
@@ -586,13 +652,18 @@ fun RemoteControlScreen(
                     },
                 shape = RoundedCornerShape(24.dp),
                 color = MaterialTheme.colorScheme.surfaceContainerLow,
-                border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                )
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         painter = painterResource(id = R.drawable.rounded_drag_click_24),
                         contentDescription = null,
-                        modifier = Modifier.size(48.dp).alpha(0.1f),
+                        modifier = Modifier
+                            .size(48.dp)
+                            .alpha(0.1f),
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
@@ -609,30 +680,38 @@ fun RemoteControlScreen(
                 RemoteButton(
                     onClick = { sendRemoteAction("arrow_up") },
                     icon = Icons.Default.ArrowUpward,
-                    modifier = Modifier.align(Alignment.TopCenter).padding(top = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 16.dp)
                 )
-                
+
                 // Down
                 RemoteButton(
                     onClick = { sendRemoteAction("arrow_down") },
                     icon = Icons.Default.ArrowDownward,
-                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 16.dp)
                 )
-                
+
                 // Left
                 RemoteButton(
                     onClick = { sendRemoteAction("arrow_left") },
                     icon = Icons.Default.ArrowBack,
-                    modifier = Modifier.align(Alignment.CenterStart).padding(start = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
                 )
-                
+
                 // Right
                 RemoteButton(
                     onClick = { sendRemoteAction("arrow_right") },
                     icon = Icons.Default.ArrowForward,
-                    modifier = Modifier.align(Alignment.CenterEnd).padding(end = 16.dp)
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
                 )
-                
+
                 // Center (OK/Enter)
                 FilledTonalIconButton(
                     onClick = { sendRemoteAction("enter") },

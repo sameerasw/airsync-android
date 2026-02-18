@@ -14,43 +14,44 @@ object AppUtil {
     /**
      * Get all installed apps
      */
-    suspend fun getInstalledApps(context: Context): List<NotificationApp> = withContext(Dispatchers.IO) {
-        try {
-            val pm = context.packageManager
+    suspend fun getInstalledApps(context: Context): List<NotificationApp> =
+        withContext(Dispatchers.IO) {
+            try {
+                val pm = context.packageManager
 
-            // Find apps with launcher entry points
-            val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
-                addCategory(Intent.CATEGORY_LAUNCHER)
-            }
-
-            val apps = pm.queryIntentActivities(mainIntent, 0)
-                .mapNotNull { resolveInfo ->
-                    val appInfo = resolveInfo.activityInfo.applicationInfo
-
-                    if (appInfo.packageName.contains("airsync")) return@mapNotNull null
-
-                    try {
-                        NotificationApp(
-                            packageName = appInfo.packageName,
-                            appName = pm.getApplicationLabel(appInfo).toString(),
-                            isEnabled = true,
-                            icon = pm.getApplicationIcon(appInfo),
-                            isSystemApp = isSystemApp(appInfo),
-                            lastUpdated = System.currentTimeMillis()
-                        )
-                    } catch (e: Exception) {
-                        Log.w(TAG, "Error loading app ${appInfo.packageName}: ${e.message}")
-                        null
-                    }
+                // Find apps with launcher entry points
+                val mainIntent = Intent(Intent.ACTION_MAIN, null).apply {
+                    addCategory(Intent.CATEGORY_LAUNCHER)
                 }
-                .sortedBy { it.appName.lowercase() }
 
-            apps
-        } catch (e: Exception) {
-            Log.e(TAG, "Error getting installed apps: ${e.message}")
-            emptyList()
+                val apps = pm.queryIntentActivities(mainIntent, 0)
+                    .mapNotNull { resolveInfo ->
+                        val appInfo = resolveInfo.activityInfo.applicationInfo
+
+                        if (appInfo.packageName.contains("airsync")) return@mapNotNull null
+
+                        try {
+                            NotificationApp(
+                                packageName = appInfo.packageName,
+                                appName = pm.getApplicationLabel(appInfo).toString(),
+                                isEnabled = true,
+                                icon = pm.getApplicationIcon(appInfo),
+                                isSystemApp = isSystemApp(appInfo),
+                                lastUpdated = System.currentTimeMillis()
+                            )
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Error loading app ${appInfo.packageName}: ${e.message}")
+                            null
+                        }
+                    }
+                    .sortedBy { it.appName.lowercase() }
+
+                apps
+            } catch (e: Exception) {
+                Log.e(TAG, "Error getting installed apps: ${e.message}")
+                emptyList()
+            }
         }
-    }
 
     /**
      * Merge installed apps with saved preferences, keeping user settings and adding new apps

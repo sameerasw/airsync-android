@@ -17,7 +17,9 @@ import com.sameerasw.airsync.domain.model.BatteryInfo
 import com.sameerasw.airsync.service.MediaNotificationListener
 import java.net.Inet4Address
 import java.net.NetworkInterface
-import java.util.*
+import java.util.Collections
+import java.util.Locale
+import java.util.UUID
 
 object DeviceInfoUtil {
 
@@ -40,7 +42,10 @@ object DeviceInfoUtil {
                 for (address in addresses) {
                     if (!address.isLoopbackAddress) {
                         val hostAddress = address.hostAddress
-                        if (hostAddress != null && hostAddress.contains(".") && !hostAddress.contains(":")) {
+                        if (hostAddress != null && hostAddress.contains(".") && !hostAddress.contains(
+                                ":"
+                            )
+                        ) {
                             // IPv4 address
                             return hostAddress
                         }
@@ -57,13 +62,15 @@ object DeviceInfoUtil {
         return try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 // Use ConnectivityManager and LinkProperties for Android 12+
-                val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val connectivityManager =
+                    context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
                 val activeNetwork = connectivityManager.activeNetwork
                 val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
                 if (networkCapabilities != null &&
                     networkCapabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
                 ) {
-                    val linkProperties: LinkProperties? = connectivityManager.getLinkProperties(activeNetwork)
+                    val linkProperties: LinkProperties? =
+                        connectivityManager.getLinkProperties(activeNetwork)
                     linkProperties?.linkAddresses?.forEach { linkAddress ->
                         val address = linkAddress.address
                         if (address is Inet4Address && !address.isLoopbackAddress) {
@@ -75,7 +82,9 @@ object DeviceInfoUtil {
                 getLocalIpAddress()
             } else {
                 // Deprecated method for older versions
-                val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val wifiManager =
+                    context.applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+
                 @Suppress("DEPRECATION")
                 val wifiInfo = wifiManager.connectionInfo
                 val ipAddress = wifiInfo.ipAddress
@@ -99,7 +108,8 @@ object DeviceInfoUtil {
 
     fun getBatteryInfo(context: Context): BatteryInfo {
         return try {
-            val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            val batteryIntent =
+                context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             val level = batteryIntent?.getIntExtra(BatteryManager.EXTRA_LEVEL, -1) ?: -1
             val scale = batteryIntent?.getIntExtra(BatteryManager.EXTRA_SCALE, -1) ?: -1
             val status = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
@@ -180,6 +190,7 @@ object DeviceInfoUtil {
             likeStatus = audioInfo.likeStatus
         )
     }
+
     fun getDeviceId(context: Context): String {
         return try {
             Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)

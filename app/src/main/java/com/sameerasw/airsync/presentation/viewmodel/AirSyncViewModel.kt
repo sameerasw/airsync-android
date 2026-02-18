@@ -11,17 +11,20 @@ import com.sameerasw.airsync.domain.model.DeviceInfo
 import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
 import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.domain.repository.AirSyncRepository
+import com.sameerasw.airsync.smartspacer.AirSyncDeviceTarget
 import com.sameerasw.airsync.utils.DeviceInfoUtil
+import com.sameerasw.airsync.utils.DiscoveredDevice
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.NetworkMonitor
 import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.SyncManager
-import com.sameerasw.airsync.utils.WebSocketUtil
-import com.sameerasw.airsync.service.WakeupService
-import com.sameerasw.airsync.smartspacer.AirSyncDeviceTarget
-import kotlinx.coroutines.flow.*
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
-import com.sameerasw.airsync.utils.DiscoveredDevice
+import com.sameerasw.airsync.utils.WebSocketUtil
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class AirSyncViewModel(
@@ -66,10 +69,14 @@ class AirSyncViewModel(
     private var previousNetworkIp: String? = null
 
     private var appContext: Context? = null
+
     // Manual connect canceller reference (set in init) for unregistering
-    private val manualConnectCanceler: () -> Unit = { 
+    private val manualConnectCanceler: () -> Unit = {
         // Cancel any active auto-reconnect when user starts manual connection
-        try { WebSocketUtil.cancelAutoReconnect() } catch (_: Exception) {}
+        try {
+            WebSocketUtil.cancelAutoReconnect()
+        } catch (_: Exception) {
+        }
     }
 
     // Connection status listener for WebSocket updates
@@ -103,7 +110,8 @@ class AirSyncViewModel(
         WebSocketUtil.registerConnectionStatusListener(connectionStatusListener)
         try {
             WebSocketUtil.registerManualConnectListener(manualConnectCanceler)
-        } catch (_: Exception) {}
+        } catch (_: Exception) {
+        }
 
         // Observe Mac device status updates
         viewModelScope.launch {
@@ -123,7 +131,10 @@ class AirSyncViewModel(
         super.onCleared()
         // Unregister the connection status listener when ViewModel is cleared
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
-        try { WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler) } catch (_: Exception) {}
+        try {
+            WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler)
+        } catch (_: Exception) {
+        }
     }
 
     private fun startObservingDeviceChanges(context: Context) {
@@ -134,19 +145,25 @@ class AirSyncViewModel(
             dataStoreManager.getLastConnectedDevice()
                 .distinctUntilChanged()
                 .collect { device ->
-                Log.d("AirSyncViewModel", "Last connected device changed: ${device?.name}, isPlus: ${device?.isPlus}")
-                updateDisplayedDevice(context)
-            }
+                    Log.d(
+                        "AirSyncViewModel",
+                        "Last connected device changed: ${device?.name}, isPlus: ${device?.isPlus}"
+                    )
+                    updateDisplayedDevice(context)
+                }
         }
 
         viewModelScope.launch {
             dataStoreManager.getAllNetworkDeviceConnections()
                 .distinctUntilChanged()
                 .collect { networkDevices ->
-                Log.d("AirSyncViewModel", "Network devices changed: ${networkDevices.size} devices")
-                _networkDevices.value = networkDevices
-                updateDisplayedDevice(context)
-            }
+                    Log.d(
+                        "AirSyncViewModel",
+                        "Network devices changed: ${networkDevices.size} devices"
+                    )
+                    _networkDevices.value = networkDevices
+                    updateDisplayedDevice(context)
+                }
         }
     }
 
@@ -163,7 +180,10 @@ class AirSyncViewModel(
 
             // Only update if changed
             if (_uiState.value.lastConnectedDevice != deviceToShow) {
-                Log.d("AirSyncViewModel", "Updating displayed device: ${deviceToShow?.name}, isPlus: ${deviceToShow?.isPlus}, model: ${deviceToShow?.model}")
+                Log.d(
+                    "AirSyncViewModel",
+                    "Updating displayed device: ${deviceToShow?.name}, isPlus: ${deviceToShow?.isPlus}, model: ${deviceToShow?.model}"
+                )
                 _uiState.value = _uiState.value.copy(lastConnectedDevice = deviceToShow)
             }
         }
@@ -195,14 +215,14 @@ class AirSyncViewModel(
             val isKeepPreviousLinkEnabled = repository.getKeepPreviousLinkEnabled().first()
             val isMacMediaControlsEnabled = repository.getMacMediaControlsEnabled().first()
             val isClipboardHistoryEnabled = repository.getClipboardHistoryEnabled().first()
-            val defaultTab = repository.getDefaultTab().first()
+            repository.getDefaultTab().first()
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
 
             // Rating tracking
-            val firstMacConnectionTime = repository.getFirstMacConnectionTime().first()
-            val lastDismissedVersion = repository.getLastPromptDismissedVersion().first()
-            val hasRated = repository.hasRatedApp().first()
+            repository.getFirstMacConnectionTime().first()
+            repository.getLastPromptDismissedVersion().first()
+            repository.hasRatedApp().first()
 
             // Get device info
             val deviceName = savedDeviceName.ifEmpty {
@@ -270,7 +290,6 @@ class AirSyncViewModel(
             }
 
 
-
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
 
@@ -332,7 +351,7 @@ class AirSyncViewModel(
         if (ctx != null) {
             // Send updated device info immediately so desktop sees the new name
             try {
-                com.sameerasw.airsync.utils.SyncManager.sendDeviceInfoNow(ctx, name)
+                SyncManager.sendDeviceInfoNow(ctx, name)
             } catch (_: Exception) {
                 // ignore
             }
@@ -376,7 +395,11 @@ class AirSyncViewModel(
         )
     }
 
-    fun saveLastConnectedDevice(pcName: String? = null, isPlus: Boolean = false, symmetricKey: String? = null) {
+    fun saveLastConnectedDevice(
+        pcName: String? = null,
+        isPlus: Boolean = false,
+        symmetricKey: String? = null
+    ) {
         viewModelScope.launch {
             val deviceName = pcName ?: "My Mac"
             val ourIp = _deviceInfo.value.localIp
@@ -384,7 +407,14 @@ class AirSyncViewModel(
             val port = _uiState.value.port
 
             // Save using network-aware storage
-            repository.saveNetworkDeviceConnection(deviceName, ourIp, clientIp, port, isPlus, symmetricKey)
+            repository.saveNetworkDeviceConnection(
+                deviceName,
+                ourIp,
+                clientIp,
+                port,
+                isPlus,
+                symmetricKey
+            )
 
             // Also save to legacy storage for backwards compatibility
             val connectedDevice = ConnectedDevice(
@@ -509,7 +539,8 @@ class AirSyncViewModel(
 
     // Auth failure dialog controls
     fun showAuthFailure(message: String) {
-        _uiState.value = _uiState.value.copy(showAuthFailureDialog = true, authFailureMessage = message)
+        _uiState.value =
+            _uiState.value.copy(showAuthFailureDialog = true, authFailureMessage = message)
     }
 
     fun dismissAuthFailure() {
@@ -526,12 +557,15 @@ class AirSyncViewModel(
     suspend fun setUserManuallyDisconnectedAwait(disconnected: Boolean) {
         repository.setUserManuallyDisconnected(disconnected)
     }
+
     private fun hasNetworkAwareMappingForLastDevice(): ConnectedDevice? {
         val ourIp = _deviceInfo.value.localIp
         val last = _uiState.value.lastConnectedDevice ?: return null
         if (ourIp.isEmpty() || ourIp == "Unknown" || ourIp == "No Wi-Fi") return null
         // Find matching device by name with mapping for our IP
-        val networkDevice = _networkDevices.value.firstOrNull { it.deviceName == last.name && it.getClientIpForNetwork(ourIp) != null }
+        val networkDevice = _networkDevices.value.firstOrNull {
+            it.deviceName == last.name && it.getClientIpForNetwork(ourIp) != null
+        }
         return networkDevice?.toConnectedDevice(ourIp)
     }
 
@@ -561,7 +595,10 @@ class AirSyncViewModel(
                         loadNetworkDevicesForNetworkChange()
 
                         // Cancel any ongoing auto-reconnect loop; we'll restart with the new network context if needed
-                        try { WebSocketUtil.cancelAutoReconnect() } catch (_: Exception) {}
+                        try {
+                            WebSocketUtil.cancelAutoReconnect()
+                        } catch (_: Exception) {
+                        }
 
                         val manual = repository.getUserManuallyDisconnected().first()
                         val autoOn = repository.getAutoReconnectEnabled().first()
@@ -571,14 +608,24 @@ class AirSyncViewModel(
 
                         if (currentIp == "No Wi-Fi" || currentIp == "Unknown") {
                             // No usable Wi‑Fi: ensure we stop any active connection and do not attempt reconnect
-                            try { WebSocketUtil.disconnect(context) } catch (_: Exception) {}
+                            try {
+                                WebSocketUtil.disconnect(context)
+                            } catch (_: Exception) {
+                            }
                             // Stop service when no WiFi
-                            try { com.sameerasw.airsync.service.AirSyncService.stop(context) } catch (_: Exception) {}
-                            _uiState.value = _uiState.value.copy(isConnected = false, isConnecting = false)
+                            try {
+                                com.sameerasw.airsync.service.AirSyncService.stop(context)
+                            } catch (_: Exception) {
+                            }
+                            _uiState.value =
+                                _uiState.value.copy(isConnected = false, isConnecting = false)
                             return@collect
                         } else {
                             // Ensure service is running when WiFi is available
-                            try { com.sameerasw.airsync.service.AirSyncService.startScanning(context) } catch (_: Exception) {}
+                            try {
+                                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+                            } catch (_: Exception) {
+                            }
                         }
 
                         if (target != null) {
@@ -590,7 +637,10 @@ class AirSyncViewModel(
 
                             // If connected/connecting to old network, disconnect first to force a clean switch
                             if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) {
-                                try { WebSocketUtil.disconnect(context) } catch (_: Exception) {}
+                                try {
+                                    WebSocketUtil.disconnect(context)
+                                } catch (_: Exception) {
+                                }
                             }
 
                             // Auto-connect if auto-reconnect is enabled and the user hasn't manually disconnected.
@@ -620,17 +670,24 @@ class AirSyncViewModel(
                                                             isPlus = target.isPlus,
                                                             symmetricKey = target.symmetricKey
                                                         )
-                                                    } catch (_: Exception) {}
+                                                    } catch (_: Exception) {
+                                                    }
                                                 } else if (autoOn && !manual) {
                                                     // If the immediate connect failed, restart the auto-reconnect loop for this network
-                                                    try { WebSocketUtil.requestAutoReconnect(context) } catch (_: Exception) {}
+                                                    try {
+                                                        WebSocketUtil.requestAutoReconnect(context)
+                                                    } catch (_: Exception) {
+                                                    }
                                                 }
                                             }
                                         }
                                     )
                                 } catch (_: Exception) {
                                     // Fall back to auto-reconnect loop
-                                    try { WebSocketUtil.requestAutoReconnect(context) } catch (_: Exception) {}
+                                    try {
+                                        WebSocketUtil.requestAutoReconnect(context)
+                                    } catch (_: Exception) {
+                                    }
                                 }
                             } else {
                                 // User has disabled auto connect, just update the displayed device/IP
@@ -639,10 +696,16 @@ class AirSyncViewModel(
                         } else {
                             // No mapping for this network: disconnect if connected and, if allowed, start generic auto-reconnect
                             if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) {
-                                try { WebSocketUtil.disconnect(context) } catch (_: Exception) {}
+                                try {
+                                    WebSocketUtil.disconnect(context)
+                                } catch (_: Exception) {
+                                }
                             }
                             if (autoOn && !manual) {
-                                try { WebSocketUtil.requestAutoReconnect(context) } catch (_: Exception) {}
+                                try {
+                                    WebSocketUtil.requestAutoReconnect(context)
+                                } catch (_: Exception) {
+                                }
                             }
                         }
                     }
@@ -666,7 +729,10 @@ class AirSyncViewModel(
             repository.setSendNowPlayingEnabled(enabled)
             appContext?.let { ctx ->
                 // Update media listener immediate behavior and sync status
-                com.sameerasw.airsync.service.MediaNotificationListener.setNowPlayingEnabled(ctx, enabled)
+                com.sameerasw.airsync.service.MediaNotificationListener.setNowPlayingEnabled(
+                    ctx,
+                    enabled
+                )
             }
         }
     }
@@ -729,7 +795,7 @@ class AirSyncViewModel(
     // Clipboard history management
     fun addClipboardEntry(text: String, isFromPc: Boolean) {
         if (!_uiState.value.isClipboardHistoryEnabled) return
-        
+
         val entry = com.sameerasw.airsync.domain.model.ClipboardEntry(
             id = java.util.UUID.randomUUID().toString(),
             text = text,
@@ -802,7 +868,8 @@ class AirSyncViewModel(
 
             // Must have passed 24 hours
             val oneDayInMillis = 24 * 60 * 60 * 1000L
-            val isEnoughTimePassed = System.currentTimeMillis() - firstConnectionTime >= oneDayInMillis
+            val isEnoughTimePassed =
+                System.currentTimeMillis() - firstConnectionTime >= oneDayInMillis
 
             if (!isEnoughTimePassed) {
                 _uiState.value = _uiState.value.copy(shouldShowRatingPrompt = false)
@@ -824,12 +891,16 @@ class AirSyncViewModel(
     private fun getAppVersionCode(): Int {
         return try {
             val context = appContext ?: return -1
-            val packageInfo = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.getPackageInfo(context.packageName, android.content.pm.PackageManager.PackageInfoFlags.of(0))
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.getPackageInfo(context.packageName, 0)
-            }
+            val packageInfo =
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+                    context.packageManager.getPackageInfo(
+                        context.packageName,
+                        android.content.pm.PackageManager.PackageInfoFlags.of(0)
+                    )
+                } else {
+                    @Suppress("DEPRECATION")
+                    context.packageManager.getPackageInfo(context.packageName, 0)
+                }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 packageInfo.longVersionCode.toInt()
             } else {

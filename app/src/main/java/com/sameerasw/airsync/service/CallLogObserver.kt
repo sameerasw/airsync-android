@@ -10,7 +10,6 @@ import com.sameerasw.airsync.domain.model.CallEvent
 import com.sameerasw.airsync.domain.model.CallState
 import com.sameerasw.airsync.utils.ContactLookupHelper
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -68,7 +67,7 @@ class CallLogObserver(
                 val dateIndex = cursor.getColumnIndex(CallLog.Calls.DATE)
                 val durationIndex = cursor.getColumnIndex(CallLog.Calls.DURATION)
                 val subIdIndex = cursor.getColumnIndex("subscription_id")
-                
+
                 while (cursor.moveToNext()) {
                     try {
                         val id = cursor.getLong(idIndex)
