@@ -15,8 +15,10 @@ import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.cancel
+import com.sameerasw.airsync.data.local.DataStoreManager
 
 @RequiresApi(Build.VERSION_CODES.N)
 class ClipboardTileService : TileService() {
@@ -93,19 +95,27 @@ class ClipboardTileService : TileService() {
     // Removed direct sendClipboard method as it is now handled by the Activity
 
     private fun updateTileState(isConnected: Boolean) {
-        try {
-            qsTile?.apply {
-                state = if (isConnected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-                val labelText = if (isConnected) "Send Clipboard" else "Not Connected"
-                label = labelText
-                
-                // Using existing icon as placeholder
-                // icon = Icon.createWithResource(this@ClipboardTileService, R.drawable.ic_laptop_24)
-                
-                updateTile()
+        serviceScope.launch {
+            try {
+                val dataStoreManager = DataStoreManager.getInstance(this@ClipboardTileService)
+                val connectedDevice = dataStoreManager.getLastConnectedDevice().first()
+                val deviceName = connectedDevice?.name ?: getString(R.string.your_mac)
+
+                qsTile?.apply {
+                    state = if (isConnected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+                    
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        subtitle = if (isConnected) deviceName else getString(R.string.disconnected)
+                    } else {
+                        val labelText = if (isConnected) "Send Clipboard ($deviceName)" else "Not Connected"
+                        label = labelText
+                    }
+                    
+                    updateTile()
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error updating tile state", e)
             }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error updating tile state", e)
         }
     }
 }
