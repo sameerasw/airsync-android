@@ -17,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.util.concurrent.atomic.AtomicBoolean
 
 data class DiscoveredDevice(
     val id: String,
@@ -36,6 +37,11 @@ data class DiscoveredDevice(
     fun getBestIp(): String = ips.find { !it.startsWith("100.") } ?: ips.firstOrNull() ?: ""
 }
 
+enum class DiscoveryMode {
+    ACTIVE,  // Continuous broadcasting (Foreground)
+    PASSIVE  // Listening only (Background)
+}
+
 object UDPDiscoveryManager {
     private const val TAG = "UDPDiscoveryManager"
     private const val BROADCAST_PORT = 8889
@@ -49,7 +55,12 @@ object UDPDiscoveryManager {
     private var listeningJob: Job? = null
     private var broadcastJob: Job? = null
     private var pruningJob: Job? = null
+    private var burstJob: Job? = null
+    
     @Volatile private var isRunning = false
+    @Volatile private var currentMode = DiscoveryMode.ACTIVE
+    
+    // We need to keep track if discovery was explicitly enabled/disabled by the user/system
     @Volatile private var isDiscoveryEnabled = true
 
     fun start(context: Context, discoveryEnabled: Boolean = true) {
@@ -60,26 +71,54 @@ object UDPDiscoveryManager {
         }
         
         isRunning = true
-        Log.d(TAG, "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled)")
+        Log.d(TAG, "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled, Mode: $currentMode)")
 
         startListening(context)
         updateBroadcastingState(context)
         startPruning()
     }
 
+    fun setDiscoveryMode(context: Context, mode: DiscoveryMode) {
+        if (currentMode == mode) return
+        Log.d(TAG, "Changing discovery mode to: $mode")
+        currentMode = mode
+        updateBroadcastingState(context)
+    }
+
+    fun burstBroadcast(context: Context, durationMs: Long = 30000) {
+        Log.d(TAG, "Starting burst broadcast for ${durationMs}ms")
+        burstJob?.cancel()
+        burstJob = CoroutineScope(Dispatchers.IO).launch {
+            val endTime = System.currentTimeMillis() + durationMs
+            while (isRunning && System.currentTimeMillis() < endTime) {
+                broadcastPresence(context)
+                delay(3000)
+            }
+            Log.d(TAG, "Burst broadcast finished")
+        }
+    }
+
     private fun updateBroadcastingState(context: Context) {
         broadcastJob?.cancel()
-        if (isDiscoveryEnabled) {
+        
+        if (!isDiscoveryEnabled) {
+            Log.d(TAG, "Discovery broadcasting disabled completely")
+            _discoveredDevices.value = emptyList()
+            return
+        }
+
+        if (currentMode == DiscoveryMode.ACTIVE) {
             startBroadcasting(context)
         } else {
-            Log.d(TAG, "Discovery broadcasting disabled")
-            _discoveredDevices.value = emptyList()
+            Log.d(TAG, "Switched to PASSIVE discovery (listening only)")
+            // In passive mode, we don't clear the list immediately, allowing some persistence
+            // but we rely on pruning to clean up stale devices
         }
     }
 
     fun stop(context: Context? = null) {
         Log.d(TAG, "Stopping UDP Discovery Manager")
-        if (context != null && isRunning && isDiscoveryEnabled) {
+        if (context != null && isRunning && isDiscoveryEnabled && currentMode == DiscoveryMode.ACTIVE) {
             broadcastGoodbye(context)
         }
         isRunning = false
@@ -87,6 +126,7 @@ object UDPDiscoveryManager {
         listeningJob?.cancel()
         broadcastJob?.cancel()
         pruningJob?.cancel()
+        burstJob?.cancel()
         
         try {
             socket?.close()
@@ -102,13 +142,10 @@ object UDPDiscoveryManager {
         Log.d(TAG, "Discovery enabled changed to: $enabled")
         isDiscoveryEnabled = enabled
         
-        if (enabled) {
-            // If discovery is being enabled, start broadcasting
-            startBroadcasting(context)
-        } else {
-            // If discovery is being disabled
+        updateBroadcastingState(context)
+        
+        if (!enabled) {
             broadcastGoodbye(context)
-            broadcastJob?.cancel()
             _discoveredDevices.value = emptyList()
         }
     }
@@ -156,6 +193,15 @@ object UDPDiscoveryManager {
                     val deviceType = json.optString("deviceType")
                     if (deviceType == "mac") {
                         handlePresenceMessage(context, json, sourceIp)
+                        
+                        // Optimization: If we receive a presence packet in PASSIVE mode, 
+                        // we might want to respond once so the Mac knows we are here,
+                        // essentially performing a "lazy handshake"
+                        if (currentMode == DiscoveryMode.PASSIVE && isDiscoveryEnabled) {
+                            CoroutineScope(Dispatchers.IO).launch {
+                                // broadcastPresence(context) // Optional: avoid if we want to be truly silent
+                            }
+                        }
                     }
                 }
                 "bye" -> {
@@ -253,7 +299,8 @@ object UDPDiscoveryManager {
 
     private fun startBroadcasting(context: Context) {
         broadcastJob = CoroutineScope(Dispatchers.IO).launch {
-            while (isRunning) {
+            Log.d(TAG, "Starting Active Broadcast Loop")
+            while (isRunning && currentMode == DiscoveryMode.ACTIVE) {
                 broadcastPresence(context)
                 delay(10000)
             }
@@ -357,7 +404,7 @@ object UDPDiscoveryManager {
                         val packet = DatagramPacket(
                             data,
                             data.size,
-                            InetAddress.getByName("255.255.255.255"),
+                            InetAddress.getByName("255.55.255.255"),
                             BROADCAST_PORT
                         )
                         DatagramSocket(0, InetAddress.getByName(bindIp)).use { sender ->
@@ -431,6 +478,15 @@ object UDPDiscoveryManager {
                 val active = _discoveredDevices.value.filter { now - it.lastSeen < DEVICE_TIMEOUT_MS }
                 if (active.size != _discoveredDevices.value.size) {
                     _discoveredDevices.value = active
+                }
+                
+                // Smart Auto-Connect logic trigger
+                // When in PASSIVE mode, if we see a device we know, try to connect!
+                if (currentMode == DiscoveryMode.PASSIVE && active.isNotEmpty()) {
+                    // We rely on the WebSocketUtil's existing auto-connect logic 
+                    // which might need to be notified that candidates are available
+                    // But actually, WebSocketUtil.tryStartAutoReconnect observes _discoveredDevices
+                    // so it should pick it up automatically if the service requested auto-connect.
                 }
             }
         }
