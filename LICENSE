@@ -14,24 +14,14 @@ In addition to the terms of the Mozilla Public License 2.0, the following condit
    You are free to use, modify, and build this software for any purpose,
    including personal, educational, or commercial use.
 
-2. No Publishing of Modified Builds
-   You are not permitted to publish, distribute, or share modified builds
-   of this software in any form, whether for free or commercially.
+2. Published builds should be signed by the publisher taking responsibility
+   Any changes you may apply on the source code must not be intentionally harmful in anyway and the publisher should take responsibility of the cause.
 
-   This includes, but is not limited to:
-     - Uploading modified builds to public platforms or stores
-     - Distributing modified builds to individuals or organizations
-     - Offering modified versions as part of any product or service
-
-3. Private Use Only
-   You may modify and build this software only for your own private or internal use.
-   Any form of public redistribution of modified builds is strictly prohibited.
-
-4. License Inclusion Requirement
+3. License Inclusion Requirement
    This license and the entire Additional Terms section must be retained in all
    copies and derivative works created for private or internal use.
 
-5. No Trademark Rights
+4. No Trademark Rights
    This license does not grant rights to use the project name, logo, or branding.
 
 --------------------------------------------------------------------
