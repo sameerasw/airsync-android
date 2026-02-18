@@ -1,21 +1,17 @@
 package com.sameerasw.airsync.presentation.ui.activities
 
-import android.app.Activity
-
-import android.widget.Toast
+import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
-
-
-
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.activity.SystemBarStyle
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.with
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -23,15 +19,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Error
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -46,21 +40,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.utils.ClipboardSyncManager
 import com.sameerasw.airsync.utils.ClipboardUtil
 import kotlinx.coroutines.delay
-
-import com.sameerasw.airsync.ui.theme.AirSyncTheme
-import com.sameerasw.airsync.utils.HapticUtil
-
-import androidx.activity.enableEdgeToEdge
-import androidx.activity.SystemBarStyle
-import androidx.compose.foundation.layout.navigationBarsPadding
 
 class ClipboardActionActivity : ComponentActivity() {
 
@@ -72,17 +58,17 @@ class ClipboardActionActivity : ComponentActivity() {
         // Standard Edge-to-Edge with explicit transparent bars
         enableEdgeToEdge(
             statusBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
             ),
             navigationBarStyle = SystemBarStyle.auto(
-                android.graphics.Color.TRANSPARENT,
-                android.graphics.Color.TRANSPARENT
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
             )
         )
 
         // Ensure background is transparent
-        window.setBackgroundDrawable(ColorDrawable(android.graphics.Color.TRANSPARENT))
+        window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         setContent {
             AirSyncTheme {
@@ -100,20 +86,53 @@ class ClipboardActionActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-
 fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
     var uiState by remember { mutableStateOf<ClipboardUiState>(ClipboardUiState.Loading) }
     var hasAttemptedSync by remember { mutableStateOf(false) }
 
+    ClipboardActionScreenContent(uiState = uiState, onFinished = onFinished)
+
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(hasWindowFocus) {
+        if (hasWindowFocus && !hasAttemptedSync) {
+            hasAttemptedSync = true
+            // Small delay to ensure system considers us "interacted" if needed, 
+            // though focus should be enough.
+            delay(100)
+
+            try {
+                val clipboardText = ClipboardUtil.getClipboardText(context)
+
+                if (!clipboardText.isNullOrEmpty()) {
+                    ClipboardSyncManager.syncTextToDesktop(clipboardText)
+                    uiState = ClipboardUiState.Success
+                    delay(1200) // Show success for 1.2s
+                    onFinished()
+                } else {
+                    uiState = ClipboardUiState.Error("Clipboard empty")
+                    delay(1500)
+                    onFinished()
+                }
+            } catch (_: Exception) {
+                uiState = ClipboardUiState.Error("Failed")
+                delay(1500)
+                onFinished()
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun ClipboardActionScreenContent(uiState: ClipboardUiState, onFinished: () -> Unit) {
     // Transparent background that dismisses on click
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.2f))
+            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f))
 
-           .navigationBarsPadding()
+            .navigationBarsPadding()
             .clickable(onClick = onFinished),
         contentAlignment = Alignment.Center
     ) {
@@ -139,7 +158,7 @@ fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
                     ) {
                         when (state) {
                             is ClipboardUiState.Loading -> {
-                               LoadingIndicator(
+                                LoadingIndicator(
                                     modifier = Modifier.size(48.dp),
                                     color = MaterialTheme.colorScheme.primary
                                 )
@@ -154,7 +173,6 @@ fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
                                 Icon(
                                     imageVector = Icons.Rounded.CheckCircle,
                                     contentDescription = "Success",
-                                    tint = Color(0xFF4CAF50), // Nice Green
                                     modifier = Modifier.size(48.dp)
                                 )
                                 Spacer(modifier = Modifier.height(16.dp))
@@ -184,35 +202,6 @@ fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
             }
         }
     }
-
-    val context = androidx.compose.ui.platform.LocalContext.current
-    LaunchedEffect(hasWindowFocus) {
-        if (hasWindowFocus && !hasAttemptedSync) {
-            hasAttemptedSync = true
-            // Small delay to ensure system considers us "interacted" if needed, 
-            // though focus should be enough.
-            delay(100) 
-            
-            try {
-                val clipboardText = ClipboardUtil.getClipboardText(context)
-                
-                if (!clipboardText.isNullOrEmpty()) {
-                    ClipboardSyncManager.syncTextToDesktop(clipboardText)
-                    uiState = ClipboardUiState.Success
-                    delay(1200) // Show success for 1.2s
-                    onFinished()
-                } else {
-                    uiState = ClipboardUiState.Error("Clipboard empty")
-                    delay(1500)
-                    onFinished()
-                }
-            } catch (e: Exception) {
-                uiState = ClipboardUiState.Error("Failed")
-                delay(1500)
-                onFinished()
-            }
-        }
-    }
 }
 
 sealed class ClipboardUiState {
@@ -221,4 +210,26 @@ sealed class ClipboardUiState {
     data class Error(val message: String) : ClipboardUiState()
 }
 
+@Preview(name = "Loading State", showBackground = true)
+@Composable
+private fun ClipboardActionScreenPreviewLoading() {
+    AirSyncTheme {
+        ClipboardActionScreenContent(uiState = ClipboardUiState.Loading, onFinished = {})
+    }
+}
 
+@Preview(name = "Success State", showBackground = true)
+@Composable
+private fun ClipboardActionScreenPreviewSuccess() {
+    AirSyncTheme {
+        ClipboardActionScreenContent(uiState = ClipboardUiState.Success, onFinished = {})
+    }
+}
+
+@Preview(name = "Error State", showBackground = true)
+@Composable
+private fun ClipboardActionScreenPreviewError() {
+    AirSyncTheme {
+        ClipboardActionScreenContent(uiState = ClipboardUiState.Error("Failed to sync"), onFinished = {})
+    }
+}
