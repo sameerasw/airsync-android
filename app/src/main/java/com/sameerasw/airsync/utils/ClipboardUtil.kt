@@ -18,11 +18,13 @@ object ClipboardUtil {
 
             if (clipData != null && clipData.itemCount > 0) {
                 val item = clipData.getItemAt(0)
-                item.text?.toString()
+                // Use coerceToText to handle non-text items if needed, or stick to text
+                item.text?.toString() ?: item.coerceToText(context)?.toString()
             } else {
                 null
             }
         } catch (e: Exception) {
+            // Keep error logging for exceptions
             Log.e(TAG, "Error getting clipboard text: ${e.message}")
             null
         }

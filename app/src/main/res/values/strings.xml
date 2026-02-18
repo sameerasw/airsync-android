@@ -17,7 +17,13 @@
     <string name="rating_prompt">Psst... You\'ve been syncing with your mac for a while now, Do you like the app? Rate and give your feedback. ♥</string>
     <string name="rate_now">Rate Now</string>
     <string name="maybe_later">Maybe Later</string>
+    <string name="no_device_connected">No device connected</string>
     <string name="sync_clipboard">Sync Clipboard</string>
     <string name="image_copied_to_clipboard">Image copied to clipboard</string>
     <string name="file_received_from_clipboard">File received from clipboard</string>
+    <string name="sending">Sending Clipboard…</string>
+    <string name="clipboard_sent">Clipboard Sent</string>
+    <string name="failed_to_send_clipboard">Failed to Send Clipboard</string>
+    <string name="your_mac">Your Mac</string>
+    <string name="disconnected">Disconnected</string>
 </resources>

@@ -142,6 +142,16 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        com.sameerasw.airsync.service.AirSyncService.notifyAppForeground(this)
+    }
+
+    override fun onStop() {
+        super.onStop()
+        com.sameerasw.airsync.service.AirSyncService.notifyAppBackground(this)
+    }
+
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         // Install and configure the splash screen before any UI rendering
