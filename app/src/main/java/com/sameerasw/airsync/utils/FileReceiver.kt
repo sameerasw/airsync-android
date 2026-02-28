@@ -90,8 +90,23 @@ object FileReceiver {
         ensureChannel(context)
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                var finalName = name
+                if (!isClipboard) {
+                    var counter = 1
+                    val dotIndex = name.lastIndexOf('.')
+                    val baseName = if (dotIndex != -1) name.substring(0, dotIndex) else name
+                    val extension = if (dotIndex != -1) name.substring(dotIndex) else ""
+                    
+                    var file = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), finalName)
+                    while (file.exists()) {
+                        finalName = "$baseName($counter)$extension"
+                        file = java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOWNLOADS), finalName)
+                        counter++
+                    }
+                }
+
                 val values = ContentValues().apply {
-                    put(MediaStore.Downloads.DISPLAY_NAME, name)
+                    put(MediaStore.Downloads.DISPLAY_NAME, finalName)
                     put(MediaStore.Downloads.MIME_TYPE, mime)
                     put(MediaStore.Downloads.IS_PENDING, 1)
                 }
@@ -108,7 +123,7 @@ object FileReceiver {
 
                 if (uri != null && pfd != null) {
                     incoming[id] = IncomingFileState(
-                        name = name,
+                        name = finalName,
                         size = size,
                         mime = mime,
                         chunkSize = chunkSize,
