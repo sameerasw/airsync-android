@@ -9,6 +9,8 @@
         <item name="windowActionBar">false</item>
         <!-- Animated icon displayed in splash screen -->
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <!-- Branding image displayed at the bottom of the splash screen -->
+        <item name="android:windowSplashScreenBrandingImage">@drawable/ic_branding_avatar</item>
         <!-- Splash screen animation duration in milliseconds -->
         <item name="windowSplashScreenAnimationDuration">3000</item>
         <!-- Theme to apply after splash screen exits -->
