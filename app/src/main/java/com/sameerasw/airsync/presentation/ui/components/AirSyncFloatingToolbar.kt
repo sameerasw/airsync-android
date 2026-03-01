@@ -41,7 +41,7 @@ fun AirSyncFloatingToolbar(
     currentPage: Int,
     tabs: List<AirSyncTab>,
     onTabSelected: (Int) -> Unit,
-    scrollBehavior: FloatingToolbarScrollBehavior,
+    scrollBehavior: FloatingToolbarScrollBehavior? = null,
     floatingActionButton: @Composable () -> Unit = {}
 ) {
     // Persistent visibility

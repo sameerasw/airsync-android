@@ -32,4 +32,7 @@
     <string name="tab_remote">Remote</string>
     <string name="tab_clipboard">Clipboard</string>
     <string name="tab_settings">Settings</string>
+
+    <string name="label_help_guides">Help and guides</string>
+    <string name="subtitle_help_guides">Learn how to use AirSync</string>
 </resources>

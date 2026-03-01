@@ -7,21 +7,28 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -79,7 +86,9 @@ fun SettingsView(
     onSendMessage: (String) -> Unit = {},
     onExport: (String) -> Unit = {},
     onImport: () -> Unit = {},
-    onResetOnboarding: () -> Unit = {}
+    onResetOnboarding: () -> Unit = {},
+    onShowHelp: () -> Unit = {},
+    onToggleDeveloperMode: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -92,7 +101,14 @@ fun SettingsView(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
-        Spacer(modifier = Modifier.height(0.dp))
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
+
+        Spacer(
+            modifier = Modifier
+                .height(topSpacing)
+                .fillMaxWidth()
+        )
 
         RoundedCardContainer {
             DefaultTabCard(
@@ -100,6 +116,49 @@ fun SettingsView(
                 onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
             )
             PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
+            
+            // Help and guides card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        HapticUtil.performClick(haptics)
+                        onShowHelp()
+                    },
+                shape = MaterialTheme.shapes.extraSmall,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_help_guides),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_help_guides),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = com.sameerasw.airsync.R.drawable.rounded_keyboard_arrow_right_24),
+                        contentDescription = "Open help",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
             QuickSettingsTipCard(
                 isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
@@ -369,7 +428,11 @@ fun SettingsView(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        AboutSection(
+            onAvatarLongClick = onToggleDeveloperMode
+        )
+
+        Spacer(modifier = Modifier.height(100.dp))
     }
 }
 

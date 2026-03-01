@@ -19,13 +19,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -92,7 +96,6 @@ import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDevic
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
-import com.sameerasw.airsync.presentation.ui.components.sheets.AboutBottomSheet
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
@@ -124,10 +127,6 @@ fun AirSyncMainScreen(
     isPlus: Boolean = false,
     symmetricKey: String? = null,
     onNavigateToApps: () -> Unit = {},
-    showAboutDialog: Boolean = false,
-    onDismissAbout: () -> Unit = {},
-    showHelpSheet: Boolean = false,
-    onDismissHelp: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -157,6 +156,8 @@ fun AirSyncMainScreen(
     var fabVisible by remember { mutableStateOf(true) }
     var fabExpanded by remember { mutableStateOf(true) }
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
+    var showHelpSheet by remember { mutableStateOf(false) }
+    val onDismissHelp = { showHelpSheet = false }
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
 
     // Initial tab navigation logic
@@ -191,8 +192,6 @@ fun AirSyncMainScreen(
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
 
     rememberNavController()
-    val exitAlwaysScrollBehavior =
-        FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
 
     fun connect(deviceId: String? = null) {
         // Check if critical permissions are missing
@@ -621,16 +620,12 @@ fun AirSyncMainScreen(
 
     Scaffold(
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(
-                if (pagerState.currentPage != 2) exitAlwaysScrollBehavior
-                else remember {
-                    object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
-                }
-            ),
+        modifier = Modifier.fillMaxSize(),
         containerColor = MaterialTheme.colorScheme.surfaceContainer,
     ) { innerPadding ->
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
+
         // Track page changes for haptic feedback on swipe
         LaunchedEffect(pagerState.currentPage) {
             snapshotFlow { pagerState.currentPage }.collect { _ ->
@@ -649,14 +644,18 @@ fun AirSyncMainScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = 0.dp)
+                                .padding(vertical = 0.dp)
                                 .verticalScroll(connectScrollState)
                                 .padding(horizontal = 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
 
-                            Spacer(modifier = Modifier.height(0.dp))
+                            Spacer(
+                                modifier = Modifier
+                                    .height(topSpacing)
+                                    .fillMaxWidth()
+                            )
 
                             RoundedCardContainer {
 
@@ -915,7 +914,7 @@ fun AirSyncMainScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(100.dp))
                         }
                     }
 
@@ -925,7 +924,7 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 100.dp),
+                                    .padding(top = topSpacing),
                                 showKeyboard = showKeyboard,
                                 onDismissKeyboard = { showKeyboard = false }
                             )
@@ -947,7 +946,9 @@ fun AirSyncMainScreen(
                                     createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                                 },
                                 onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                                onResetOnboarding = { viewModel.resetOnboarding() }
+                                onResetOnboarding = { viewModel.resetOnboarding() },
+                                onShowHelp = { showHelpSheet = true },
+                                onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
                             )
                         }
                     }
@@ -968,7 +969,7 @@ fun AirSyncMainScreen(
                                 onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 100.dp)
+                                    .padding(top = topSpacing),
                             )
                         } else {
                             Box(Modifier.fillMaxSize())
@@ -993,7 +994,9 @@ fun AirSyncMainScreen(
                                 createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                             },
                             onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                            onResetOnboarding = { viewModel.resetOnboarding() }
+                            onResetOnboarding = { viewModel.resetOnboarding() },
+                            onShowHelp = { showHelpSheet = true },
+                            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
                         )
                     }
                 }
@@ -1016,8 +1019,7 @@ fun AirSyncMainScreen(
                         }
                     }
                 },
-                scrollBehavior = exitAlwaysScrollBehavior,
-                floatingActionButton = {
+                floatingActionButton = @Composable {
                     val currentTab = tabs.getOrNull(pagerState.currentPage)
                     FloatingToolbarDefaults.StandardFloatingActionButton(
                         onClick = {
@@ -1089,13 +1091,6 @@ fun AirSyncMainScreen(
         )
     }
 
-    // About Bottom Sheet - controlled by parent via showAboutDialog
-    if (showAboutDialog) {
-        AboutBottomSheet(
-            onDismissRequest = onDismissAbout,
-            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
-        )
-    }
 
     // Help & Support Bottom Sheet
     if (showHelpSheet) {

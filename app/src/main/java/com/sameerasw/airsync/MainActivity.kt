@@ -15,21 +15,22 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.rounded.HelpOutline
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -378,16 +379,10 @@ class MainActivity : ComponentActivity() {
         setContent {
             AirSyncTheme {
                 val navController = rememberNavController()
-                var showAboutDialog by remember { mutableStateOf(false) }
-                var showHelpSheet by remember { mutableStateOf(false) }
-                val scrollBehavior =
-                    TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
-                var topBarTitle by remember { mutableStateOf("AirSync") }
 
                 Scaffold(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .nestedScroll(scrollBehavior.nestedScrollConnection),
+                        .fillMaxSize(),
                     containerColor = MaterialTheme.colorScheme.surfaceContainer,
                     contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(
                         0,
@@ -395,72 +390,6 @@ class MainActivity : ComponentActivity() {
                         0,
                         0
                     ),
-                    topBar = {
-                        LargeTopAppBar(
-                            colors = TopAppBarDefaults.largeTopAppBarColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceContainer,
-                                scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
-                            ),
-                            modifier = Modifier.padding(horizontal = 8.dp),
-                            title = {
-                                Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-                                    // Dynamic icon based on last connected device category
-                                    val ctx = androidx.compose.ui.platform.LocalContext.current
-                                    val ds = remember(ctx) { DataStoreManager(ctx) }
-                                    val lastDevice by ds.getLastConnectedDevice()
-                                        .collectAsState(initial = null)
-                                    val iconRes =
-                                        com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(
-                                            lastDevice
-                                        )
-                                    Image(
-                                        painter = painterResource(id = iconRes),
-                                        contentDescription = "AirSync Logo",
-                                        modifier = Modifier.size(32.dp),
-                                        contentScale = ContentScale.Fit,
-                                        colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
-                                    )
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(
-                                        topBarTitle,
-                                        style = MaterialTheme.typography.titleLarge,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        maxLines = 1,
-                                    )
-                                }
-                            },
-                            actions = {
-                                IconButton(
-                                    onClick = { showHelpSheet = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceBright
-                                    ),
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = androidx.compose.material.icons.Icons.Rounded.HelpOutline,
-                                        contentDescription = "Help",
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
-                                Spacer(modifier = Modifier.width(8.dp))
-                                IconButton(
-                                    onClick = { showAboutDialog = true },
-                                    colors = IconButtonDefaults.iconButtonColors(
-                                        containerColor = MaterialTheme.colorScheme.surfaceBright
-                                    ),
-                                    modifier = Modifier.size(48.dp)
-                                ) {
-                                    Icon(
-                                        painter = painterResource(id = R.drawable.rounded_info_24),
-                                        contentDescription = "About",
-                                        modifier = Modifier.size(32.dp)
-                                    )
-                                }
-                            },
-                            scrollBehavior = scrollBehavior
-                        )
-                    }
                 ) { innerPadding ->
                     NavHost(
                         navController = navController,
@@ -474,12 +403,7 @@ class MainActivity : ComponentActivity() {
                                 showConnectionDialog = isFromQrScan,
                                 pcName = pcName,
                                 isPlus = isPlus,
-                                symmetricKey = symmetricKey,
-                                showAboutDialog = showAboutDialog,
-                                onDismissAbout = { showAboutDialog = false },
-                                showHelpSheet = showHelpSheet,
-                                onDismissHelp = { showHelpSheet = false },
-                                onTitleChange = { topBarTitle = it }
+                                symmetricKey = symmetricKey
                             )
                         }
                     }
