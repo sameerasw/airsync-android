@@ -596,15 +596,15 @@ fun AirSyncMainScreen(
     val tabs = remember(uiState.isConnected) {
         if (uiState.isConnected) {
             listOf(
-                AirSyncTab("Connect", Icons.Outlined.Phonelink, 0),
-                AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
-                AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
-                AirSyncTab("Settings", Icons.Filled.Settings, 3)
+                AirSyncTab(R.string.tab_connect, Icons.Outlined.Phonelink, 0),
+                AirSyncTab(R.string.tab_remote, Icons.Filled.Gamepad, 1),
+                AirSyncTab(R.string.tab_clipboard, Icons.Filled.ContentPaste, 2),
+                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 3)
             )
         } else {
             listOf(
-                AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
-                AirSyncTab("Settings", Icons.Filled.Settings, 1)
+                AirSyncTab(R.string.tab_connect, Icons.Filled.Phonelink, 0),
+                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 1)
             )
         }
     }
@@ -613,7 +613,8 @@ fun AirSyncMainScreen(
     LaunchedEffect(pagerState.currentPage, tabs) {
         val currentTab = tabs.getOrNull(pagerState.currentPage)
         if (currentTab != null) {
-            val title = if (currentTab.title == "Connect") "AirSync" else currentTab.title
+            val titleStr = context.getString(currentTab.title)
+            val title = if (titleStr == "Connect") "AirSync" else titleStr
             onTitleChange(title)
         }
     }
@@ -1001,7 +1002,7 @@ fun AirSyncMainScreen(
             AirSyncFloatingToolbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = -ScreenOffset - 12.dp)
+                    // .offset(y = -ScreenOffset)
                     .zIndex(1f),
                 currentPage = pagerState.currentPage,
                 tabs = tabs,
@@ -1021,7 +1022,8 @@ fun AirSyncMainScreen(
                     FloatingToolbarDefaults.StandardFloatingActionButton(
                         onClick = {
                             HapticUtil.performClick(haptics)
-                            when (currentTab?.title) {
+                            val titleStr = currentTab?.let { context.getString(it.title) }
+                            when (titleStr) {
                                 "Remote" -> {
                                     showKeyboard = !showKeyboard
                                 }
@@ -1040,7 +1042,8 @@ fun AirSyncMainScreen(
                             }
                         }
                     ) {
-                        when (currentTab?.title) {
+                        val titleStr = currentTab?.let { context.getString(it.title) }
+                        when (titleStr) {
                             "Remote" -> {
                                 Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
                             }
