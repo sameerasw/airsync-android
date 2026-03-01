@@ -1,14 +1,8 @@
 package com.sameerasw.airsync.presentation.ui.components.cards
 
 import android.graphics.Bitmap
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,8 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material.icons.filled.VolumeUp
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
@@ -41,10 +33,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
@@ -68,7 +56,6 @@ fun MediaPlayerCard(
     onMediaAction: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isPlayerExpanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -98,10 +85,10 @@ fun MediaPlayerCard(
             Column(
                 modifier = Modifier.padding(
                     horizontal = 24.dp,
-                    vertical = if (isPlayerExpanded) 32.dp else 16.dp
+                    vertical = 32.dp
                 ),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(if (isPlayerExpanded) 32.dp else 16.dp)
+                verticalArrangement = Arrangement.spacedBy(32.dp)
             ) {
                 // Metadata
                 Column(
@@ -134,19 +121,6 @@ fun MediaPlayerCard(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Expand/Collapse Toggle
-                    IconButton(
-                        onClick = { isPlayerExpanded = !isPlayerExpanded },
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        Icon(
-                            imageVector = if (isPlayerExpanded) Icons.Rounded.KeyboardArrowUp else Icons.Rounded.KeyboardArrowDown,
-                            contentDescription = if (isPlayerExpanded) "Collapse" else "Expand",
-                            tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-
                     ButtonGroup(
                         modifier = Modifier
                             .weight(1f)
@@ -199,38 +173,32 @@ fun MediaPlayerCard(
                 }
 
                 // Volume Control
-                AnimatedVisibility(
-                    visible = isPlayerExpanded,
-                    enter = expandVertically() + fadeIn(),
-                    exit = shrinkVertically() + fadeOut()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        IconButton(onClick = onToggleMute) {
-                            Icon(
-                                imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
-                                contentDescription = "Mute",
-                                tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
-                            )
-                        }
-
-                        Slider(
-                            value = volume,
-                            onValueChange = onVolumeChange,
-                            valueRange = 0f..100f,
-                            modifier = Modifier.weight(1f),
-                            colors = SliderDefaults.colors(
-                                thumbColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                                activeTrackColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                                inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant
-                            )
+                    IconButton(onClick = onToggleMute) {
+                        Icon(
+                            imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                            contentDescription = "Mute",
+                            tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
                         )
                     }
+
+                    Slider(
+                        value = volume,
+                        onValueChange = onVolumeChange,
+                        valueRange = 0f..100f,
+                        modifier = Modifier.weight(1f),
+                        colors = SliderDefaults.colors(
+                            thumbColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
+                            activeTrackColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
                 }
             }
         }
