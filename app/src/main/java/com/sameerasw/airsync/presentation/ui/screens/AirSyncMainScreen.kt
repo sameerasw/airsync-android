@@ -58,6 +58,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -67,6 +68,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -94,6 +96,7 @@ import com.sameerasw.airsync.presentation.ui.components.SettingsView
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
+import com.sameerasw.airsync.presentation.ui.components.cards.MediaPlayerCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
@@ -102,6 +105,8 @@ import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.ClipboardSyncManager
 import com.sameerasw.airsync.utils.HapticUtil
 import com.sameerasw.airsync.utils.JsonUtil
+import com.sameerasw.airsync.utils.MacDeviceStatusManager
+import com.sameerasw.airsync.utils.WebSocketMessageHandler
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -110,6 +115,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
 import java.net.URLDecoder
 
 @OptIn(
@@ -148,6 +154,42 @@ fun AirSyncMainScreen(
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
     var hasAppliedInitialTab by remember { mutableStateOf(false) }
+
+    // Volume & Media state
+    var volume by remember { mutableFloatStateOf(50f) }
+    var isMuted by remember { mutableStateOf(false) }
+
+    // Observe Mac Status
+    val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
+    val albumArtBitmap by MacDeviceStatusManager.albumArt.collectAsState()
+
+    // Volume updates from Mac
+    DisposableEffect(Unit) {
+        val callback = { newVolume: Int ->
+            volume = newVolume.toFloat()
+        }
+        WebSocketMessageHandler.setOnMacVolumeCallback(callback)
+        onDispose {
+            WebSocketMessageHandler.setOnMacVolumeCallback(null)
+        }
+    }
+
+    fun sendRemoteAction(action: String, value: Any? = null) {
+        scope.launch {
+            try {
+                HapticUtil.performLightTick(haptics)
+                val json = JSONObject()
+                json.put("type", "remoteControl")
+                val data = JSONObject()
+                data.put("action", action)
+                if (value != null) data.put("value", value)
+                json.put("data", data)
+                WebSocketUtil.sendMessage(json.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
     val pagerState =
         rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
@@ -175,7 +217,7 @@ fun AirSyncMainScreen(
                     "clipboard" -> 2
                     "dynamic" -> {
                         // Check if music is playing on Mac
-                        if (uiState.macDeviceStatus?.music?.isPlaying == true) 1 else 2
+                        if (uiState.macDeviceStatus?.music?.isPlaying == true) 0 else 2
                     }
 
                     else -> 0
@@ -680,6 +722,29 @@ fun AirSyncMainScreen(
                                     lastConnected = uiState.lastConnectedDevice != null,
                                     uiState = uiState,
                                 )
+
+                                // Media Player Card
+                                AnimatedVisibility(
+                                    visible = uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    MediaPlayerCard(
+                                        musicInfo = macStatus?.music,
+                                        albumArtBitmap = albumArtBitmap,
+                                        volume = volume,
+                                        isMuted = isMuted,
+                                        onVolumeChange = {
+                                            volume = it
+                                            sendRemoteAction("vol_set", it.toInt())
+                                        },
+                                        onToggleMute = {
+                                            sendRemoteAction("vol_mute")
+                                            isMuted = !isMuted
+                                        },
+                                        onMediaAction = { sendRemoteAction(it) }
+                                    )
+                                }
                             }
 
                             RoundedCardContainer {
@@ -924,7 +989,7 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = topSpacing),
+                                    .padding(top = statusBarHeight, bottom = 100.dp),
                                 showKeyboard = showKeyboard,
                                 onDismissKeyboard = { showKeyboard = false }
                             )
@@ -969,7 +1034,7 @@ fun AirSyncMainScreen(
                                 onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = topSpacing),
+                                    .padding(top = topSpacing, bottom = 100.dp),
                             )
                         } else {
                             Box(Modifier.fillMaxSize())

@@ -28,7 +28,7 @@
     <string name="disconnected">Disconnected</string>
 
     <!-- Tab Titles -->
-    <string name="tab_connect">Connect</string>
+    <string name="tab_connect">AirSync</string>
     <string name="tab_remote">Remote</string>
     <string name="tab_clipboard">Clipboard</string>
     <string name="tab_settings">Settings</string>
