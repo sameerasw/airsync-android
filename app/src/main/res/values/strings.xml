@@ -35,4 +35,5 @@
 
     <string name="label_help_guides">Help and guides</string>
     <string name="subtitle_help_guides">Learn how to use AirSync</string>
+    <string name="action_lock_screen">Lock</string>
 </resources>

@@ -99,6 +99,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCa
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.MediaPlayerCard
+import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
@@ -750,6 +751,17 @@ fun AirSyncMainScreen(
                                     lastConnected = uiState.lastConnectedDevice != null,
                                     uiState = uiState,
                                 )
+
+                                // Remote Functions Card (Lock Screen, etc.)
+                                AnimatedVisibility(
+                                    visible = uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    RemoteFunctionsCard(
+                                        onRemoteAction = { sendRemoteAction(it) }
+                                    )
+                                }
 
                                 // Media Player Card
                                 AnimatedVisibility(
