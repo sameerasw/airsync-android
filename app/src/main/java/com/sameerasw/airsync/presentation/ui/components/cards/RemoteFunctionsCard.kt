@@ -68,6 +68,32 @@ fun RemoteFunctionsCard(
                     style = MaterialTheme.typography.labelLarge
                 )
             }
+
+            Spacer(modifier = Modifier.size(2.dp))
+
+            // Screensaver Button
+            Button(
+                onClick = {
+                    HapticUtil.performClick(haptics)
+                    onRemoteAction("screensaver")
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                ),
+                modifier = Modifier.padding(4.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_screenshot_monitor_24),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(modifier = Modifier.size(8.dp))
+                Text(
+                    text = stringResource(id = R.string.action_screensaver),
+                    style = MaterialTheme.typography.labelLarge
+                )
+            }
         }
     }
 }
