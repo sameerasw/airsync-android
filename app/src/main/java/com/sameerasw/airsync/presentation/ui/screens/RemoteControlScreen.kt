@@ -1,5 +1,7 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
+import android.content.res.Configuration
+
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
@@ -51,6 +53,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -240,17 +243,11 @@ fun RemoteControlScreen(
         )
     }
 
-    val scrollState = rememberScrollState()
+    val config = LocalConfiguration.current
+    val isWide = config.orientation == Configuration.ORIENTATION_LANDSCAPE || config.screenWidthDp > 600
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(24.dp)
-    ) {
-
+    @Composable
+    fun ExtraKeys() {
         // Extra Keys
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
@@ -272,7 +269,10 @@ fun RemoteControlScreen(
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
             }
         }
+    }
 
+    @Composable
+    fun DPad() {
         // D-Pad and Navigation
         Box(
             modifier = Modifier
@@ -324,12 +324,14 @@ fun RemoteControlScreen(
                 Icon(Icons.Default.Circle, "Enter", modifier = Modifier.size(24.dp))
             }
         }
+    }
 
+    @Composable
+    fun Trackpad(modifier: Modifier = Modifier) {
         // Trackpad Area
         Surface(
-            modifier = Modifier
+            modifier = modifier
                 .fillMaxWidth()
-                .heightIn(min = 400.dp, max = 600.dp)
                 .pointerInput(Unit) {
                     awaitEachGesture {
                         val firstDown = awaitFirstDown()
@@ -457,9 +459,50 @@ fun RemoteControlScreen(
                 )
             }
         }
+    }
 
+    if (isWide) {
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(
+                modifier = Modifier
+                    .weight(0.4f)
+                    .fillMaxHeight(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                ExtraKeys()
+                Spacer(modifier = Modifier.height(24.dp))
+                DPad()
+            }
 
-        Spacer(modifier = Modifier.height(80.dp))
+            Trackpad(
+                modifier = Modifier
+                    .weight(0.6f)
+                    .fillMaxHeight()
+            )
+        }
+    } else {
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            Trackpad(
+                modifier = Modifier
+                    .weight(1f)
+            )
+
+            ExtraKeys()
+            DPad()
+        }
     }
 }
 
