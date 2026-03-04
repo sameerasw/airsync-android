@@ -321,6 +321,7 @@ object WebSocketUtil {
 
                                         onConnectionStatusChanged?.invoke(true)
                                         notifyConnectionStatusListeners(true)
+                                        cancelAutoReconnect()
                                         try {
                                             AirSyncWidgetProvider.updateAllWidgets(context)
                                         } catch (_: Exception) {

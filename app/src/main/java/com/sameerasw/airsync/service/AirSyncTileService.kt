@@ -187,12 +187,7 @@ class AirSyncTileService : TileService() {
                     com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(lastDevice)
                 icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
 
-                if (isAuto) {
-                    // Auto-reconnect in progress or waiting
-                    state = if (isConnecting) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-                    label = "Trying to reconnect"
-                    subtitle = "Tap to stop"
-                } else if (isConnected && lastDevice != null) {
+                if (isConnected && lastDevice != null) {
                     // Connected state
                     state = Tile.STATE_ACTIVE
                     label = lastDevice.name
@@ -207,6 +202,11 @@ class AirSyncTileService : TileService() {
                             "Connected"
                         }
                     } ?: "Connected"
+                } else if (isAuto) {
+                    // Auto-reconnect in progress or waiting
+                    state = if (isConnecting) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+                    label = "Trying to reconnect"
+                    subtitle = "Tap to stop"
                 } else if (lastDevice != null) {
                     // Disconnected but has last device
                     state = Tile.STATE_INACTIVE
