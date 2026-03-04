@@ -355,6 +355,11 @@ object WebSocketUtil {
                                         )
                                     } catch (_: Exception) {
                                     }
+                                    try {
+                                        com.sameerasw.airsync.service.MacMediaPlayerService.stopMacMedia(context)
+                                        com.sameerasw.airsync.utils.MacDeviceStatusManager.cleanup(context)
+                                    } catch (_: Exception) {
+                                    }
                                     onConnectionStatusChanged?.invoke(false)
                                     notifyConnectionStatusListeners(false)
                                     tryStartAutoReconnect(context)
@@ -385,6 +390,11 @@ object WebSocketUtil {
                                         com.sameerasw.airsync.service.AirSyncService.startScanning(
                                             context
                                         )
+                                    } catch (_: Exception) {
+                                    }
+                                    try {
+                                        com.sameerasw.airsync.service.MacMediaPlayerService.stopMacMedia(context)
+                                        com.sameerasw.airsync.utils.MacDeviceStatusManager.cleanup(context)
                                     } catch (_: Exception) {
                                     }
                                     onConnectionStatusChanged?.invoke(false)

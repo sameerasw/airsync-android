@@ -86,7 +86,8 @@ class AirSyncViewModel(
                 isConnected = isConnected,
                 isConnecting = false,
                 response = if (isConnected) "Connected successfully!" else "Disconnected",
-                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null
+                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null,
+                macDeviceStatus = if (isConnected) _uiState.value.macDeviceStatus else null
             )
 
             if (isConnected) {
