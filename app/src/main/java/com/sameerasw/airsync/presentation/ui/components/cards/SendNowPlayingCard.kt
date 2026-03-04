@@ -21,7 +21,8 @@ fun SendNowPlayingCard(
     isSendNowPlayingEnabled: Boolean,
     onToggleSendNowPlaying: (Boolean) -> Unit,
     title: String = "Send now playing",
-    subtitle: String = "Share media playback details with desktop"
+    subtitle: String = "Share media playback details with desktop",
+    enabled: Boolean = true
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -46,6 +47,7 @@ fun SendNowPlayingCard(
             }
             Switch(
                 checked = isSendNowPlayingEnabled,
+                enabled = enabled,
                 onCheckedChange = { enabled ->
                     if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
                         haptics

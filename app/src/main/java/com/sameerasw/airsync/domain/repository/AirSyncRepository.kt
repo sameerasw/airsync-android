@@ -89,6 +89,10 @@ interface AirSyncRepository {
     suspend fun setMacMediaControlsEnabled(enabled: Boolean)
     fun getMacMediaControlsEnabled(): Flow<Boolean>
 
+    // Blur settings
+    suspend fun setUseBlurEnabled(enabled: Boolean)
+    fun getUseBlurEnabled(): Flow<Boolean>
+
     // Default tab settings
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>

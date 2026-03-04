@@ -219,6 +219,8 @@ class AirSyncViewModel(
             repository.getDefaultTab().first()
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
+            val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isBlurEnabled = if (DeviceInfoUtil.isBlurProblematicDevice()) false else isBlurEnabledSetting
 
             // Rating tracking
             repository.getFirstMacConnectionTime().first()
@@ -271,7 +273,8 @@ class AirSyncViewModel(
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
-                isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled
+                isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
+                isBlurEnabled = isBlurEnabled
             )
 
             updateRatingPromptDisplay()
@@ -925,6 +928,14 @@ class AirSyncViewModel(
         viewModelScope.launch {
             repository.setHasRatedApp(true)
             updateRatingPromptDisplay()
+        }
+    }
+
+    fun setUseBlurEnabled(enabled: Boolean) {
+        val finalEnabled = if (DeviceInfoUtil.isBlurProblematicDevice()) false else enabled
+        _uiState.value = _uiState.value.copy(isBlurEnabled = finalEnabled)
+        viewModelScope.launch {
+            repository.setUseBlurEnabled(enabled)
         }
     }
 

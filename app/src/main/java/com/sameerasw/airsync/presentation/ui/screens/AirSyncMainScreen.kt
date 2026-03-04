@@ -93,6 +93,8 @@ import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import com.sameerasw.airsync.presentation.ui.modifiers.BlurDirection
+import com.sameerasw.airsync.presentation.ui.modifiers.progressiveBlur
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
@@ -675,9 +677,35 @@ fun AirSyncMainScreen(
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        // Blur heights
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val statusBarHeightPx = with(density) {
+            WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
+        }
+        val bottomBlurHeightPx = with(density) { 130.dp.toPx() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
             HorizontalPager(
-                modifier = modifier.fillMaxSize(),
+                modifier = modifier
+                    .fillMaxSize()
+                    .then(
+                        if (uiState.isBlurEnabled) {
+                            Modifier
+                                .progressiveBlur(
+                                    blurRadius = 40f,
+                                    height = statusBarHeightPx * 1.15f,
+                                    direction = BlurDirection.TOP
+                                )
+                                .progressiveBlur(
+                                    blurRadius = 40f,
+                                    height = bottomBlurHeightPx,
+                                    direction = BlurDirection.BOTTOM
+                                )
+                        } else Modifier
+                    ),
                 state = pagerState
             ) { page ->
                 when (page) {

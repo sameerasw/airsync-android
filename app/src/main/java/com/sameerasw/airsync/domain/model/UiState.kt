@@ -41,5 +41,6 @@ data class UiState(
     val activeIp: String? = null,
     val connectingDeviceId: String? = null,
     val isDeviceDiscoveryEnabled: Boolean = true,
-    val shouldShowRatingPrompt: Boolean = false
+    val shouldShowRatingPrompt: Boolean = false,
+    val isBlurEnabled: Boolean = true
 )

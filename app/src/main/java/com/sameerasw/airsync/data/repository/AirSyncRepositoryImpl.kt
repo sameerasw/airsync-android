@@ -200,6 +200,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getMacMediaControlsEnabled()
     }
 
+    override suspend fun setUseBlurEnabled(enabled: Boolean) {
+        dataStoreManager.setUseBlurEnabled(enabled)
+    }
+
+    override fun getUseBlurEnabled(): Flow<Boolean> {
+        return dataStoreManager.getUseBlurEnabled()
+    }
+
     override suspend fun setDefaultTab(tab: String) {
         dataStoreManager.setDefaultTab(tab)
     }

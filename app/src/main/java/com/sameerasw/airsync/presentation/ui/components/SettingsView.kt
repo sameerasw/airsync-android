@@ -215,6 +215,18 @@ fun SettingsView(
                 }
             )
 
+            SendNowPlayingCard(
+                isSendNowPlayingEnabled = uiState.isBlurEnabled,
+                onToggleSendNowPlaying = { enabled: Boolean ->
+                    viewModel.setUseBlurEnabled(enabled)
+                },
+                title = "Use Blur",
+                subtitle = if (com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice())
+                    "Disabled due to compatibility issues with this Samsung device"
+                else "Progressive blur for the UI",
+                enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
+            )
+
             // Mac Media Controls toggle for Play Store initiation proof
             SendNowPlayingCard(
                 isSendNowPlayingEnabled = uiState.isMacMediaControlsEnabled,

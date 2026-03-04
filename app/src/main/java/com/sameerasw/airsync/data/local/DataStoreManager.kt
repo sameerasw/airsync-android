@@ -88,6 +88,7 @@ class DataStoreManager(private val context: Context) {
         private val DEVICE_DISCOVERY_ENABLED = booleanPreferencesKey("device_discovery_enabled")
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
+        private val USE_BLUR = booleanPreferencesKey("use_blur")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -283,6 +284,18 @@ class DataStoreManager(private val context: Context) {
     fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { prefs ->
             prefs[MAC_MEDIA_CONTROLS_ENABLED] ?: true // Default to true
+        }
+    }
+
+    suspend fun setUseBlurEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[USE_BLUR] = enabled
+        }
+    }
+
+    fun getUseBlurEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[USE_BLUR] ?: true // Default to enabled
         }
     }
 
