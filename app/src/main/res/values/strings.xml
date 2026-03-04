@@ -37,4 +37,6 @@
     <string name="subtitle_help_guides">Learn how to use AirSync</string>
     <string name="action_lock_screen">Lock</string>
     <string name="action_screensaver">Screensaver</string>
+    <string name="content_description_brightness_up">Brightness Up</string>
+    <string name="content_description_brightness_down">Brightness Down</string>
 </resources>

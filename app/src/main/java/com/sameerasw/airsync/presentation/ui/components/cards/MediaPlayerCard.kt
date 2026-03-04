@@ -60,7 +60,7 @@ fun MediaPlayerCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
     ) {
         Box(
             modifier = Modifier.fillMaxWidth()
