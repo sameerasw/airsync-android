@@ -39,4 +39,10 @@
     <string name="action_screensaver">Screensaver</string>
     <string name="content_description_brightness_up">Brightness Up</string>
     <string name="content_description_brightness_down">Brightness Down</string>
+
+    <string name="cat_app">App</string>
+    <string name="label_connection_tile">Connection Tile</string>
+    <string name="label_clipboard_tile">Clipboard Tile</string>
+    <string name="status_added">Added</string>
+    <string name="status_add">Add</string>
 </resources>

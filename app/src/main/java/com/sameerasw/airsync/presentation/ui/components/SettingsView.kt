@@ -46,7 +46,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
-import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTipCard
+import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTilesCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SendNowPlayingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SmartspacerCard
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
@@ -110,11 +110,8 @@ fun SettingsView(
                 .fillMaxWidth()
         )
 
+        // Top Section (Untitled)
         RoundedCardContainer {
-            DefaultTabCard(
-                currentDefaultTab = uiState.defaultTab,
-                onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
-            )
             PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
             
             // Help and guides card
@@ -159,18 +156,27 @@ fun SettingsView(
                 }
             }
 
-            QuickSettingsTipCard(
-                isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+            QuickSettingsTilesCard(
+                isConnectionTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
                     com.sameerasw.airsync.service.AirSyncTileService::class.java
-                )
-            )
-            com.sameerasw.airsync.presentation.ui.components.cards.ClipboardTileTipCard(
-                isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                ),
+                isClipboardTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
                     com.sameerasw.airsync.service.ClipboardTileService::class.java
                 )
             )
+        }
+
+        // App Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.cat_app))
+            RoundedCardContainer {
+                DefaultTabCard(
+                    currentDefaultTab = uiState.defaultTab,
+                    onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
+                )
+            }
         }
 
         // Notifications & Sync Features Section
@@ -446,5 +452,15 @@ fun SettingsView(
 
         Spacer(modifier = Modifier.height(100.dp))
     }
+}
+
+@Composable
+fun SettingsCategoryTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 8.dp)
+    )
 }
 
