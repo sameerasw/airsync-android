@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import com.sameerasw.airsync.presentation.ui.screens.PermissionsScreen
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
+import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.PermissionUtil
 
 class PermissionsActivity : ComponentActivity() {
@@ -72,7 +74,13 @@ class PermissionsActivity : ComponentActivity() {
         }
 
         setContent {
-            AirSyncTheme {
+            val viewModel: com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel {
+                    com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel.create(this@PermissionsActivity)
+                }
+            val uiState by viewModel.uiState.collectAsState()
+
+            AirSyncTheme(pitchBlackTheme = uiState.isPitchBlackThemeEnabled) {
                 val scrollBehavior =
                     TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 

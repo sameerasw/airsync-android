@@ -192,6 +192,15 @@ fun SettingsView(
                     },
                     enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
                 )
+
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isPitchBlackThemeEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setPitchBlackThemeEnabled(enabled)
+                    },
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_pitch_black_theme),
+                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_pitch_black_theme)
+                )
             }
         }
 

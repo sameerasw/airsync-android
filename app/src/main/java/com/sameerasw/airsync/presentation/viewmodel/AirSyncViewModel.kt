@@ -138,6 +138,13 @@ class AirSyncViewModel(
                 // No device status notification to update
             }
         }
+
+        // Observe pitch black theme preference
+        viewModelScope.launch {
+            repository.getPitchBlackThemeEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -234,6 +241,7 @@ class AirSyncViewModel(
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
             
@@ -294,6 +302,7 @@ class AirSyncViewModel(
                 isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
                 isBlurSettingEnabled = isBlurEnabledSetting,
                 isPowerSaveMode = isPowerSaveMode,
+                isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled
             )
 
@@ -555,6 +564,13 @@ class AirSyncViewModel(
                 isPowerSaveMode = isPowerSaveMode,
                 isBlurEnabled = isBlurEnabled
             )
+        }
+    }
+
+    fun setPitchBlackThemeEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
+        viewModelScope.launch {
+            repository.setPitchBlackThemeEnabled(enabled)
         }
     }
 

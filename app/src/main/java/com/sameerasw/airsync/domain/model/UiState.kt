@@ -44,5 +44,6 @@ data class UiState(
     val shouldShowRatingPrompt: Boolean = false,
     val isBlurSettingEnabled: Boolean = true,
     val isPowerSaveMode: Boolean = false,
+    val isPitchBlackThemeEnabled: Boolean = false,
     val isBlurEnabled: Boolean = true
 )

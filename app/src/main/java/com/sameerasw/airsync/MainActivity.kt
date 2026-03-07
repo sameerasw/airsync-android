@@ -52,6 +52,7 @@ import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import com.sameerasw.airsync.presentation.ui.screens.AirSyncMainScreen
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
+import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.AdbMdnsDiscovery
 import com.sameerasw.airsync.utils.ContentCaptureManager
 import com.sameerasw.airsync.utils.DevicePreviewResolver
@@ -358,7 +359,13 @@ class MainActivity : ComponentActivity() {
         val isFromQrScan = data != null
 
         setContent {
-            AirSyncTheme {
+            val viewModel: com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel {
+                    com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel.create(this@MainActivity)
+                }
+            val uiState by viewModel.uiState.collectAsState()
+
+            AirSyncTheme(pitchBlackTheme = uiState.isPitchBlackThemeEnabled) {
                 val navController = rememberNavController()
 
                 Scaffold(

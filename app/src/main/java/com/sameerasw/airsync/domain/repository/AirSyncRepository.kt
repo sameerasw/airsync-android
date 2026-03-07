@@ -93,6 +93,10 @@ interface AirSyncRepository {
     suspend fun setUseBlurEnabled(enabled: Boolean)
     fun getUseBlurEnabled(): Flow<Boolean>
 
+    // Pitch Black Theme settings
+    suspend fun setPitchBlackThemeEnabled(enabled: Boolean)
+    fun getPitchBlackThemeEnabled(): Flow<Boolean>
+
     // Default tab settings
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>

@@ -208,6 +208,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getUseBlurEnabled()
     }
 
+    override suspend fun setPitchBlackThemeEnabled(enabled: Boolean) {
+        dataStoreManager.setPitchBlackThemeEnabled(enabled)
+    }
+
+    override fun getPitchBlackThemeEnabled(): Flow<Boolean> {
+        return dataStoreManager.getPitchBlackThemeEnabled()
+    }
+
     override suspend fun setDefaultTab(tab: String) {
         dataStoreManager.setDefaultTab(tab)
     }

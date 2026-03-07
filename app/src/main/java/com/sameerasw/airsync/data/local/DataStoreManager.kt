@@ -89,6 +89,7 @@ class DataStoreManager(private val context: Context) {
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
         private val USE_BLUR = booleanPreferencesKey("use_blur")
+        private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -296,6 +297,18 @@ class DataStoreManager(private val context: Context) {
     fun getUseBlurEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[USE_BLUR] ?: true // Default to enabled
+        }
+    }
+
+    suspend fun setPitchBlackThemeEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PITCH_BLACK_THEME] = enabled
+        }
+    }
+
+    fun getPitchBlackThemeEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[PITCH_BLACK_THEME] ?: false // Default to disabled
         }
     }
 
