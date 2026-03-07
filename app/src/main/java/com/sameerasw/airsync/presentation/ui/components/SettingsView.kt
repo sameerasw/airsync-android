@@ -44,6 +44,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
+import com.sameerasw.airsync.presentation.ui.components.cards.MediaSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
 import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTilesCard
@@ -113,7 +114,7 @@ fun SettingsView(
         // Top Section (Untitled)
         RoundedCardContainer {
             PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
-            
+
             // Help and guides card
             Card(
                 modifier = Modifier
@@ -176,7 +177,7 @@ fun SettingsView(
                     currentDefaultTab = uiState.defaultTab,
                     onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
                 )
-                
+
                 SendNowPlayingCard(
                     isSendNowPlayingEnabled = uiState.isBlurSettingEnabled,
                     onToggleSendNowPlaying = { enabled: Boolean ->
@@ -186,8 +187,10 @@ fun SettingsView(
                     subtitle = when {
                         com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice() ->
                             androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_samsung)
+
                         uiState.isPowerSaveMode && uiState.isBlurSettingEnabled ->
                             androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_power_save)
+
                         else -> androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_use_blur)
                     },
                     enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
@@ -204,112 +207,129 @@ fun SettingsView(
             }
         }
 
-        // Notifications & Sync Features Section
-        RoundedCardContainer {
-            NotificationSyncCard(
-                isNotificationEnabled = uiState.isNotificationEnabled,
-                isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
-                onToggleSync = { enabled ->
-                    viewModel.setNotificationSyncEnabled(enabled)
-                },
-                onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
-            )
-
-            ClipboardFeaturesCard(
-                isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
-                onToggleClipboardSync = { enabled: Boolean ->
-                    viewModel.setClipboardSyncEnabled(enabled)
-                },
-                isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
-                onToggleContinueBrowsing = { enabled: Boolean ->
-                    viewModel.setContinueBrowsingEnabled(enabled)
-                },
-                isContinueBrowsingToggleEnabled = true,
-                continueBrowsingSubtitle = "Prompt to open shared links in browser",
-                isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
-                onToggleKeepPreviousLink = { enabled: Boolean ->
-                    viewModel.setKeepPreviousLinkEnabled(enabled)
-                }
-            )
-
-            SendNowPlayingCard(
-                isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
-                onToggleSendNowPlaying = { enabled: Boolean ->
-                    viewModel.setSendNowPlayingEnabled(enabled)
-                }
-            )
-
-            SmartspacerCard(
-                isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
-                onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
-                    viewModel.setSmartspacerShowWhenDisconnected(enabled)
-                }
-            )
-
-            // Mac Media Controls toggle for Play Store initiation proof
-            SendNowPlayingCard(
-                isSendNowPlayingEnabled = uiState.isMacMediaControlsEnabled,
-                onToggleSendNowPlaying = { enabled: Boolean ->
-                    viewModel.setMacMediaControlsEnabled(enabled)
-                },
-                title = "Show Mac Media Controls",
-                subtitle = "Show media controls when Mac is playing music"
-            )
-
-            // Essentials Bridge Toggle
-            val isEssentialsInstalled = try {
-                context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
-                true
-            } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
-                false
-            }
-
-            if (isEssentialsInstalled) {
-                SendNowPlayingCard(
-                    isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
-                    onToggleSendNowPlaying = { enabled: Boolean ->
-                        viewModel.setEssentialsConnectionEnabled(enabled)
+        // Sync Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Sync")
+            RoundedCardContainer {
+                NotificationSyncCard(
+                    isNotificationEnabled = uiState.isNotificationEnabled,
+                    isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
+                    onToggleSync = { enabled ->
+                        viewModel.setNotificationSyncEnabled(enabled)
                     },
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
-                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
+                    onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
                 )
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraSmall,
-                ) {
-                    androidx.compose.material3.ListItem(
-                        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-                        headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
-                        supportingContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials_summary)) },
-                        trailingContent = {
-                            Button(
-                                onClick = {
-                                    val intent = android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
-                                    )
-                                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                                    context.startActivity(intent)
-                                }
-                            ) {
-                                Text("Download")
-                            }
-                        }
-                    )
-                }
-            }
 
-            ExpandNetworkingCard(context)
+                ClipboardFeaturesCard(
+                    isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
+                    onToggleClipboardSync = { enabled: Boolean ->
+                        viewModel.setClipboardSyncEnabled(enabled)
+                    },
+                    isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
+                    onToggleContinueBrowsing = { enabled: Boolean ->
+                        viewModel.setContinueBrowsingEnabled(enabled)
+                    },
+                    isContinueBrowsingToggleEnabled = true,
+                    continueBrowsingSubtitle = "Prompt to open shared links in browser",
+                    isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
+                    onToggleKeepPreviousLink = { enabled: Boolean ->
+                        viewModel.setKeepPreviousLinkEnabled(enabled)
+                    }
+                )
+
+                MediaSyncCard(
+                    isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
+                    onToggleSendNowPlaying = { enabled ->
+                        viewModel.setSendNowPlayingEnabled(enabled)
+                    },
+                    isMacMediaControlsEnabled = uiState.isMacMediaControlsEnabled,
+                    onToggleMacMediaControls = { enabled ->
+                        viewModel.setMacMediaControlsEnabled(enabled)
+                    }
+                )
+            }
         }
 
-        // Device Info Section
-        RoundedCardContainer {
-            DeviceInfoCard(
-                deviceName = uiState.deviceNameInput,
-                localIp = deviceInfo.localIp,
-                onDeviceNameChange = { viewModel.updateDeviceName(it) }
-            )
+        // Integration Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Integration")
+            RoundedCardContainer {
+                SmartspacerCard(
+                    isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
+                    onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
+                        viewModel.setSmartspacerShowWhenDisconnected(enabled)
+                    }
+                )
+
+                val isEssentialsInstalled = try {
+                    context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
+                }
+
+                if (isEssentialsInstalled) {
+                    SendNowPlayingCard(
+                        isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
+                        onToggleSendNowPlaying = { enabled: Boolean ->
+                            viewModel.setEssentialsConnectionEnabled(enabled)
+                        },
+                        title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
+                        subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
+                    )
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
+                    ) {
+                        androidx.compose.material3.ListItem(
+                            colors = androidx.compose.material3.ListItemDefaults.colors(
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
+                            supportingContent = {
+                                Text(
+                                    androidx.compose.ui.res.stringResource(
+                                        com.sameerasw.airsync.R.string.download_essentials_summary
+                                    )
+                                )
+                            },
+                            trailingContent = {
+                                Button(
+                                    onClick = {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
+                                        )
+                                        intent.flags =
+                                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text("Download")
+                                }
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        // Connection Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Connection")
+            RoundedCardContainer {
+                DeviceInfoCard(
+                    deviceName = uiState.deviceNameInput,
+                    localIp = deviceInfo.localIp,
+                    onDeviceNameChange = { viewModel.updateDeviceName(it) }
+                )
+
+                ExpandNetworkingCard(context)
+            }
         }
 
         // Developer Mode & Icon Sync Section
@@ -352,15 +372,16 @@ fun SettingsView(
                             testNotification.id
                         )
 
-                        val message = com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
-                            testNotification.id,
-                            testNotification.title,
-                            testNotification.body,
-                            testNotification.appName,
-                            testNotification.packageName,
-                            testNotification.priority,
-                            testNotification.actions
-                        )
+                        val message =
+                            com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
+                                testNotification.id,
+                                testNotification.title,
+                                testNotification.body,
+                                testNotification.appName,
+                                testNotification.packageName,
+                                testNotification.priority,
+                                testNotification.actions
+                            )
                         onSendMessage(message)
                     },
                     onSendDeviceStatus = {
