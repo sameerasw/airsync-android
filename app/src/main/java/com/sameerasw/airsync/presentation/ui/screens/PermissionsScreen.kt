@@ -192,7 +192,7 @@ fun PermissionsScreen(
                                 "Call Log Access" -> {
                                     PermissionButton(
                                         permissionName = permission,
-                                        description = "Enables call log sync",
+                                        description = "Necessary for mapping the caller info",
                                         onExplainClick = {
                                             showDialog = PermissionType.CALL_LOG
                                         },
@@ -203,7 +203,7 @@ fun PermissionsScreen(
                                 "Contacts Access" -> {
                                     PermissionButton(
                                         permissionName = permission,
-                                        description = "Enables contacts sync",
+                                        description = "Necessary for displaying known contacts in calls",
                                         onExplainClick = {
                                             showDialog = PermissionType.CONTACTS
                                         },
@@ -214,7 +214,7 @@ fun PermissionsScreen(
                                 "Phone Access" -> {
                                     PermissionButton(
                                         permissionName = permission,
-                                        description = "Enables phone state access",
+                                        description = "Detects call state changes",
                                         onExplainClick = { showDialog = PermissionType.PHONE },
                                         isCritical = false
                                     )

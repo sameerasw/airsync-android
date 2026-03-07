@@ -116,8 +116,7 @@ fun WelcomeScreen(
                     OnboardingStep.ACKNOWLEDGEMENT -> {
                         AcknowledgementStepContent(
                             haptics = haptics,
-                            isSentryEnabled = uiState.isSentryReportingEnabled,
-                            onSentryModeSelected = { viewModel.setSentryReportingEnabled(it) },
+                            missingPermissionsCount = uiState.missingPermissions.size,
                             onBack = {
                                 HapticUtil.performClick(haptics)
                                 currentStep = OnboardingStep.WELCOME
@@ -361,8 +360,7 @@ fun WelcomeStepContent(
 @Composable
 fun AcknowledgementStepContent(
     haptics: androidx.compose.ui.hapticfeedback.HapticFeedback,
-    isSentryEnabled: Boolean,
-    onSentryModeSelected: (Boolean) -> Unit,
+    missingPermissionsCount: Int,
     onBack: () -> Unit,
     onNext: () -> Unit
 ) {
@@ -423,9 +421,8 @@ fun AcknowledgementStepContent(
         Spacer(modifier = Modifier.height(16.dp))
 
         RoundedCardContainer {
-            CrashReportingPicker(
-                isReportingEnabled = isSentryEnabled,
-                onReportingChanged = onSentryModeSelected
+            com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard(
+                missingPermissionsCount = missingPermissionsCount
             )
         }
 
@@ -755,6 +752,13 @@ fun PreferencesStepContent(
                     isChecked = uiState.isBlurEnabled,
                     onCheckedChange = { viewModel.setUseBlurEnabled(it, context) },
                     enabled = !isBlurProblematic
+                )
+                IconToggleItem(
+                    iconRes = R.drawable.rounded_security_24,
+                    title = stringResource(R.string.label_error_reporting),
+                    description = stringResource(R.string.subtitle_error_reporting),
+                    isChecked = uiState.isSentryReportingEnabled,
+                    onCheckedChange = { viewModel.setSentryReportingEnabled(it) }
                 )
             }
 

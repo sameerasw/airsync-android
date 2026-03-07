@@ -59,7 +59,7 @@
     <string name="welcome_subtitle">Continuity With Your Mac</string>
     <string name="welcome_developer_attribution">by sameerasw.com</string>
     <string name="action_lets_begin">Let\'s Begin</string>
-    <string name="acknowledgement_title">Acknowledgement</string>
+    <string name="acknowledgement_title">Permissions</string>
     <string name="acknowledgement_desc">This app allows you to sync notifications, clipboard, and media controls with your Mac. To provide these features, AirSync requires certain permissions.\n\nYou have full control over which features are enabled and which permissions are granted. We do not collect or store any of your personal data.\n\nAirSync is open source and this app is completly free to use. Always ensure you download it from Play Store or GitHub.</string>
     <string name="acknowledgement_footer">If you need any help, feel free to check the guides or reach out to the developer.</string>
     <string name="action_i_understand">I Understand</string>
