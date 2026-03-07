@@ -90,6 +90,7 @@ class DataStoreManager(private val context: Context) {
         private val DEVICE_ID = stringPreferencesKey("device_id")
         private val USE_BLUR = booleanPreferencesKey("use_blur")
         private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
+        private val SENTRY_REPORTING_ENABLED = booleanPreferencesKey("sentry_reporting_enabled")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -309,6 +310,18 @@ class DataStoreManager(private val context: Context) {
     fun getPitchBlackThemeEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[PITCH_BLACK_THEME] ?: false // Default to disabled
+        }
+    }
+
+    suspend fun setSentryReportingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SENTRY_REPORTING_ENABLED] = enabled
+        }
+    }
+
+    fun getSentryReportingEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[SENTRY_REPORTING_ENABLED] ?: true // Default to enabled
         }
     }
 

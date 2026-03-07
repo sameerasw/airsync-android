@@ -101,6 +101,10 @@ interface AirSyncRepository {
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>
 
+    // Sentry reporting settings
+    suspend fun setSentryReportingEnabled(enabled: Boolean)
+    fun getSentryReportingEnabled(): Flow<Boolean>
+
     // Essentials Bridge
     suspend fun setEssentialsConnectionEnabled(enabled: Boolean)
     fun getEssentialsConnectionEnabled(): Flow<Boolean>

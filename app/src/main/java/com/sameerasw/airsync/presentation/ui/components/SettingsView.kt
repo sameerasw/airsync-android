@@ -204,6 +204,15 @@ fun SettingsView(
                     title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_pitch_black_theme),
                     subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_pitch_black_theme)
                 )
+
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isSentryReportingEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setSentryReportingEnabled(enabled)
+                    },
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_error_reporting),
+                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_error_reporting)
+                )
             }
         }
 
@@ -332,101 +341,104 @@ fun SettingsView(
             }
         }
 
-        // Developer Mode & Icon Sync Section
-        RoundedCardContainer {
-            AnimatedVisibility(
-                visible = uiState.isDeveloperModeVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                DeveloperModeCard(
-                    isDeveloperMode = uiState.isDeveloperMode,
-                    onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
-                    isLoading = uiState.isLoading,
-                    onSendDeviceInfo = {
-                        val adbPorts = try {
-                            val discoveredServices =
-                                com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
-                            discoveredServices.map { it.port.toString() }
-                        } catch (_: Exception) {
-                            emptyList()
-                        }
-                        val deviceId =
-                            com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
-                        val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
-                            deviceId,
-                            deviceInfo.name,
-                            deviceInfo.localIp,
-                            uiState.port.toIntOrNull() ?: 6996,
-                            versionName ?: "2.0.0",
-                            adbPorts
-                        )
-                        onSendMessage(message)
-                    },
-                    onSendNotification = {
-                        val testNotification =
-                            com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
-
-                        // Store ID for mock dismissal support
-                        com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
-                            testNotification.id
-                        )
-
-                        val message =
-                            com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
-                                testNotification.id,
-                                testNotification.title,
-                                testNotification.body,
-                                testNotification.appName,
-                                testNotification.packageName,
-                                testNotification.priority,
-                                testNotification.actions
+        // Developer Mode
+        AnimatedVisibility(
+            visible = uiState.isDeveloperModeVisible,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsCategoryTitle("Advanced")
+                RoundedCardContainer {
+                    DeveloperModeCard(
+                        isDeveloperMode = uiState.isDeveloperMode,
+                        onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
+                        isLoading = uiState.isLoading,
+                        onSendDeviceInfo = {
+                            val adbPorts = try {
+                                val discoveredServices =
+                                    com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
+                                discoveredServices.map { it.port.toString() }
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                            val deviceId =
+                                com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
+                            val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
+                                deviceId,
+                                deviceInfo.name,
+                                deviceInfo.localIp,
+                                uiState.port.toIntOrNull() ?: 6996,
+                                versionName ?: "2.0.0",
+                                adbPorts
                             )
-                        onSendMessage(message)
-                    },
-                    onSendDeviceStatus = {
-                        val message =
-                            com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
-                                context
+                            onSendMessage(message)
+                        },
+                        onSendNotification = {
+                            val testNotification =
+                                com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+
+                            // Store ID for mock dismissal support
+                            com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
+                                testNotification.id
                             )
-                        onSendMessage(message)
-                    },
-                    onExportData = {
-                        viewModel.setLoading(true)
-                        scope.launch(Dispatchers.IO) {
-                            val json = viewModel.exportAllDataToJson(context)
-                            if (json == null) {
-                                scope.launch(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        "Export failed",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    viewModel.setLoading(false)
-                                }
-                            } else {
-                                scope.launch(Dispatchers.Main) {
-                                    onExport(json)
+
+                            val message =
+                                com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
+                                    testNotification.id,
+                                    testNotification.title,
+                                    testNotification.body,
+                                    testNotification.appName,
+                                    testNotification.packageName,
+                                    testNotification.priority,
+                                    testNotification.actions
+                                )
+                            onSendMessage(message)
+                        },
+                        onSendDeviceStatus = {
+                            val message =
+                                com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
+                                    context
+                                )
+                            onSendMessage(message)
+                        },
+                        onExportData = {
+                            viewModel.setLoading(true)
+                            scope.launch(Dispatchers.IO) {
+                                val json = viewModel.exportAllDataToJson(context)
+                                if (json == null) {
+                                    scope.launch(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Export failed",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        viewModel.setLoading(false)
+                                    }
+                                } else {
+                                    scope.launch(Dispatchers.Main) {
+                                        onExport(json)
+                                    }
                                 }
                             }
-                        }
-                    },
-                    onImportData = {
-                        onImport()
-                    },
-                    onResetOnboarding = {
-                        onResetOnboarding()
-                    },
-                    isIconSyncLoading = uiState.isIconSyncLoading,
-                    iconSyncMessage = uiState.iconSyncMessage,
-                    onManualSyncIcons = {
-                        viewModel.manualSyncAppIcons(context)
-                    },
-                    onClearIconSyncMessage = {
-                        viewModel.clearIconSyncMessage()
-                    },
-                    isConnected = uiState.isConnected
-                )
+                        },
+                        onImportData = {
+                            onImport()
+                        },
+                        onResetOnboarding = {
+                            onResetOnboarding()
+                        },
+                        isIconSyncLoading = uiState.isIconSyncLoading,
+                        iconSyncMessage = uiState.iconSyncMessage,
+                        onManualSyncIcons = {
+                            viewModel.manualSyncAppIcons(context)
+                        },
+                        onClearIconSyncMessage = {
+                            viewModel.clearIconSyncMessage()
+                        },
+                        isConnected = uiState.isConnected
+                    )
+                }
             }
         }
 

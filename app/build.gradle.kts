@@ -137,6 +137,7 @@ dependencies {
     // Google Play Review
     implementation(libs.play.review)
     implementation(libs.play.review.ktx)
+    implementation(libs.sentry.android)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -224,6 +224,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getDefaultTab()
     }
 
+    override suspend fun setSentryReportingEnabled(enabled: Boolean) {
+        dataStoreManager.setSentryReportingEnabled(enabled)
+    }
+
+    override fun getSentryReportingEnabled(): Flow<Boolean> {
+        return dataStoreManager.getSentryReportingEnabled()
+    }
+
     override suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
         dataStoreManager.setEssentialsConnectionEnabled(enabled)
     }
