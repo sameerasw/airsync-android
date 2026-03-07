@@ -23,9 +23,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Circle
 import androidx.compose.material.icons.filled.SpaceBar
@@ -155,7 +155,7 @@ fun RemoteControlScreen(
                     ),
                     performHaptic = false
                 )
-                lastSentMove = Offset(smoothedX.toFloat(), smoothedY.toFloat())
+                lastSentMove = Offset(smoothedX, smoothedY)
                 pendingMove = Offset.Zero
             }
 
@@ -301,7 +301,7 @@ fun RemoteControlScreen(
             // Left
             RemoteButton(
                 onClick = { sendRemoteAction("arrow_left") },
-                icon = Icons.Default.ArrowBack,
+                icon = Icons.AutoMirrored.Filled.ArrowBack,
                 modifier = Modifier
                     .align(Alignment.CenterStart)
                     .padding(start = 16.dp)
@@ -310,7 +310,7 @@ fun RemoteControlScreen(
             // Right
             RemoteButton(
                 onClick = { sendRemoteAction("arrow_right") },
-                icon = Icons.Default.ArrowForward,
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
                 modifier = Modifier
                     .align(Alignment.CenterEnd)
                     .padding(end = 16.dp)

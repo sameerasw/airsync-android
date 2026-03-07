@@ -69,7 +69,6 @@ class PermissionsActivity : ComponentActivity() {
         // Disable scrim on 3-button navigation (API 29+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
-            window.isStatusBarContrastEnforced = false
         }
 
         setContent {

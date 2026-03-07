@@ -154,11 +154,6 @@ class MacMediaPlayerService : Service() {
         try {
             if (mediaSession == null) {
                 mediaSession = MediaSessionCompat(this, "MacMediaPlayer").apply {
-                    setFlags(
-                        MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-                                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
-                    )
-
                     setCallback(object : MediaSessionCompat.Callback() {
                         override fun onPlay() {
                             sendMacMediaControl("play")
@@ -312,10 +307,9 @@ class MacMediaPlayerService : Service() {
 
     private fun stopMacMediaSession() {
         try {
-            mediaSession?.isActive = false
             mediaSession?.release()
             mediaSession = null
-            stopForeground(true)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             stopSelf()
             Log.d(TAG, "Mac media session stopped")
         } catch (e: Exception) {

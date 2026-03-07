@@ -744,9 +744,6 @@ class DataStoreManager(private val context: Context) {
 
         prefs.asMap().forEach { (key, value) ->
             try {
-                // Skip nulls
-                if (value == null) return@forEach
-
                 // If string looks like an embedded image or is very large, skip
                 if (value is String) {
                     val lower = value.lowercase()

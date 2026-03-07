@@ -302,7 +302,7 @@ fun AirSyncMainScreen(
                 Toast.makeText(context, "Connection Timed Out", Toast.LENGTH_SHORT).show()
                 viewModel.setResponse("Connection Timed Out")
             } else {
-                val connected = result ?: false
+                val connected = result
                 viewModel.setConnectionStatus(isConnected = connected, isConnecting = false)
                 if (connected) {
                     viewModel.setResponse("Connected successfully!")

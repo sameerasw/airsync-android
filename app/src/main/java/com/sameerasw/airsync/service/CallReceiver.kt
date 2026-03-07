@@ -18,6 +18,7 @@ class CallReceiver : BroadcastReceiver() {
         private var savedNumber: String? = null
     }
 
+    @Suppress("DEPRECATION")
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Broadcast received: ${intent.action}")
 

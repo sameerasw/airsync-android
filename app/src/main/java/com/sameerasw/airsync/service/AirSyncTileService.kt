@@ -127,7 +127,7 @@ class AirSyncTileService : TileService() {
                     manualAttempt = true,
                     onHandshakeTimeout = {
                         try {
-                            val v = getSystemService(VIBRATOR_SERVICE) as android.os.Vibrator
+                            val v = getSystemService(android.os.Vibrator::class.java)
                             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                                 v.vibrate(
                                     android.os.VibrationEffect.createOneShot(

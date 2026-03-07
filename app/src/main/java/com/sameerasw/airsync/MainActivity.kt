@@ -275,47 +275,28 @@ class MainActivity : ComponentActivity() {
                     fadeOutIcon.start()
                 } else {
                     // No device icon found, or splashIcon is null/not ImageView (OEM device compatibility)
-                    when {
-                        splashIcon == null -> {
-                            Log.w(
-                                "SplashScreen",
-                                "iconView is null - OEM device detected, skipping crossfade"
-                            )
-                        }
-
-                        deviceIconRes == null -> {
-                            Log.d(
+                        // Proceed directly to outro after a brief hold
+                        try {
+                            splashIcon.postDelayed({
+                                startOutroAnimation(
+                                    splashScreenView,
+                                    splashIcon,
+                                    splashScreenViewProvider
+                                )
+                            }, 500)
+                        } catch (e: Exception) {
+                            Log.e(
                                 "MainActivity",
-                                "No device icon resource, proceeding with app icon"
+                                "Error scheduling outro with no icon: ${e.message}",
+                                e
                             )
-                        }
-
-                        else -> {
-                            Log.w(
-                                "SplashScreen",
-                                "iconView is not an ImageView - OEM device detected"
-                            )
-                        }
-                    }
-
-                    // Proceed directly to outro after a brief hold
-                    try {
-                        splashIcon?.postDelayed({
+                            // Fallback: start outro immediately
                             startOutroAnimation(
                                 splashScreenView,
                                 splashIcon,
                                 splashScreenViewProvider
                             )
-                        }, 500)
-                    } catch (e: Exception) {
-                        Log.e(
-                            "MainActivity",
-                            "Error scheduling outro with no icon: ${e.message}",
-                            e
-                        )
-                        // Fallback: start outro immediately
-                        startOutroAnimation(splashScreenView, splashIcon, splashScreenViewProvider)
-                    }
+                        }
                 }
             } catch (e: Exception) {
                 // Fallback for any unexpected exceptions during animation

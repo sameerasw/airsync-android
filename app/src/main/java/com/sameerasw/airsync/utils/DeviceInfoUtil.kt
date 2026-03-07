@@ -87,6 +87,7 @@ object DeviceInfoUtil {
 
                 @Suppress("DEPRECATION")
                 val wifiInfo = wifiManager.connectionInfo
+                @Suppress("DEPRECATION")
                 val ipAddress = wifiInfo.ipAddress
                 if (ipAddress != 0) {
                     String.format(

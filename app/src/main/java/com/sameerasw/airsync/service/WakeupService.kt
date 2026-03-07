@@ -147,8 +147,8 @@ class WakeupService : Service() {
                     var line: String?
                     while (input.readLine().also { line = it } != null) {
                         if (line!!.isEmpty()) break // End of headers
-                        if (line!!.lowercase().startsWith("content-length:")) {
-                            contentLength = line!!.substring(15).trim().toIntOrNull() ?: 0
+                        if (line.lowercase().startsWith("content-length:")) {
+                            contentLength = line.substring(15).trim().toIntOrNull() ?: 0
                         }
                     }
 
