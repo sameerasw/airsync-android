@@ -46,5 +46,6 @@ data class UiState(
     val isPowerSaveMode: Boolean = false,
     val isPitchBlackThemeEnabled: Boolean = false,
     val isBlurEnabled: Boolean = true,
-    val isSentryReportingEnabled: Boolean = true
+    val isSentryReportingEnabled: Boolean = true,
+    val isOnboardingCompleted: Boolean = true
 )

@@ -103,6 +103,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCar
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
+import com.sameerasw.airsync.presentation.ui.composables.WelcomeScreen
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.ClipboardSyncManager
@@ -663,11 +664,12 @@ fun AirSyncMainScreen(
         }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-    ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ) { innerPadding ->
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
 
@@ -1202,5 +1204,21 @@ fun AirSyncMainScreen(
         HelpSupportBottomSheet(
             onDismissRequest = onDismissHelp
         )
+    }
+
+        // Welcome Screen Overlay
+        AnimatedVisibility(
+            visible = !uiState.isOnboardingCompleted,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.zIndex(100f)
+        ) {
+            WelcomeScreen(
+                viewModel = viewModel,
+                onBeginClick = {
+                    viewModel.setOnboardingCompleted(true)
+                }
+            )
+        }
     }
 }

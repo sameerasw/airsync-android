@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -118,8 +119,16 @@ fun DeveloperModeCard(
                         Text("Send Device Status")
                     }
 
-                    // New: export/import split buttons
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceBright,
+                                shape = MaterialTheme.shapes.extraSmall
+                            )
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
                         Button(
                             onClick = {
                                 HapticUtil.performClick(haptics)
@@ -143,15 +152,26 @@ fun DeveloperModeCard(
                         }
                     }
 
-                    Button(
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            onResetOnboarding()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isLoading
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceBright,
+                                shape = MaterialTheme.shapes.extraSmall
+                            )
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Reset Onboarding")
+                        Button(
+                            onClick = {
+                                HapticUtil.performClick(haptics)
+                                onResetOnboarding()
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isLoading
+                        ) {
+                            Text("Reset Onboarding")
+                        }
                     }
 
                     // Consolidated Icon Sync Section
@@ -227,18 +247,29 @@ fun DeveloperModeCard(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Button(
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            throw RuntimeException("Test Crash from Developer Options")
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(
+                                color = MaterialTheme.colorScheme.surfaceBright,
+                                shape = MaterialTheme.shapes.extraSmall
+                            )
+                            .padding(12.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Text("Simulate Crash")
+                        Button(
+                            onClick = {
+                                HapticUtil.performClick(haptics)
+                                throw RuntimeException("Test Crash from Developer Options")
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            )
+                        ) {
+                            Text("Simulate Crash")
+                        }
                     }
                 }
             }

@@ -152,6 +152,13 @@ class AirSyncViewModel(
                 _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
             }
         }
+
+        // Observe first run preference for onboarding status
+        viewModelScope.launch {
+            repository.getFirstRun().collect { firstRun ->
+                _uiState.value = _uiState.value.copy(isOnboardingCompleted = !firstRun)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -250,6 +257,7 @@ class AirSyncViewModel(
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
             val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
             val isSentryReportingEnabled = repository.getSentryReportingEnabled().first()
+            val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
             
@@ -312,7 +320,8 @@ class AirSyncViewModel(
                 isPowerSaveMode = isPowerSaveMode,
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
-                isSentryReportingEnabled = isSentryReportingEnabled
+                isSentryReportingEnabled = isSentryReportingEnabled,
+                isOnboardingCompleted = !isFirstRun
             )
 
             updateRatingPromptDisplay()
@@ -1029,6 +1038,13 @@ class AirSyncViewModel(
             repository.setLastPromptDismissedVersion(-1)
             repository.setHasRatedApp(false)
             updateRatingPromptDisplay()
+        }
+    }
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        _uiState.value = _uiState.value.copy(isOnboardingCompleted = completed)
+        viewModelScope.launch {
+            repository.setFirstRun(!completed)
         }
     }
 

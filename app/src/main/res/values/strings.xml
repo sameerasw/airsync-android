@@ -53,4 +53,30 @@
     <string name="subtitle_pitch_black_theme">Pure black background in dark mode</string>
     <string name="label_error_reporting">Error Reporting</string>
     <string name="subtitle_error_reporting">Automatically report crashes when they happen</string>
+
+    <!-- Onboarding / Welcome Screen -->
+    <string name="welcome_title">Welcome to AirSync</string>
+    <string name="welcome_subtitle">Continuity With Your Mac</string>
+    <string name="welcome_developer_attribution">by sameerasw.com</string>
+    <string name="action_lets_begin">Let\'s Begin</string>
+    <string name="acknowledgement_title">Acknowledgement</string>
+    <string name="acknowledgement_desc">This app allows you to sync notifications, clipboard, and media controls with your Mac. To provide these features, AirSync requires certain permissions.\n\nYou have full control over which features are enabled and which permissions are granted. We do not collect or store any of your personal data.\n\nAirSync is open source and this app is completly free to use. Always ensure you download it from Play Store or GitHub.</string>
+    <string name="acknowledgement_footer">If you need any help, feel free to check the guides or reach out to the developer.</string>
+    <string name="action_i_understand">I Understand</string>
+    <string name="feature_intro_desc">From the scan button in app or by long pressing the connection quick settings tile, scan the QR code displayed on the app on MacOS.</string>
+    <string name="feature_intro_footer">You can always find help and guides in the app settings.</string>
+    <string name="action_let_me_in">Let Me In Already</string>
+    <string name="preferences_title">Preferences</string>
+    <string name="preferences_desc">Configure some basic settings to get started.</string>
+    <string name="label_app_settings">App Settings</string>
+    <string name="label_haptic_feedback">Haptic Feedback</string>
+    <string name="label_updates">Updates</string>
+    <string name="help_guides_title">Help &amp; Guides</string>
+    <string name="action_how_to_connect">How to Connect?</string>
+    <string name="action_back">Back</string>
+    
+    <!-- Sentry Reporting (Picker) -->
+    <string name="sentry_report_mode_title">Crash reporting</string>
+    <string name="sentry_mode_off">Off</string>
+    <string name="sentry_mode_auto">Auto</string>
 </resources>
