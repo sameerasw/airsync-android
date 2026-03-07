@@ -169,8 +169,11 @@ class AirSyncViewModel(
             WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler)
         } catch (_: Exception) {
         }
-        
-        appContext?.unregisterReceiver(powerSaveReceiver)
+        try {
+            appContext?.unregisterReceiver(powerSaveReceiver)
+        } catch (_: IllegalArgumentException) {
+            // Receiver was not registered
+        }
     }
 
     private fun startObservingDeviceChanges(context: Context) {

@@ -189,7 +189,11 @@ class MainActivity : ComponentActivity() {
         splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
             try {
                 val splashScreenView = splashScreenViewProvider.view
-                val splashIcon = splashScreenViewProvider.iconView
+                val splashIcon = try {
+                    splashScreenViewProvider.iconView
+                } catch (e: Exception) {
+                    null
+                }
 
                 // Retrieve last connected device in background while showing splash
                 var deviceIconRes: Int? = null
@@ -235,7 +239,7 @@ class MainActivity : ComponentActivity() {
                             fadeInIcon.doOnEnd {
                                 // Hold on device icon for 0.5s, then start outro animation
                                 try {
-                                    splashIcon.postDelayed({
+                                    splashScreenView.postDelayed({
                                         startOutroAnimation(
                                             splashScreenView,
                                             splashIcon,
@@ -278,7 +282,7 @@ class MainActivity : ComponentActivity() {
                     // No device icon found, or splashIcon is null/not ImageView (OEM device compatibility)
                         // Proceed directly to outro after a brief hold
                         try {
-                            splashIcon.postDelayed({
+                            splashScreenView.postDelayed({
                                 startOutroAnimation(
                                     splashScreenView,
                                     splashIcon,
