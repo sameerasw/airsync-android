@@ -250,7 +250,7 @@ fun RemoteControlScreen(
     fun ExtraKeys() {
         // Extra Keys
         FlowRow(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.Center,
             verticalArrangement = Arrangement.spacedBy(12.dp),
             maxItemsInEachRow = 3
@@ -491,7 +491,7 @@ fun RemoteControlScreen(
         Column(
             modifier = modifier
                 .fillMaxSize()
-                .padding(16.dp),
+                .padding(horizontal = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
@@ -500,8 +500,9 @@ fun RemoteControlScreen(
                     .weight(1f)
             )
 
-            ExtraKeys()
             DPad()
+            ExtraKeys()
+
         }
     }
 }
