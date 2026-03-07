@@ -19,13 +19,17 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -54,6 +58,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -63,10 +68,12 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -87,18 +94,24 @@ import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import com.sameerasw.airsync.presentation.ui.modifiers.BlurDirection
+import com.sameerasw.airsync.presentation.ui.modifiers.progressiveBlur
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
+import com.sameerasw.airsync.presentation.ui.components.cards.MediaPlayerCard
+import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
-import com.sameerasw.airsync.presentation.ui.components.sheets.AboutBottomSheet
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
+import com.sameerasw.airsync.presentation.ui.composables.WelcomeScreen
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.ClipboardSyncManager
 import com.sameerasw.airsync.utils.HapticUtil
 import com.sameerasw.airsync.utils.JsonUtil
+import com.sameerasw.airsync.utils.MacDeviceStatusManager
+import com.sameerasw.airsync.utils.WebSocketMessageHandler
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -107,6 +120,7 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
 import java.net.URLDecoder
 
 @OptIn(
@@ -124,10 +138,6 @@ fun AirSyncMainScreen(
     isPlus: Boolean = false,
     symmetricKey: String? = null,
     onNavigateToApps: () -> Unit = {},
-    showAboutDialog: Boolean = false,
-    onDismissAbout: () -> Unit = {},
-    showHelpSheet: Boolean = false,
-    onDismissHelp: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -149,6 +159,48 @@ fun AirSyncMainScreen(
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
     var hasAppliedInitialTab by remember { mutableStateOf(false) }
+    var isWelcomeDismissed by rememberSaveable { mutableStateOf(false) }
+    var hasSeenWelcomeThisSession by rememberSaveable { mutableStateOf(false) }
+
+    if (!uiState.isOnboardingCompleted) {
+        hasSeenWelcomeThisSession = true
+    }
+
+    // Volume & Media state
+    var volume by remember { mutableFloatStateOf(50f) }
+    var isMuted by remember { mutableStateOf(false) }
+
+    // Observe Mac Status
+    val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
+    val albumArtBitmap by MacDeviceStatusManager.albumArt.collectAsState()
+
+    // Volume updates from Mac
+    DisposableEffect(Unit) {
+        val callback = { newVolume: Int ->
+            volume = newVolume.toFloat()
+        }
+        WebSocketMessageHandler.setOnMacVolumeCallback(callback)
+        onDispose {
+            WebSocketMessageHandler.setOnMacVolumeCallback(null)
+        }
+    }
+
+    fun sendRemoteAction(action: String, value: Any? = null) {
+        scope.launch {
+            try {
+                HapticUtil.performLightTick(haptics)
+                val json = JSONObject()
+                json.put("type", "remoteControl")
+                val data = JSONObject()
+                data.put("action", action)
+                if (value != null) data.put("value", value)
+                json.put("data", data)
+                WebSocketUtil.sendMessage(json.toString())
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
     val pagerState =
         rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
@@ -157,6 +209,8 @@ fun AirSyncMainScreen(
     var fabVisible by remember { mutableStateOf(true) }
     var fabExpanded by remember { mutableStateOf(true) }
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
+    var showHelpSheet by remember { mutableStateOf(false) }
+    val onDismissHelp = { showHelpSheet = false }
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
 
     // Initial tab navigation logic
@@ -174,7 +228,7 @@ fun AirSyncMainScreen(
                     "clipboard" -> 2
                     "dynamic" -> {
                         // Check if music is playing on Mac
-                        if (uiState.macDeviceStatus?.music?.isPlaying == true) 1 else 2
+                        if (uiState.macDeviceStatus?.music?.isPlaying == true) 0 else 2
                     }
 
                     else -> 0
@@ -191,8 +245,6 @@ fun AirSyncMainScreen(
     var pendingExportJson by remember { mutableStateOf<String?>(null) }
 
     rememberNavController()
-    val exitAlwaysScrollBehavior =
-        FloatingToolbarDefaults.exitAlwaysScrollBehavior(exitDirection = Bottom)
 
     fun connect(deviceId: String? = null) {
         // Check if critical permissions are missing
@@ -258,7 +310,7 @@ fun AirSyncMainScreen(
                 Toast.makeText(context, "Connection Timed Out", Toast.LENGTH_SHORT).show()
                 viewModel.setResponse("Connection Timed Out")
             } else {
-                val connected = result ?: false
+                val connected = result
                 viewModel.setConnectionStatus(isConnected = connected, isConnecting = false)
                 if (connected) {
                     viewModel.setResponse("Connected successfully!")
@@ -596,15 +648,15 @@ fun AirSyncMainScreen(
     val tabs = remember(uiState.isConnected) {
         if (uiState.isConnected) {
             listOf(
-                AirSyncTab("Connect", Icons.Outlined.Phonelink, 0),
-                AirSyncTab("Remote", Icons.Filled.Gamepad, 1),
-                AirSyncTab("Clipboard", Icons.Filled.ContentPaste, 2),
-                AirSyncTab("Settings", Icons.Filled.Settings, 3)
+                AirSyncTab(R.string.tab_connect, Icons.Outlined.Phonelink, 0),
+                AirSyncTab(R.string.tab_remote, Icons.Filled.Gamepad, 1),
+                AirSyncTab(R.string.tab_clipboard, Icons.Filled.ContentPaste, 2),
+                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 3)
             )
         } else {
             listOf(
-                AirSyncTab("Connect", Icons.Filled.Phonelink, 0),
-                AirSyncTab("Settings", Icons.Filled.Settings, 1)
+                AirSyncTab(R.string.tab_connect, Icons.Filled.Phonelink, 0),
+                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 1)
             )
         }
     }
@@ -613,23 +665,21 @@ fun AirSyncMainScreen(
     LaunchedEffect(pagerState.currentPage, tabs) {
         val currentTab = tabs.getOrNull(pagerState.currentPage)
         if (currentTab != null) {
-            val title = if (currentTab.title == "Connect") "AirSync" else currentTab.title
+            val titleStr = context.getString(currentTab.title)
+            val title = if (titleStr == "Connect") "AirSync" else titleStr
             onTitleChange(title)
         }
     }
 
-    Scaffold(
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(
-                if (pagerState.currentPage != 2) exitAlwaysScrollBehavior
-                else remember {
-                    object : androidx.compose.ui.input.nestedscroll.NestedScrollConnection {}
-                }
-            ),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-    ) { innerPadding ->
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            modifier = Modifier.fillMaxSize(),
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        ) { innerPadding ->
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
+
         // Track page changes for haptic feedback on swipe
         LaunchedEffect(pagerState.currentPage) {
             snapshotFlow { pagerState.currentPage }.collect { _ ->
@@ -637,9 +687,35 @@ fun AirSyncMainScreen(
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
+        // Blur heights
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val statusBarHeightPx = with(density) {
+            WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
+        }
+        val bottomBlurHeightPx = with(density) { 130.dp.toPx() }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
             HorizontalPager(
-                modifier = modifier.fillMaxSize(),
+                modifier = modifier
+                    .fillMaxSize()
+                    .then(
+                        if (uiState.isBlurEnabled) {
+                            Modifier
+                                .progressiveBlur(
+                                    blurRadius = 40f,
+                                    height = statusBarHeightPx * 1.15f,
+                                    direction = BlurDirection.TOP
+                                )
+                                .progressiveBlur(
+                                    blurRadius = 40f,
+                                    height = bottomBlurHeightPx,
+                                    direction = BlurDirection.BOTTOM
+                                )
+                        } else Modifier
+                    ),
                 state = pagerState
             ) { page ->
                 when (page) {
@@ -648,14 +724,18 @@ fun AirSyncMainScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(bottom = 0.dp)
+                                .padding(vertical = 0.dp)
                                 .verticalScroll(connectScrollState)
                                 .padding(horizontal = 16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(24.dp)
                         ) {
 
-                            Spacer(modifier = Modifier.height(0.dp))
+                            Spacer(
+                                modifier = Modifier
+                                    .height(topSpacing)
+                                    .fillMaxWidth()
+                            )
 
                             RoundedCardContainer {
 
@@ -680,6 +760,40 @@ fun AirSyncMainScreen(
                                     lastConnected = uiState.lastConnectedDevice != null,
                                     uiState = uiState,
                                 )
+
+                                // Remote Functions Card (Lock Screen, etc.)
+                                AnimatedVisibility(
+                                    visible = uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    RemoteFunctionsCard(
+                                        onRemoteAction = { sendRemoteAction(it) }
+                                    )
+                                }
+
+                                // Media Player Card
+                                AnimatedVisibility(
+                                    visible = uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    MediaPlayerCard(
+                                        musicInfo = macStatus?.music,
+                                        albumArtBitmap = albumArtBitmap,
+                                        volume = volume,
+                                        isMuted = isMuted,
+                                        onVolumeChange = {
+                                            volume = it
+                                            sendRemoteAction("vol_set", it.toInt())
+                                        },
+                                        onToggleMute = {
+                                            sendRemoteAction("vol_mute")
+                                            isMuted = !isMuted
+                                        },
+                                        onMediaAction = { sendRemoteAction(it) }
+                                    )
+                                }
                             }
 
                             RoundedCardContainer {
@@ -914,7 +1028,7 @@ fun AirSyncMainScreen(
                                 }
                             }
 
-                            Spacer(modifier = Modifier.height(24.dp))
+                            Spacer(modifier = Modifier.height(100.dp))
                         }
                     }
 
@@ -924,7 +1038,7 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 100.dp),
+                                    .padding(top = statusBarHeight, bottom = 100.dp),
                                 showKeyboard = showKeyboard,
                                 onDismissKeyboard = { showKeyboard = false }
                             )
@@ -946,7 +1060,9 @@ fun AirSyncMainScreen(
                                     createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                                 },
                                 onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                                onResetOnboarding = { viewModel.resetOnboarding() }
+                                onResetOnboarding = { viewModel.resetOnboarding() },
+                                onShowHelp = { showHelpSheet = true },
+                                onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
                             )
                         }
                     }
@@ -967,7 +1083,7 @@ fun AirSyncMainScreen(
                                 onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(bottom = 100.dp)
+                                    .padding(top = topSpacing, bottom = 100.dp),
                             )
                         } else {
                             Box(Modifier.fillMaxSize())
@@ -992,7 +1108,9 @@ fun AirSyncMainScreen(
                                 createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                             },
                             onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                            onResetOnboarding = { viewModel.resetOnboarding() }
+                            onResetOnboarding = { viewModel.resetOnboarding() },
+                            onShowHelp = { showHelpSheet = true },
+                            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
                         )
                     }
                 }
@@ -1001,7 +1119,7 @@ fun AirSyncMainScreen(
             AirSyncFloatingToolbar(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = -ScreenOffset - 12.dp)
+                    // .offset(y = -ScreenOffset)
                     .zIndex(1f),
                 currentPage = pagerState.currentPage,
                 tabs = tabs,
@@ -1015,13 +1133,13 @@ fun AirSyncMainScreen(
                         }
                     }
                 },
-                scrollBehavior = exitAlwaysScrollBehavior,
-                floatingActionButton = {
+                floatingActionButton = @Composable {
                     val currentTab = tabs.getOrNull(pagerState.currentPage)
                     FloatingToolbarDefaults.StandardFloatingActionButton(
                         onClick = {
                             HapticUtil.performClick(haptics)
-                            when (currentTab?.title) {
+                            val titleStr = currentTab?.let { context.getString(it.title) }
+                            when (titleStr) {
                                 "Remote" -> {
                                     showKeyboard = !showKeyboard
                                 }
@@ -1040,7 +1158,8 @@ fun AirSyncMainScreen(
                             }
                         }
                     ) {
-                        when (currentTab?.title) {
+                        val titleStr = currentTab?.let { context.getString(it.title) }
+                        when (titleStr) {
                             "Remote" -> {
                                 Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
                             }
@@ -1086,18 +1205,28 @@ fun AirSyncMainScreen(
         )
     }
 
-    // About Bottom Sheet - controlled by parent via showAboutDialog
-    if (showAboutDialog) {
-        AboutBottomSheet(
-            onDismissRequest = onDismissAbout,
-            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
-        )
-    }
 
     // Help & Support Bottom Sheet
     if (showHelpSheet) {
         HelpSupportBottomSheet(
             onDismissRequest = onDismissHelp
         )
+    }
+
+        // Welcome Screen Overlay
+        AnimatedVisibility(
+            visible = (!uiState.isOnboardingCompleted || hasSeenWelcomeThisSession) && !isWelcomeDismissed,
+            enter = fadeIn() + expandVertically(),
+            exit = fadeOut() + shrinkVertically(),
+            modifier = Modifier.zIndex(100f)
+        ) {
+            WelcomeScreen(
+                viewModel = viewModel,
+                onBeginClick = {
+                    isWelcomeDismissed = true
+                    viewModel.setOnboardingCompleted(true)
+                }
+            )
+        }
     }
 }

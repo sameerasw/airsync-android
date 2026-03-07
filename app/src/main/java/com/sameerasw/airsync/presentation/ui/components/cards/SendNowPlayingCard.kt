@@ -21,13 +21,17 @@ fun SendNowPlayingCard(
     isSendNowPlayingEnabled: Boolean,
     onToggleSendNowPlaying: (Boolean) -> Unit,
     title: String = "Send now playing",
-    subtitle: String = "Share media playback details with desktop"
+    subtitle: String = "Share media playback details with desktop",
+    enabled: Boolean = true
 ) {
     val haptics = LocalHapticFeedback.current
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraSmall,
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Row(
             modifier = Modifier
@@ -46,6 +50,7 @@ fun SendNowPlayingCard(
             }
             Switch(
                 checked = isSendNowPlayingEnabled,
+                enabled = enabled,
                 onCheckedChange = { enabled ->
                     if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
                         haptics

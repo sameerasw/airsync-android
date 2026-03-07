@@ -42,6 +42,9 @@ fun ExpandNetworkingCard(context: Context) {
             .fillMaxWidth()
             .padding(vertical = 0.dp, horizontal = 0.dp),
         shape = MaterialTheme.shapes.extraSmall,
+        colors = androidx.compose.material3.CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Row(
             modifier = Modifier

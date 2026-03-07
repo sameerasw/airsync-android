@@ -1,6 +1,10 @@
 package com.sameerasw.airsync.presentation.viewmodel
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.PowerManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -70,6 +74,14 @@ class AirSyncViewModel(
 
     private var appContext: Context? = null
 
+    private val powerSaveReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PowerManager.ACTION_POWER_SAVE_MODE_CHANGED) {
+                context?.let { updateBlurState(it) }
+            }
+        }
+    }
+
     // Manual connect canceller reference (set in init) for unregistering
     private val manualConnectCanceler: () -> Unit = {
         // Cancel any active auto-reconnect when user starts manual connection
@@ -86,7 +98,8 @@ class AirSyncViewModel(
                 isConnected = isConnected,
                 isConnecting = false,
                 response = if (isConnected) "Connected successfully!" else "Disconnected",
-                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null
+                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null,
+                macDeviceStatus = if (isConnected) _uiState.value.macDeviceStatus else null
             )
 
             if (isConnected) {
@@ -125,15 +138,41 @@ class AirSyncViewModel(
                 // No device status notification to update
             }
         }
+
+        // Observe pitch black theme preference
+        viewModelScope.launch {
+            repository.getPitchBlackThemeEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
+            }
+        }
+
+        // Observe sentry reporting preference
+        viewModelScope.launch {
+            repository.getSentryReportingEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
+            }
+        }
+
+        // Observe first run preference for onboarding status
+        viewModelScope.launch {
+            repository.getFirstRun().collect { firstRun ->
+                _uiState.value = _uiState.value.copy(isOnboardingCompleted = !firstRun)
+            }
+        }
     }
 
     override fun onCleared() {
         super.onCleared()
-        // Unregister the connection status listener when ViewModel is cleared
+        // Unregister listeners
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
         try {
             WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler)
         } catch (_: Exception) {
+        }
+        try {
+            appContext?.unregisterReceiver(powerSaveReceiver)
+        } catch (_: IllegalArgumentException) {
+            // Receiver was not registered
         }
     }
 
@@ -218,6 +257,15 @@ class AirSyncViewModel(
             repository.getDefaultTab().first()
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
+            val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
+            val isSentryReportingEnabled = repository.getSentryReportingEnabled().first()
+            val isFirstRun = repository.getFirstRun().first()
+            val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
+            val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
+            
+            // Replicate Essentials logic for initial state
+            val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
 
             // Rating tracking
             repository.getFirstMacConnectionTime().first()
@@ -270,7 +318,13 @@ class AirSyncViewModel(
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
-                isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled
+                isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
+                isBlurSettingEnabled = isBlurEnabledSetting,
+                isPowerSaveMode = isPowerSaveMode,
+                isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
+                isBlurEnabled = isBlurEnabled,
+                isSentryReportingEnabled = isSentryReportingEnabled,
+                isOnboardingCompleted = !isFirstRun
             )
 
             updateRatingPromptDisplay()
@@ -292,6 +346,12 @@ class AirSyncViewModel(
 
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
+
+            // Register power save receiver
+            context.registerReceiver(
+                powerSaveReceiver,
+                IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            )
 
             // Start AirSync Service in scanning mode (which handles UDP Discovery and WakeupService)
             com.sameerasw.airsync.service.AirSyncService.startScanning(context)
@@ -501,6 +561,45 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isAutoReconnectEnabled = enabled)
         viewModelScope.launch {
             repository.setAutoReconnectEnabled(enabled)
+        }
+    }
+
+    fun setUseBlurEnabled(enabled: Boolean, context: Context) {
+        viewModelScope.launch {
+            repository.setUseBlurEnabled(enabled)
+            updateBlurState(context)
+        }
+    }
+
+    private fun updateBlurState(context: Context) {
+        viewModelScope.launch {
+            val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
+            val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
+
+            // 1:1 Logic from Essentials: turned off if power saving is on or device is problematic
+            val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
+
+            _uiState.value = _uiState.value.copy(
+                isBlurSettingEnabled = isBlurEnabledSetting,
+                isPowerSaveMode = isPowerSaveMode,
+                isBlurEnabled = isBlurEnabled
+            )
+        }
+    }
+
+    fun setSentryReportingEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
+        viewModelScope.launch {
+            repository.setSentryReportingEnabled(enabled)
+            // Note: Changes typically take effect on next launch as Sentry is initialized in Application.onCreate
+        }
+    }
+
+    fun setPitchBlackThemeEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
+        viewModelScope.launch {
+            repository.setPitchBlackThemeEnabled(enabled)
         }
     }
 
@@ -927,6 +1026,14 @@ class AirSyncViewModel(
         }
     }
 
+    fun setUseBlurEnabled(enabled: Boolean) {
+        val finalEnabled = if (DeviceInfoUtil.isBlurProblematicDevice()) false else enabled
+        _uiState.value = _uiState.value.copy(isBlurEnabled = finalEnabled)
+        viewModelScope.launch {
+            repository.setUseBlurEnabled(enabled)
+        }
+    }
+
     fun resetOnboarding() {
         viewModelScope.launch {
             repository.setFirstRun(true)
@@ -934,6 +1041,13 @@ class AirSyncViewModel(
             repository.setLastPromptDismissedVersion(-1)
             repository.setHasRatedApp(false)
             updateRatingPromptDisplay()
+        }
+    }
+
+    fun setOnboardingCompleted(completed: Boolean) {
+        _uiState.value = _uiState.value.copy(isOnboardingCompleted = completed)
+        viewModelScope.launch {
+            repository.setFirstRun(!completed)
         }
     }
 

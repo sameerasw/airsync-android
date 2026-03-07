@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +51,7 @@ import androidx.core.content.ContextCompat
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.common.InputImage
+import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.utils.HapticUtil
 import java.util.concurrent.Executors
@@ -84,7 +86,6 @@ class QRScannerActivity : ComponentActivity() {
         // Disable scrim on 3-button navigation (API 29+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
-            window.isStatusBarContrastEnforced = false
         }
 
         // Check camera permission
@@ -101,7 +102,13 @@ class QRScannerActivity : ComponentActivity() {
 
     private fun startScanner() {
         setContent {
-            AirSyncTheme {
+            val viewModel: com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel =
+                androidx.lifecycle.viewmodel.compose.viewModel {
+                    com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel.create(this@QRScannerActivity)
+                }
+            val uiState by viewModel.uiState.collectAsState()
+
+            AirSyncTheme(pitchBlackTheme = uiState.isPitchBlackThemeEnabled) {
                 QRScannerScreen(
                     onQrScanned = { qrData ->
                         // Return the scanned QR code data to the caller

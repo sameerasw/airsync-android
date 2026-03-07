@@ -88,6 +88,9 @@ class DataStoreManager(private val context: Context) {
         private val DEVICE_DISCOVERY_ENABLED = booleanPreferencesKey("device_discovery_enabled")
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
+        private val USE_BLUR = booleanPreferencesKey("use_blur")
+        private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
+        private val SENTRY_REPORTING_ENABLED = booleanPreferencesKey("sentry_reporting_enabled")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -283,6 +286,42 @@ class DataStoreManager(private val context: Context) {
     fun getMacMediaControlsEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { prefs ->
             prefs[MAC_MEDIA_CONTROLS_ENABLED] ?: true // Default to true
+        }
+    }
+
+    suspend fun setUseBlurEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[USE_BLUR] = enabled
+        }
+    }
+
+    fun getUseBlurEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[USE_BLUR] ?: true // Default to enabled
+        }
+    }
+
+    suspend fun setPitchBlackThemeEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PITCH_BLACK_THEME] = enabled
+        }
+    }
+
+    fun getPitchBlackThemeEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[PITCH_BLACK_THEME] ?: false // Default to disabled
+        }
+    }
+
+    suspend fun setSentryReportingEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[SENTRY_REPORTING_ENABLED] = enabled
+        }
+    }
+
+    fun getSentryReportingEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[SENTRY_REPORTING_ENABLED] ?: true // Default to enabled
         }
     }
 
@@ -731,9 +770,6 @@ class DataStoreManager(private val context: Context) {
 
         prefs.asMap().forEach { (key, value) ->
             try {
-                // Skip nulls
-                if (value == null) return@forEach
-
                 // If string looks like an embedded image or is very large, skip
                 if (value is String) {
                     val lower = value.lowercase()

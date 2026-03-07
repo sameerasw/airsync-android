@@ -1,5 +1,10 @@
 package com.sameerasw.airsync.presentation.ui.components.cards
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -7,11 +12,17 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.background
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,13 +40,22 @@ fun DeveloperModeCard(
     onSendDeviceStatus: () -> Unit,
     onExportData: () -> Unit,
     onImportData: () -> Unit,
-    onResetOnboarding: () -> Unit
+    onResetOnboarding: () -> Unit,
+    // Icon Sync Parameters
+    isIconSyncLoading: Boolean,
+    iconSyncMessage: String,
+    onManualSyncIcons: () -> Unit,
+    onClearIconSyncMessage: () -> Unit,
+    isConnected: Boolean
 ) {
     val haptics = LocalHapticFeedback.current
 
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = MaterialTheme.shapes.extraSmall,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -99,7 +119,6 @@ fun DeveloperModeCard(
                         Text("Send Device Status")
                     }
 
-                    // New: export/import split buttons
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
@@ -135,9 +154,89 @@ fun DeveloperModeCard(
                         Text("Reset Onboarding")
                     }
 
-                }
+                    // Consolidated Icon Sync Section
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Icons",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
 
-                // Removed preview/response display to avoid crashes from large/encoded payloads
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            onManualSyncIcons()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = isConnected && !isIconSyncLoading
+                    ) {
+                        if (isIconSyncLoading) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.width(16.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                        }
+                        Text(if (isIconSyncLoading) "Syncing Icons..." else "Sync App Icons")
+                    }
+
+                    AnimatedVisibility(
+                        visible = iconSyncMessage.isNotEmpty(),
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = MaterialTheme.shapes.extraSmall,
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (iconSyncMessage.contains("Successfully"))
+                                    MaterialTheme.colorScheme.primaryContainer
+                                else MaterialTheme.colorScheme.errorContainer
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = iconSyncMessage,
+                                    modifier = Modifier.weight(1f),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = if (iconSyncMessage.contains("Successfully"))
+                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                    else MaterialTheme.colorScheme.onErrorContainer
+                                )
+                                TextButton(onClick = {
+                                    HapticUtil.performClick(haptics)
+                                    onClearIconSyncMessage()
+                                }) {
+                                    Text("Dismiss", style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                        }
+                    }
+                    // Sentry section
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        "Crash Reporting",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            throw RuntimeException("Test Crash from Developer Options")
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Simulate Crash")
+                    }
+                }
             }
         }
     }

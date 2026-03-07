@@ -1,11 +1,11 @@
 import org.gradle.api.JavaVersion.VERSION_11
 import org.gradle.api.JavaVersion.VERSION_17
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.compose)
-    kotlin("kapt")
 }
 
 android {
@@ -16,15 +16,29 @@ android {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
         targetSdk = 36
-        versionCode = 22
-        versionName = "2.5.1"
+        versionCode = 23
+        versionName = "2.5.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
+//        optimized dev build
+//          debug {
+//             isMinifyEnabled = true
+//             isShrinkResources = true
+//             isDebuggable = false
+//
+//             proguardFiles(
+//                 getDefaultProguardFile("proguard-android-optimize.txt"),
+//                 "proguard-rules.pro"
+//             )
+//          }
+// end
+
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -35,9 +49,11 @@ android {
         sourceCompatibility = VERSION_11
         targetCompatibility = VERSION_17
     }
-    kotlinOptions {
-        jvmTarget = "17"
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
+}
     buildFeatures {
         compose = true
         buildConfig = true
@@ -106,7 +122,7 @@ dependencies {
     // Room database for call history
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
-    kapt(libs.androidx.room.compiler)
+    ksp(libs.androidx.room.compiler)
 
     // Phone number normalization
     implementation(libs.libphonenumber)
@@ -121,6 +137,11 @@ dependencies {
     // Google Play Review
     implementation(libs.play.review)
     implementation(libs.play.review.ktx)
+    implementation(libs.sentry.android)
+
+    // Coil for image and GIF loading
+    implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-gif:2.6.0")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

@@ -7,21 +7,28 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -37,9 +44,10 @@ import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
+import com.sameerasw.airsync.presentation.ui.components.cards.MediaSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
-import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTipCard
+import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTilesCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SendNowPlayingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SmartspacerCard
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
@@ -79,7 +87,9 @@ fun SettingsView(
     onSendMessage: (String) -> Unit = {},
     onExport: (String) -> Unit = {},
     onImport: () -> Unit = {},
-    onResetOnboarding: () -> Unit = {}
+    onResetOnboarding: () -> Unit = {},
+    onShowHelp: () -> Unit = {},
+    onToggleDeveloperMode: () -> Unit = {}
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -92,284 +102,361 @@ fun SettingsView(
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
 
-        Spacer(modifier = Modifier.height(0.dp))
+        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
 
+        Spacer(
+            modifier = Modifier
+                .height(topSpacing)
+                .fillMaxWidth()
+        )
+
+        // Top Section (Untitled)
         RoundedCardContainer {
-            DefaultTabCard(
-                currentDefaultTab = uiState.defaultTab,
-                onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
-            )
             PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
-            QuickSettingsTipCard(
-                isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+
+            // Help and guides card
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        HapticUtil.performClick(haptics)
+                        onShowHelp()
+                    },
+                shape = MaterialTheme.shapes.extraSmall,
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_help_guides),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_help_guides),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+                    }
+
+                    Icon(
+                        painter = androidx.compose.ui.res.painterResource(id = com.sameerasw.airsync.R.drawable.rounded_keyboard_arrow_right_24),
+                        contentDescription = "Open help",
+                        modifier = Modifier.size(24.dp),
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+
+            QuickSettingsTilesCard(
+                isConnectionTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
                     com.sameerasw.airsync.service.AirSyncTileService::class.java
-                )
-            )
-            com.sameerasw.airsync.presentation.ui.components.cards.ClipboardTileTipCard(
-                isQSTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                ),
+                isClipboardTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
                     com.sameerasw.airsync.service.ClipboardTileService::class.java
                 )
             )
         }
 
-        // Notifications & Sync Features Section
-        RoundedCardContainer {
-            NotificationSyncCard(
-                isNotificationEnabled = uiState.isNotificationEnabled,
-                isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
-                onToggleSync = { enabled ->
-                    viewModel.setNotificationSyncEnabled(enabled)
-                },
-                onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
-            )
+        // App Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.cat_app))
+            RoundedCardContainer {
+                DefaultTabCard(
+                    currentDefaultTab = uiState.defaultTab,
+                    onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
+                )
 
-            ClipboardFeaturesCard(
-                isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
-                onToggleClipboardSync = { enabled: Boolean ->
-                    viewModel.setClipboardSyncEnabled(enabled)
-                },
-                isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
-                onToggleContinueBrowsing = { enabled: Boolean ->
-                    viewModel.setContinueBrowsingEnabled(enabled)
-                },
-                isContinueBrowsingToggleEnabled = true,
-                continueBrowsingSubtitle = "Prompt to open shared links in browser",
-                isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
-                onToggleKeepPreviousLink = { enabled: Boolean ->
-                    viewModel.setKeepPreviousLinkEnabled(enabled)
-                }
-            )
-
-            SendNowPlayingCard(
-                isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
-                onToggleSendNowPlaying = { enabled: Boolean ->
-                    viewModel.setSendNowPlayingEnabled(enabled)
-                }
-            )
-
-            SmartspacerCard(
-                isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
-                onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
-                    viewModel.setSmartspacerShowWhenDisconnected(enabled)
-                }
-            )
-
-            // Mac Media Controls toggle for Play Store initiation proof
-            SendNowPlayingCard(
-                isSendNowPlayingEnabled = uiState.isMacMediaControlsEnabled,
-                onToggleSendNowPlaying = { enabled: Boolean ->
-                    viewModel.setMacMediaControlsEnabled(enabled)
-                },
-                title = "Show Mac Media Controls",
-                subtitle = "Show media controls when Mac is playing music"
-            )
-
-            // Essentials Bridge Toggle
-            val isEssentialsInstalled = try {
-                context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
-                true
-            } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
-                false
-            }
-
-            if (isEssentialsInstalled) {
                 SendNowPlayingCard(
-                    isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
+                    isSendNowPlayingEnabled = uiState.isBlurSettingEnabled,
                     onToggleSendNowPlaying = { enabled: Boolean ->
-                        viewModel.setEssentialsConnectionEnabled(enabled)
+                        viewModel.setUseBlurEnabled(enabled, context)
                     },
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
-                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_use_blur),
+                    subtitle = when {
+                        com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice() ->
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_samsung)
+
+                        uiState.isPowerSaveMode && uiState.isBlurSettingEnabled ->
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_power_save)
+
+                        else -> androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_use_blur)
+                    },
+                    enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
                 )
-            } else {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraSmall,
-                ) {
-                    androidx.compose.material3.ListItem(
-                        colors = androidx.compose.material3.ListItemDefaults.colors(containerColor = androidx.compose.ui.graphics.Color.Transparent),
-                        headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
-                        supportingContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials_summary)) },
-                        trailingContent = {
-                            Button(
-                                onClick = {
-                                    val intent = android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
-                                    )
-                                    intent.flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                                    context.startActivity(intent)
-                                }
-                            ) {
-                                Text("Download")
-                            }
-                        }
-                    )
-                }
+
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isPitchBlackThemeEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setPitchBlackThemeEnabled(enabled)
+                    },
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_pitch_black_theme),
+                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_pitch_black_theme)
+                )
+
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isSentryReportingEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setSentryReportingEnabled(enabled)
+                    },
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_error_reporting),
+                    subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_error_reporting)
+                )
             }
-
-            ExpandNetworkingCard(context)
         }
 
-        // Device Info Section
-        RoundedCardContainer {
-            DeviceInfoCard(
-                deviceName = uiState.deviceNameInput,
-                localIp = deviceInfo.localIp,
-                onDeviceNameChange = { viewModel.updateDeviceName(it) }
-            )
-        }
+        // Sync Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Sync")
+            RoundedCardContainer {
+                NotificationSyncCard(
+                    isNotificationEnabled = uiState.isNotificationEnabled,
+                    isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
+                    onToggleSync = { enabled ->
+                        viewModel.setNotificationSyncEnabled(enabled)
+                    },
+                    onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
+                )
 
-        // Developer Mode & Icon Sync Section
-        RoundedCardContainer {
-            AnimatedVisibility(
-                visible = uiState.isDeveloperModeVisible,
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                DeveloperModeCard(
-                    isDeveloperMode = uiState.isDeveloperMode,
-                    onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
-                    isLoading = uiState.isLoading,
-                    onSendDeviceInfo = {
-                        val adbPorts = try {
-                            val discoveredServices =
-                                com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
-                            discoveredServices.map { it.port.toString() }
-                        } catch (_: Exception) {
-                            emptyList()
-                        }
-                        val deviceId =
-                            com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
-                        val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
-                            deviceId,
-                            deviceInfo.name,
-                            deviceInfo.localIp,
-                            uiState.port.toIntOrNull() ?: 6996,
-                            versionName ?: "2.0.0",
-                            adbPorts
-                        )
-                        onSendMessage(message)
+                ClipboardFeaturesCard(
+                    isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
+                    onToggleClipboardSync = { enabled: Boolean ->
+                        viewModel.setClipboardSyncEnabled(enabled)
                     },
-                    onSendNotification = {
-                        val testNotification =
-                            com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+                    isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
+                    onToggleContinueBrowsing = { enabled: Boolean ->
+                        viewModel.setContinueBrowsingEnabled(enabled)
+                    },
+                    isContinueBrowsingToggleEnabled = true,
+                    continueBrowsingSubtitle = "Prompt to open shared links in browser",
+                    isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
+                    onToggleKeepPreviousLink = { enabled: Boolean ->
+                        viewModel.setKeepPreviousLinkEnabled(enabled)
+                    }
+                )
 
-                        // Store ID for mock dismissal support
-                        com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
-                            testNotification.id
-                        )
-
-                        val message = com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
-                            testNotification.id,
-                            testNotification.title,
-                            testNotification.body,
-                            testNotification.appName,
-                            testNotification.packageName,
-                            testNotification.priority,
-                            testNotification.actions
-                        )
-                        onSendMessage(message)
+                MediaSyncCard(
+                    isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
+                    onToggleSendNowPlaying = { enabled ->
+                        viewModel.setSendNowPlayingEnabled(enabled)
                     },
-                    onSendDeviceStatus = {
-                        val message =
-                            com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
-                                context
-                            )
-                        onSendMessage(message)
-                    },
-                    onExportData = {
-                        viewModel.setLoading(true)
-                        scope.launch(Dispatchers.IO) {
-                            val json = viewModel.exportAllDataToJson(context)
-                            if (json == null) {
-                                scope.launch(Dispatchers.Main) {
-                                    Toast.makeText(
-                                        context,
-                                        "Export failed",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                    viewModel.setLoading(false)
-                                }
-                            } else {
-                                scope.launch(Dispatchers.Main) {
-                                    onExport(json)
-                                }
-                            }
-                        }
-                    },
-                    onImportData = {
-                        onImport()
-                    },
-                    onResetOnboarding = {
-                        onResetOnboarding()
+                    isMacMediaControlsEnabled = uiState.isMacMediaControlsEnabled,
+                    onToggleMacMediaControls = { enabled ->
+                        viewModel.setMacMediaControlsEnabled(enabled)
                     }
                 )
             }
+        }
 
-            // Manual Icon Sync Button
-            Button(
-                onClick = {
-                    HapticUtil.performClick(haptics)
-                    viewModel.manualSyncAppIcons(context)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = uiState.isConnected && !uiState.isIconSyncLoading
-            ) {
-                if (uiState.isIconSyncLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.width(16.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
+        // Integration Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Integration")
+            RoundedCardContainer {
+                SmartspacerCard(
+                    isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
+                    onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
+                        viewModel.setSmartspacerShowWhenDisconnected(enabled)
+                    }
+                )
+
+                val isEssentialsInstalled = try {
+                    context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
+                    true
+                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                    false
                 }
-                Text(if (uiState.isIconSyncLoading) "Syncing Icons..." else "Sync App Icons")
-            }
 
-            // Icon Sync Message Display
-            AnimatedVisibility(
-                visible = uiState.iconSyncMessage.isNotEmpty(),
-                enter = expandVertically() + fadeIn(),
-                exit = shrinkVertically() + fadeOut()
-            ) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.extraSmall,
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (uiState.iconSyncMessage.contains("Successfully"))
-                            MaterialTheme.colorScheme.primaryContainer
-                        else MaterialTheme.colorScheme.errorContainer
+                if (isEssentialsInstalled) {
+                    SendNowPlayingCard(
+                        isSendNowPlayingEnabled = uiState.isEssentialsConnectionEnabled,
+                        onToggleSendNowPlaying = { enabled: Boolean ->
+                            viewModel.setEssentialsConnectionEnabled(enabled)
+                        },
+                        title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
+                        subtitle = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary)
                     )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                } else {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = MaterialTheme.shapes.extraSmall,
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+                        )
                     ) {
-                        Text(
-                            text = uiState.iconSyncMessage,
-                            modifier = Modifier.weight(1f),
-                            color = if (uiState.iconSyncMessage.contains("Successfully"))
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else MaterialTheme.colorScheme.onErrorContainer
+                        androidx.compose.material3.ListItem(
+                            colors = androidx.compose.material3.ListItemDefaults.colors(
+                                containerColor = androidx.compose.ui.graphics.Color.Transparent
+                            ),
+                            headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
+                            supportingContent = {
+                                Text(
+                                    androidx.compose.ui.res.stringResource(
+                                        com.sameerasw.airsync.R.string.download_essentials_summary
+                                    )
+                                )
+                            },
+                            trailingContent = {
+                                Button(
+                                    onClick = {
+                                        val intent = android.content.Intent(
+                                            android.content.Intent.ACTION_VIEW,
+                                            android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
+                                        )
+                                        intent.flags =
+                                            android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                        context.startActivity(intent)
+                                    }
+                                ) {
+                                    Text("Download")
+                                }
+                            }
                         )
-                        TextButton(onClick = {
-                            HapticUtil.performClick(haptics)
-                            viewModel.clearIconSyncMessage()
-                        }) {
-                            Text("Dismiss")
-                        }
                     }
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        // Connection Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Connection")
+            RoundedCardContainer {
+                DeviceInfoCard(
+                    deviceName = uiState.deviceNameInput,
+                    localIp = deviceInfo.localIp,
+                    onDeviceNameChange = { viewModel.updateDeviceName(it) }
+                )
+
+                ExpandNetworkingCard(context)
+            }
+        }
+
+        // Developer Mode
+        AnimatedVisibility(
+            visible = uiState.isDeveloperModeVisible,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                SettingsCategoryTitle("Advanced")
+                RoundedCardContainer {
+                    DeveloperModeCard(
+                        isDeveloperMode = uiState.isDeveloperMode,
+                        onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
+                        isLoading = uiState.isLoading,
+                        onSendDeviceInfo = {
+                            val adbPorts = try {
+                                val discoveredServices =
+                                    com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
+                                discoveredServices.map { it.port.toString() }
+                            } catch (_: Exception) {
+                                emptyList()
+                            }
+                            val deviceId =
+                                com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
+                            val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
+                                deviceId,
+                                deviceInfo.name,
+                                deviceInfo.localIp,
+                                uiState.port.toIntOrNull() ?: 6996,
+                                versionName ?: "2.0.0",
+                                adbPorts
+                            )
+                            onSendMessage(message)
+                        },
+                        onSendNotification = {
+                            val testNotification =
+                                com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+
+                            // Store ID for mock dismissal support
+                            com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
+                                testNotification.id
+                            )
+
+                            val message =
+                                com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
+                                    testNotification.id,
+                                    testNotification.title,
+                                    testNotification.body,
+                                    testNotification.appName,
+                                    testNotification.packageName,
+                                    testNotification.priority,
+                                    testNotification.actions
+                                )
+                            onSendMessage(message)
+                        },
+                        onSendDeviceStatus = {
+                            val message =
+                                com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
+                                    context
+                                )
+                            onSendMessage(message)
+                        },
+                        onExportData = {
+                            viewModel.setLoading(true)
+                            scope.launch(Dispatchers.IO) {
+                                val json = viewModel.exportAllDataToJson(context)
+                                if (json == null) {
+                                    scope.launch(Dispatchers.Main) {
+                                        Toast.makeText(
+                                            context,
+                                            "Export failed",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                        viewModel.setLoading(false)
+                                    }
+                                } else {
+                                    scope.launch(Dispatchers.Main) {
+                                        onExport(json)
+                                    }
+                                }
+                            }
+                        },
+                        onImportData = {
+                            onImport()
+                        },
+                        onResetOnboarding = {
+                            onResetOnboarding()
+                        },
+                        isIconSyncLoading = uiState.isIconSyncLoading,
+                        iconSyncMessage = uiState.iconSyncMessage,
+                        onManualSyncIcons = {
+                            viewModel.manualSyncAppIcons(context)
+                        },
+                        onClearIconSyncMessage = {
+                            viewModel.clearIconSyncMessage()
+                        },
+                        isConnected = uiState.isConnected
+                    )
+                }
+            }
+        }
+
+        AboutSection(
+            onAvatarLongClick = onToggleDeveloperMode
+        )
+
+        Spacer(modifier = Modifier.height(100.dp))
     }
+}
+
+@Composable
+fun SettingsCategoryTitle(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 8.dp)
+    )
 }
 

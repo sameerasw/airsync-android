@@ -89,9 +89,21 @@ interface AirSyncRepository {
     suspend fun setMacMediaControlsEnabled(enabled: Boolean)
     fun getMacMediaControlsEnabled(): Flow<Boolean>
 
+    // Blur settings
+    suspend fun setUseBlurEnabled(enabled: Boolean)
+    fun getUseBlurEnabled(): Flow<Boolean>
+
+    // Pitch Black Theme settings
+    suspend fun setPitchBlackThemeEnabled(enabled: Boolean)
+    fun getPitchBlackThemeEnabled(): Flow<Boolean>
+
     // Default tab settings
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>
+
+    // Sentry reporting settings
+    suspend fun setSentryReportingEnabled(enabled: Boolean)
+    fun getSentryReportingEnabled(): Flow<Boolean>
 
     // Essentials Bridge
     suspend fun setEssentialsConnectionEnabled(enabled: Boolean)

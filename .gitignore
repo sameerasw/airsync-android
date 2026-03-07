@@ -34,3 +34,4 @@ replay_pid*
 app/release
 local.properties
 .vscode/launch.json
+build/reports/problems/problems-report.html

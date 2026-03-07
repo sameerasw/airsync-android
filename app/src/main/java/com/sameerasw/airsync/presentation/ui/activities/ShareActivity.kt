@@ -33,7 +33,6 @@ class ShareActivity : ComponentActivity() {
         // Disable scrim on 3-button navigation (API 29+)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
-            window.isStatusBarContrastEnforced = false
         }
 
         when (intent?.action) {
@@ -42,7 +41,12 @@ class ShareActivity : ComponentActivity() {
                     handleTextShare(intent)
                 } else {
                     // Try to handle file share
-                    val stream = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                    val stream = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        intent.getParcelableExtra(Intent.EXTRA_STREAM, android.net.Uri::class.java)
+                    } else {
+                        @Suppress("DEPRECATION")
+                        intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                    }
                     if (stream != null) {
                         handleFileShare(stream)
                     }
