@@ -1,6 +1,10 @@
 package com.sameerasw.airsync.presentation.viewmodel
 
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import android.os.PowerManager
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -70,6 +74,14 @@ class AirSyncViewModel(
 
     private var appContext: Context? = null
 
+    private val powerSaveReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action == PowerManager.ACTION_POWER_SAVE_MODE_CHANGED) {
+                context?.let { updateBlurState(it) }
+            }
+        }
+    }
+
     // Manual connect canceller reference (set in init) for unregistering
     private val manualConnectCanceler: () -> Unit = {
         // Cancel any active auto-reconnect when user starts manual connection
@@ -130,12 +142,14 @@ class AirSyncViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // Unregister the connection status listener when ViewModel is cleared
+        // Unregister listeners
         WebSocketUtil.unregisterConnectionStatusListener(connectionStatusListener)
         try {
             WebSocketUtil.unregisterManualConnectListener(manualConnectCanceler)
         } catch (_: Exception) {
         }
+        
+        appContext?.unregisterReceiver(powerSaveReceiver)
     }
 
     private fun startObservingDeviceChanges(context: Context) {
@@ -220,7 +234,11 @@ class AirSyncViewModel(
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
-            val isBlurEnabled = if (DeviceInfoUtil.isBlurProblematicDevice()) false else isBlurEnabledSetting
+            val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
+            val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
+            
+            // Replicate Essentials logic for initial state
+            val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
 
             // Rating tracking
             repository.getFirstMacConnectionTime().first()
@@ -274,6 +292,8 @@ class AirSyncViewModel(
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
                 isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
+                isBlurSettingEnabled = isBlurEnabledSetting,
+                isPowerSaveMode = isPowerSaveMode,
                 isBlurEnabled = isBlurEnabled
             )
 
@@ -296,6 +316,12 @@ class AirSyncViewModel(
 
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
+
+            // Register power save receiver
+            context.registerReceiver(
+                powerSaveReceiver,
+                IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
+            )
 
             // Start AirSync Service in scanning mode (which handles UDP Discovery and WakeupService)
             com.sameerasw.airsync.service.AirSyncService.startScanning(context)
@@ -505,6 +531,30 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isAutoReconnectEnabled = enabled)
         viewModelScope.launch {
             repository.setAutoReconnectEnabled(enabled)
+        }
+    }
+
+    fun setUseBlurEnabled(enabled: Boolean, context: Context) {
+        viewModelScope.launch {
+            repository.setUseBlurEnabled(enabled)
+            updateBlurState(context)
+        }
+    }
+
+    private fun updateBlurState(context: Context) {
+        viewModelScope.launch {
+            val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
+            val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
+
+            // 1:1 Logic from Essentials: turned off if power saving is on or device is problematic
+            val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
+
+            _uiState.value = _uiState.value.copy(
+                isBlurSettingEnabled = isBlurEnabledSetting,
+                isPowerSaveMode = isPowerSaveMode,
+                isBlurEnabled = isBlurEnabled
+            )
         }
     }
 

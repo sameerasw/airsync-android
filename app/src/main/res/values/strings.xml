@@ -45,4 +45,8 @@
     <string name="label_clipboard_tile">Clipboard Tile</string>
     <string name="status_added">Added</string>
     <string name="status_add">Add</string>
+    <string name="label_use_blur">Use Blur</string>
+    <string name="subtitle_use_blur">Progressive blur for the UI</string>
+    <string name="subtitle_blur_disabled_power_save">Disabled to save power</string>
+    <string name="subtitle_blur_disabled_samsung">Disabled due to compatibility issues with this Samsung device</string>
 </resources>

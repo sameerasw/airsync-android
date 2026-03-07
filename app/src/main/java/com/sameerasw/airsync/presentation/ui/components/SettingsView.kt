@@ -176,6 +176,22 @@ fun SettingsView(
                     currentDefaultTab = uiState.defaultTab,
                     onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
                 )
+                
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isBlurSettingEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setUseBlurEnabled(enabled, context)
+                    },
+                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_use_blur),
+                    subtitle = when {
+                        com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice() ->
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_samsung)
+                        uiState.isPowerSaveMode && uiState.isBlurSettingEnabled ->
+                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_power_save)
+                        else -> androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_use_blur)
+                    },
+                    enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
+                )
             }
         }
 
@@ -219,18 +235,6 @@ fun SettingsView(
                 onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
                     viewModel.setSmartspacerShowWhenDisconnected(enabled)
                 }
-            )
-
-            SendNowPlayingCard(
-                isSendNowPlayingEnabled = uiState.isBlurEnabled,
-                onToggleSendNowPlaying = { enabled: Boolean ->
-                    viewModel.setUseBlurEnabled(enabled)
-                },
-                title = "Use Blur",
-                subtitle = if (com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice())
-                    "Disabled due to compatibility issues with this Samsung device"
-                else "Progressive blur for the UI",
-                enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
             )
 
             // Mac Media Controls toggle for Play Store initiation proof

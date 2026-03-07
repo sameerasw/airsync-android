@@ -207,4 +207,9 @@ object DeviceInfoUtil {
             UUID.randomUUID().toString()
         }
     }
+
+    fun isPowerSaveMode(context: Context): Boolean {
+        val powerManager = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
+        return powerManager?.isPowerSaveMode == true
+    }
 }
