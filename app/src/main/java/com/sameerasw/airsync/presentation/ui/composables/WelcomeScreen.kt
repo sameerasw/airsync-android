@@ -139,6 +139,7 @@ fun WelcomeScreen(
                             },
                             onNext = {
                                 HapticUtil.performClick(haptics)
+                                viewModel.setOnboardingCompleted(true)
                                 currentStep = OnboardingStep.FEATURE_INTRODUCTION
                             }
                         )
@@ -678,7 +679,7 @@ fun PreferencesStepContent(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
+            .padding(horizontal = 16.dp)
             .padding(bottom = 16.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -789,8 +790,7 @@ fun PreferencesStepContent(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .navigationBarsPadding()
-                .padding(16.dp),
+                .navigationBarsPadding(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {

@@ -73,6 +73,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -158,6 +159,12 @@ fun AirSyncMainScreen(
     val settingsScrollState = rememberScrollState()
     var hasProcessedQrDialog by remember { mutableStateOf(false) }
     var hasAppliedInitialTab by remember { mutableStateOf(false) }
+    var isWelcomeDismissed by rememberSaveable { mutableStateOf(false) }
+    var hasSeenWelcomeThisSession by rememberSaveable { mutableStateOf(false) }
+
+    if (!uiState.isOnboardingCompleted) {
+        hasSeenWelcomeThisSession = true
+    }
 
     // Volume & Media state
     var volume by remember { mutableFloatStateOf(50f) }
@@ -1208,7 +1215,7 @@ fun AirSyncMainScreen(
 
         // Welcome Screen Overlay
         AnimatedVisibility(
-            visible = !uiState.isOnboardingCompleted,
+            visible = (!uiState.isOnboardingCompleted || hasSeenWelcomeThisSession) && !isWelcomeDismissed,
             enter = fadeIn() + expandVertically(),
             exit = fadeOut() + shrinkVertically(),
             modifier = Modifier.zIndex(100f)
@@ -1216,6 +1223,7 @@ fun AirSyncMainScreen(
             WelcomeScreen(
                 viewModel = viewModel,
                 onBeginClick = {
+                    isWelcomeDismissed = true
                     viewModel.setOnboardingCompleted(true)
                 }
             )
