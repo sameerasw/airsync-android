@@ -67,8 +67,6 @@ fun WelcomeScreen(
     onBeginClick: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
-    val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val uiState by viewModel.uiState.collectAsState()
 
     var currentStep by remember { mutableStateOf(OnboardingStep.WELCOME) }

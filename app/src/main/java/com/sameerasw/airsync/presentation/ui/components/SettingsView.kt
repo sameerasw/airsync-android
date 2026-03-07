@@ -327,6 +327,18 @@ fun SettingsView(
             }
         }
 
+        // Widget Section
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SettingsCategoryTitle("Widget")
+            RoundedCardContainer {
+                com.sameerasw.airsync.presentation.ui.components.sliders.ConfigSliderItem(
+                    title = "Widget Transparency",
+                    value = uiState.widgetTransparency,
+                    onValueChange = { viewModel.setWidgetTransparency(it) }
+                )
+            }
+        }
+
         // Connection Section
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SettingsCategoryTitle("Connection")

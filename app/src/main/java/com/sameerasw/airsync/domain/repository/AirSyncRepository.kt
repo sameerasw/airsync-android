@@ -105,6 +105,10 @@ interface AirSyncRepository {
     suspend fun setSentryReportingEnabled(enabled: Boolean)
     fun getSentryReportingEnabled(): Flow<Boolean>
 
+    // Widget specific settings
+    suspend fun setWidgetTransparency(alpha: Float)
+    fun getWidgetTransparency(): Flow<Float>
+
     // Essentials Bridge
     suspend fun setEssentialsConnectionEnabled(enabled: Boolean)
     fun getEssentialsConnectionEnabled(): Flow<Boolean>

@@ -232,6 +232,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getSentryReportingEnabled()
     }
 
+    override suspend fun setWidgetTransparency(alpha: Float) {
+        dataStoreManager.setWidgetTransparency(alpha)
+    }
+
+    override fun getWidgetTransparency(): Flow<Float> {
+        return dataStoreManager.getWidgetTransparency()
+    }
+
     override suspend fun setEssentialsConnectionEnabled(enabled: Boolean) {
         dataStoreManager.setEssentialsConnectionEnabled(enabled)
     }
