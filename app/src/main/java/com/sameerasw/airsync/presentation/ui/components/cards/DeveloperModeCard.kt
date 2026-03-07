@@ -119,16 +119,7 @@ fun DeveloperModeCard(
                         Text("Send Device Status")
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceBright,
-                                shape = MaterialTheme.shapes.extraSmall
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(
                             onClick = {
                                 HapticUtil.performClick(haptics)
@@ -152,26 +143,15 @@ fun DeveloperModeCard(
                         }
                     }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceBright,
-                                shape = MaterialTheme.shapes.extraSmall
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            onResetOnboarding()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isLoading
                     ) {
-                        Button(
-                            onClick = {
-                                HapticUtil.performClick(haptics)
-                                onResetOnboarding()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            enabled = !isLoading
-                        ) {
-                            Text("Reset Onboarding")
-                        }
+                        Text("Reset Onboarding")
                     }
 
                     // Consolidated Icon Sync Section
@@ -242,34 +222,19 @@ fun DeveloperModeCard(
                     // Sentry section
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        "Sentry",
+                        "Crash Reporting",
                         style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(
-                                color = MaterialTheme.colorScheme.surfaceBright,
-                                shape = MaterialTheme.shapes.extraSmall
-                            )
-                            .padding(12.dp),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            throw RuntimeException("Test Crash from Developer Options")
+                        },
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Button(
-                            onClick = {
-                                HapticUtil.performClick(haptics)
-                                throw RuntimeException("Test Crash from Developer Options")
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                contentColor = MaterialTheme.colorScheme.onError
-                            )
-                        ) {
-                            Text("Simulate Crash")
-                        }
+                        Text("Simulate Crash")
                     }
                 }
             }
