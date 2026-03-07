@@ -11,6 +11,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -528,6 +532,28 @@ fun FeatureIntroStepContent(
 
             Spacer(modifier = Modifier.height(24.dp))
 
+            Text(
+                text = "Quick Settings Tiles",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp).fillMaxWidth(),
+                textAlign = TextAlign.Start
+            )
+
+            RoundedCardContainer {
+                com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTilesCard(
+                    isConnectionTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                        context,
+                        com.sameerasw.airsync.service.AirSyncTileService::class.java
+                    ),
+                    isClipboardTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                        context,
+                        com.sameerasw.airsync.service.ClipboardTileService::class.java
+                    )
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
             val configuration = LocalConfiguration.current
             val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
             val isLargeScreen = configuration.screenWidthDp >= 600
@@ -650,6 +676,7 @@ fun PreferencesStepContent(
     onNext: () -> Unit
 ) {
     val context = LocalContext.current
+    val deviceInfo by viewModel.deviceInfo.collectAsState()
 
     Column(
         modifier = Modifier
@@ -729,6 +756,27 @@ fun PreferencesStepContent(
                     onCheckedChange = { viewModel.setUseBlurEnabled(it, context) },
                     enabled = !isBlurProblematic
                 )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Connection Section
+            Text(
+                text = "Connection",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(start = 12.dp, bottom = 8.dp).fillMaxWidth(),
+                color = MaterialTheme.colorScheme.primary,
+                textAlign = TextAlign.Start
+            )
+
+            RoundedCardContainer {
+                com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard(
+                    deviceName = uiState.deviceNameInput,
+                    localIp = deviceInfo.localIp,
+                    onDeviceNameChange = { viewModel.updateDeviceName(it) }
+                )
+
+                com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard(context)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
