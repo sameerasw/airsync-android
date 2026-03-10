@@ -92,6 +92,9 @@ class DataStoreManager(private val context: Context) {
         private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
         private val SENTRY_REPORTING_ENABLED = booleanPreferencesKey("sentry_reporting_enabled")
 
+        // Widget preferences
+        private val WIDGET_TRANSPARENCY = androidx.datastore.preferences.core.floatPreferencesKey("widget_transparency")
+
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
 
@@ -573,6 +576,18 @@ class DataStoreManager(private val context: Context) {
     fun getUserManuallyDisconnected(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[USER_MANUALLY_DISCONNECTED] == true // Default to false
+        }
+    }
+
+    suspend fun setWidgetTransparency(alpha: Float) {
+        context.dataStore.edit { preferences ->
+            preferences[WIDGET_TRANSPARENCY] = alpha
+        }
+    }
+
+    fun getWidgetTransparency(): Flow<Float> {
+        return context.dataStore.data.map { preferences ->
+            preferences[WIDGET_TRANSPARENCY] ?: 1f
         }
     }
 

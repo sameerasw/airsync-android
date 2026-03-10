@@ -153,6 +153,13 @@ class AirSyncViewModel(
             }
         }
 
+        // Observe widget transparency preference
+        viewModelScope.launch {
+            repository.getWidgetTransparency().collect { trans ->
+                _uiState.value = _uiState.value.copy(widgetTransparency = trans)
+            }
+        }
+
         // Observe first run preference for onboarding status
         viewModelScope.launch {
             repository.getFirstRun().collect { firstRun ->
@@ -600,6 +607,17 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
         viewModelScope.launch {
             repository.setPitchBlackThemeEnabled(enabled)
+            // Note: Currently theme changes check via MainActivity collection instead of restart
+        }
+    }
+
+    fun setWidgetTransparency(alpha: Float) {
+        _uiState.value = _uiState.value.copy(widgetTransparency = alpha)
+        viewModelScope.launch {
+            repository.setWidgetTransparency(alpha)
+            appContext?.let { context ->
+                com.sameerasw.airsync.widget.AirSyncWidgetProvider.updateAllWidgets(context)
+            }
         }
     }
 

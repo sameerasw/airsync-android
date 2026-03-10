@@ -103,6 +103,12 @@ class AirSyncWidgetProvider : AppWidgetProvider() {
             val isConnected = WebSocketUtil.isConnected()
             val isConnecting = WebSocketUtil.isConnecting()
             val lastDevice = runBlocking { ds.getLastConnectedDevice().first() }
+            val widgetAlpha = runBlocking { ds.getWidgetTransparency().first() }
+
+            // Apply background transparency
+            val baseBg = androidx.core.content.ContextCompat.getColor(context, R.color.widget_background)
+            val bgWithAlpha = androidx.core.graphics.ColorUtils.setAlphaComponent(baseBg, (widgetAlpha * 255).toInt().coerceIn(0, 255))
+            views.setInt(R.id.widget_container, "setBackgroundColor", bgWithAlpha)
 
             // Device image (large preview) and name
             val previewRes = DevicePreviewResolver.getPreviewRes(lastDevice)

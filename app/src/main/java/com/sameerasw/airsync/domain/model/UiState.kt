@@ -47,5 +47,6 @@ data class UiState(
     val isPitchBlackThemeEnabled: Boolean = false,
     val isBlurEnabled: Boolean = true,
     val isSentryReportingEnabled: Boolean = true,
-    val isOnboardingCompleted: Boolean = true
+    val isOnboardingCompleted: Boolean = true,
+    val widgetTransparency: Float = 1f
 )
