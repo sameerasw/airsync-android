@@ -16,8 +16,8 @@ android {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
         targetSdk = 36
-        versionCode = 23
-        versionName = "2.5.2"
+        versionCode = 24
+        versionName = "2.6.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,7 +60,7 @@ kotlin {
     }
 
     defaultConfig {
-        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.5.0\"")
+        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.6.0\"")
     }
 }
 
