@@ -263,8 +263,11 @@ object WebSocketUtil {
                             }
 
                             override fun onMessage(webSocket: WebSocket, text: String) {
+                                Log.d(TAG, "RAW WebSocket message received: ${text}...")
                                 val decryptedMessage = currentSymmetricKey?.let { key ->
-                                    CryptoUtil.decryptMessage(text, key)
+                                    val decrypted = CryptoUtil.decryptMessage(text, key)
+                                    if (decrypted == null) Log.e(TAG, "FAILED TO DECRYPT WebSocket message!")
+                                    decrypted
                                 } ?: text
 
                                 if (!handshakeCompleted.get()) {

@@ -12,9 +12,11 @@
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.READ_WALLPAPER_INTERNAL" />
+
 
 
     <!-- Permission for downloading updates -->
@@ -87,30 +89,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Share target activity for text sharing -->
-        <activity
-            android:name=".presentation.ui.activities.ShareActivity"
-            android:exported="true"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar"
-            android:noHistory="true">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
-            <!-- Accept any single file type -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-            <!-- Accept multiple files -->
-            <intent-filter>
-                <action android:name="android.intent.action.SEND_MULTIPLE" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="*/*" />
-            </intent-filter>
-        </activity>
+
 
         <activity
             android:name=".presentation.ui.activities.ClipboardActionActivity"
@@ -181,6 +160,8 @@
             </intent-filter>
         </service>
 
+
+
         <!-- Wake-up Service for receiving reconnection requests from Mac -->
         <service
             android:name=".service.WakeupService"
@@ -189,6 +170,11 @@
         <!-- AirSync Service - maintains connection to Mac and handles call monitoring -->
         <service
             android:name=".service.AirSyncService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
+
+        <service
+            android:name=".quickshare.QuickShareService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
 

@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.wire)
 }
 
 android {
@@ -16,8 +17,8 @@ android {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
         targetSdk = 36
-        versionCode = 24
-        versionName = "2.6.0"
+        versionCode = 25
+        versionName = "3.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -60,7 +61,7 @@ kotlin {
     }
 
     defaultConfig {
-        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"2.6.0\"")
+        buildConfigField("String", "MIN_MAC_APP_VERSION", "\"3.0.0\"")
     }
 }
 
@@ -150,4 +151,13 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+
+    implementation(libs.wire.runtime)
+    implementation(libs.bouncycastle)
+}
+
+wire {
+    kotlin {
+        // Wire defaults to current project's proto directory
+    }
 }

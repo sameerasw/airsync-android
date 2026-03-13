@@ -287,4 +287,12 @@ class AirSyncRepositoryImpl(
     override fun hasRatedApp(): Flow<Boolean> {
         return dataStoreManager.hasRatedApp()
     }
+
+    override suspend fun setQuickShareEnabled(enabled: Boolean) {
+        dataStoreManager.setQuickShareEnabled(enabled)
+    }
+
+    override fun isQuickShareEnabled(): Flow<Boolean> {
+        return dataStoreManager.isQuickShareEnabled()
+    }
 }

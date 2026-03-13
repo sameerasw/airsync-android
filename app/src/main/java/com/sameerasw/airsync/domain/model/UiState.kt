@@ -48,5 +48,6 @@ data class UiState(
     val isBlurEnabled: Boolean = true,
     val isSentryReportingEnabled: Boolean = true,
     val isOnboardingCompleted: Boolean = true,
-    val widgetTransparency: Float = 1f
+    val widgetTransparency: Float = 1f,
+    val isQuickShareEnabled: Boolean = false
 )
