@@ -50,7 +50,8 @@ class QuickShareService : Service() {
     private data class SpeedState(
         var lastBytes: Long = 0,
         var lastTime: Long = System.currentTimeMillis(),
-        var smoothedSpeed: Double? = null
+        var smoothedSpeed: Double? = null,
+        var lastEtaString: String? = null
     )
     private val speedStates = mutableMapOf<String, SpeedState>()
 
@@ -113,8 +114,11 @@ class QuickShareService : Service() {
                             percent,
                             transferId,
                             isSending = false,
-                            etaString = etaString ?: "Updating..."
+                            etaString = etaString ?: state.lastEtaString ?: "Calculating..."
                         )
+                        if (etaString != null) {
+                            state.lastEtaString = etaString
+                        }
                     }
                 }
                 
