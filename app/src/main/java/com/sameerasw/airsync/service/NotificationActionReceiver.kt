@@ -52,6 +52,13 @@ class NotificationActionReceiver : BroadcastReceiver() {
                     // Try cancelling both (one will be active)
                     com.sameerasw.airsync.utils.FileReceiver.cancelTransfer(context, transferId)
                     com.sameerasw.airsync.utils.FileSender.cancelTransfer(transferId)
+                    
+                    // Also try cancelling Quick Share transfer
+                    val qsIntent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java).apply {
+                        action = com.sameerasw.airsync.quickshare.QuickShareService.ACTION_CANCEL_TRANSFER
+                        putExtra(com.sameerasw.airsync.quickshare.QuickShareService.EXTRA_TRANSFER_ID, transferId)
+                    }
+                    context.startService(qsIntent)
                 }
             }
         }

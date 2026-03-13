@@ -42,6 +42,8 @@ class InboundQuickShareConnection(
     var onConnectionReady: ((InboundQuickShareConnection) -> Unit)? = null
     var onIntroductionReceived: ((IntroductionFrame) -> Unit)? = null
     var onFinished: ((InboundQuickShareConnection) -> Unit)? = null
+    var onFileProgress: ((fileName: String, percent: Int, bytesTransferred: Long, totalSize: Long, transferId: String) -> Unit)? = null
+    var onFileComplete: ((fileName: String, transferId: String, success: Boolean, uri: android.net.Uri?) -> Unit)? = null
 
     companion object {
         private const val TAG = "InboundQSConnection"
@@ -58,7 +60,7 @@ class InboundQuickShareConnection(
     var introduction: IntroductionFrame? = null
         private set
 
-    private val transferredFiles = ConcurrentHashMap<Long, InternalFileInfo>()
+    internal val transferredFiles = ConcurrentHashMap<Long, InternalFileInfo>()
 
     data class InternalFileInfo(
         val name: String,
@@ -414,6 +416,12 @@ class InboundQuickShareConnection(
         if (body != null && body.isNotEmpty()) {
             info.outputStream?.write(body)
             info.bytesTransferred += body.size
+
+            // Update progress (throttle if needed, but for now simple)
+            if (info.size > 0) {
+                val percent = ((info.bytesTransferred * 100) / info.size).toInt()
+                onFileProgress?.invoke(info.name, percent, info.bytesTransferred, info.size, id.toString())
+            }
         }
 
         // Check last chunk flag (flags & 1)
@@ -429,6 +437,8 @@ class InboundQuickShareConnection(
                 }
                 context.contentResolver.update(info.uri!!, values, null, null)
             }
+            
+            onFileComplete?.invoke(info.name, id.toString(), true, info.uri)
             
             // Check if all files are finished
             if (transferredFiles.values.all { it.outputStream == null }) {

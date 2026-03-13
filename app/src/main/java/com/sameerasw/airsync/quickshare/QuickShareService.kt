@@ -34,7 +34,9 @@ class QuickShareService : Service() {
         const val ACTION_ACCEPT = "com.sameerasw.airsync.quickshare.ACCEPT"
         const val ACTION_REJECT = "com.sameerasw.airsync.quickshare.REJECT"
         const val ACTION_START_DISCOVERY = "com.sameerasw.airsync.quickshare.START_DISCOVERY"
+        const val ACTION_CANCEL_TRANSFER = "com.sameerasw.airsync.quickshare.CANCEL_TRANSFER"
         const val EXTRA_CONNECTION_ID = "connection_id"
+        const val EXTRA_TRANSFER_ID = "transfer_id"
     }
 
     private lateinit var server: QuickShareServer
@@ -44,6 +46,13 @@ class QuickShareService : Service() {
     private val binder = LocalBinder()
     private val serviceScope = CoroutineScope(Dispatchers.IO)
     private var discoveryJob: kotlinx.coroutines.Job? = null
+    
+    private data class SpeedState(
+        var lastBytes: Long = 0,
+        var lastTime: Long = System.currentTimeMillis(),
+        var smoothedSpeed: Double? = null
+    )
+    private val speedStates = mutableMapOf<String, SpeedState>()
 
     inner class LocalBinder : Binder() {
         fun getService(): QuickShareService = this@QuickShareService
@@ -62,6 +71,64 @@ class QuickShareService : Service() {
                 val pin = conn.ukey2Context?.authString ?: ""
                 Log.d(TAG, "Connection ready, PIN: $pin")
                 updateForegroundNotification("PIN: $pin - Waiting for files...")
+                
+                var lastUpdate = 0L
+                conn.onFileProgress = { fileName, percent, bytesTransferred, totalSize, transferId ->
+                    val now = System.currentTimeMillis()
+                    if (now - lastUpdate > 800) { // Throttle updates
+                        val state = speedStates.getOrPut(transferId) { SpeedState(bytesTransferred, now) }
+                        val timeDiff = (now - state.lastTime) / 1000.0
+                        
+                        var etaString: String? = null
+                        if (timeDiff >= 1.0) {
+                            val bytesDiff = bytesTransferred - state.lastBytes
+                            val intervalSpeed = bytesDiff / timeDiff
+                            
+                            val alpha = 0.4
+                            val newSpeed = if (state.smoothedSpeed != null) {
+                                (alpha * intervalSpeed) + ((1.0 - alpha) * state.smoothedSpeed!!)
+                            } else {
+                                intervalSpeed
+                            }
+                            state.smoothedSpeed = newSpeed
+                            state.lastBytes = bytesTransferred
+                            state.lastTime = now
+
+                            if (newSpeed > 0) {
+                                val remainingBytes = (totalSize - bytesTransferred).coerceAtLeast(0)
+                                val secondsRemaining = (remainingBytes / newSpeed).toLong()
+                                etaString = if (secondsRemaining < 60) {
+                                    "$secondsRemaining sec remaining"
+                                } else {
+                                    "${secondsRemaining / 60} min remaining"
+                                }
+                            }
+                        }
+
+                        lastUpdate = now
+                        com.sameerasw.airsync.utils.NotificationUtil.showFileProgress(
+                            this@QuickShareService,
+                            transferId.hashCode(),
+                            fileName,
+                            percent,
+                            transferId,
+                            isSending = false,
+                            etaString = etaString ?: "Updating..."
+                        )
+                    }
+                }
+                
+                conn.onFileComplete = { fileName, transferId, success, uri ->
+                    speedStates.remove(transferId)
+                    com.sameerasw.airsync.utils.NotificationUtil.showFileComplete(
+                        this@QuickShareService,
+                        transferId.hashCode(),
+                        fileName,
+                        success,
+                        isSending = false,
+                        contentUri = uri
+                    )
+                }
             }
             
             connection.onIntroductionReceived = { intro ->
@@ -111,6 +178,21 @@ class QuickShareService : Service() {
             }
             ACTION_START_DISCOVERY -> {
                 startDiscoveryWithTimeout()
+            }
+            ACTION_CANCEL_TRANSFER -> {
+                val transferIdStr = intent.getStringExtra(EXTRA_TRANSFER_ID)
+                val transferId = transferIdStr?.toLongOrNull()
+                Log.d(TAG, "Notification cancel requested for $transferIdStr")
+                if (transferId != null) {
+                    activeConnections.values.forEach { conn ->
+                        if (conn.transferredFiles.containsKey(transferId)) {
+                            Log.d(TAG, "Found connection for $transferId, closing")
+                            conn.closeConnection()
+                        }
+                    }
+                }
+                val manager = getSystemService(NotificationManager::class.java)
+                manager.cancel(transferIdStr?.hashCode() ?: 0)
             }
             else -> {
                 // Remove the startForeground/createNotification call from here
