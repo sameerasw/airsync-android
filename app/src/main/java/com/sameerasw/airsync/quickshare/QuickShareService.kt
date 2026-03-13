@@ -177,7 +177,14 @@ class QuickShareService : Service() {
                 activeConnections.remove(id)
             }
             ACTION_START_DISCOVERY -> {
-                startDiscoveryWithTimeout()
+                serviceScope.launch {
+                    val enabled = dataStoreManager.isQuickShareEnabled().first()
+                    if (enabled) {
+                        startDiscoveryWithTimeout()
+                    } else {
+                        stopDiscovery()
+                    }
+                }
             }
             ACTION_CANCEL_TRANSFER -> {
                 val transferIdStr = intent.getStringExtra(EXTRA_TRANSFER_ID)

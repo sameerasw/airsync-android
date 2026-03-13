@@ -875,18 +875,26 @@ object WebSocketMessageHandler {
     }
 
     private fun handleStartQuickShare(context: Context) {
-        try {
-            Log.d(TAG, "Triggering Quick Share receiving mode via WebSocket")
-            val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java).apply {
-                action = com.sameerasw.airsync.quickshare.QuickShareService.ACTION_START_DISCOVERY
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val ds = DataStoreManager.getInstance(context)
+                val enabled = ds.isQuickShareEnabled().first()
+                if (!enabled) {
+                    return@launch
+                }
+
+                Log.d(TAG, "Triggering Quick Share receiving mode via WebSocket")
+                val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java).apply {
+                    action = com.sameerasw.airsync.quickshare.QuickShareService.ACTION_START_DISCOVERY
+                }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error starting Quick Share service: ${e.message}")
             }
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error starting Quick Share service: ${e.message}")
         }
     }
 }
