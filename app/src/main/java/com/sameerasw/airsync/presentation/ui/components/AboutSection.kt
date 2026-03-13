@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,11 +26,16 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,6 +52,8 @@ fun AboutSection(
     description: String = "AirSync enables seamless synchronization between your Android device and Mac. Share notifications, clipboard content, and device status wirelessly over your local network."
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    var showAppLogo by remember { mutableStateOf(false) }
 
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -73,21 +84,40 @@ fun AboutSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Image(
-                painter = painterResource(id = R.drawable.avatar),
-                contentDescription = "Developer Avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .combinedClickable(
-                        onClick = { },
-                        onLongClick = {
-                            onAvatarLongClick()
-                        }
+            AnimatedContent(
+                targetState = showAppLogo,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                },
+                label = "AvatarLogoToggle"
+            ) { isLogoVisible ->
+                if (isLogoVisible) {
+                    RotatingAppIcon(
+                        haptics = haptics,
+                        modifier = Modifier
+                            .size(200.dp)
+                            .combinedClickable(
+                                onClick = { showAppLogo = false },
+                                onLongClick = { onAvatarLongClick() }
+                            ),
+                        isVisible = true
                     )
-            )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.avatar),
+                        contentDescription = "Developer Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                            .combinedClickable(
+                                onClick = { showAppLogo = true },
+                                onLongClick = { onAvatarLongClick() }
+                            )
+                    )
+                }
+            }
 
             Text(
                 text = "Developed by $developerName",
