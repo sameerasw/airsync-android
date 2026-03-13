@@ -1,7 +1,12 @@
 package com.sameerasw.airsync.presentation.ui.composables
 
+import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.os.Build
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -28,6 +33,9 @@ import androidx.compose.ui.hapticfeedback.HapticFeedback
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,8 +78,6 @@ fun WelcomeScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     var currentStep by remember { mutableStateOf(OnboardingStep.WELCOME) }
-    val rotationAnimatable = remember { Animatable(0f) }
-    var center by remember { mutableStateOf(Offset.Zero) }
     var hasTriggeredEasterEgg by remember { mutableStateOf(false) }
 
     Surface(
@@ -99,9 +105,6 @@ fun WelcomeScreen(
                     OnboardingStep.WELCOME -> {
                         WelcomeStepContent(
                             haptics = haptics,
-                            rotationAnimatable = rotationAnimatable,
-                            center = center,
-                            onCenterChanged = { center = it },
                             hasTriggeredEasterEgg = hasTriggeredEasterEgg,
                             onEasterEggTriggered = { hasTriggeredEasterEgg = true },
                             onNext = {
@@ -165,15 +168,13 @@ fun WelcomeScreen(
 @Composable
 fun WelcomeStepContent(
     haptics: androidx.compose.ui.hapticfeedback.HapticFeedback,
-    rotationAnimatable: Animatable<Float, *>,
-    center: Offset,
-    onCenterChanged: (Offset) -> Unit,
     hasTriggeredEasterEgg: Boolean,
     onEasterEggTriggered: () -> Unit,
     onNext: () -> Unit
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val rotationAnimatable = remember { Animatable(0f) }
 
     Column(
         modifier = Modifier.fillMaxSize()
@@ -190,88 +191,92 @@ fun WelcomeStepContent(
 
             Spacer(modifier = Modifier.weight(1f))
 
+            val sensorManager = remember { context.getSystemService(Context.SENSOR_SERVICE) as SensorManager }
+            val gravitySensor = remember { sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER) }
+            var accumulatedRotation by remember { mutableFloatStateOf(0f) }
+            var lastAngle by remember { mutableFloatStateOf(0f) }
+            val minorStep = 10f // Increased step for less frequent ticks
+            var lastHapticRotation by remember { mutableFloatStateOf(0f) }
+            
+            var smoothedAx by remember { mutableFloatStateOf(0f) }
+            var smoothedAy by remember { mutableFloatStateOf(9.8f) }
+            val alpha = 0.1f
+
+            val lifecycleOwner = LocalLifecycleOwner.current
+
+            DisposableEffect(lifecycleOwner) {
+                val listener = object : SensorEventListener {
+                    override fun onSensorChanged(event: SensorEvent) {
+                        if (event.sensor.type == Sensor.TYPE_ACCELEROMETER) {
+                            val ax = event.values[0]
+                            val ay = event.values[1]
+                            val az = event.values[2]
+
+                            smoothedAx = smoothedAx + alpha * (ax - smoothedAx)
+                            smoothedAy = smoothedAy + alpha * (ay - smoothedAy)
+
+                            val tiltMagnitudeSqr = smoothedAx * smoothedAx + smoothedAy * smoothedAy
+                            if (tiltMagnitudeSqr < 2.0f) return 
+
+                            val targetAngle = (atan2(smoothedAx.toDouble(), smoothedAy.toDouble()) * 180 / PI).toFloat()
+
+                            var delta = targetAngle - lastAngle
+                            if (delta > 180) delta -= 360
+                            if (delta < -180) delta += 360
+
+                            accumulatedRotation += delta
+                            lastAngle = targetAngle
+
+                            if (kotlin.math.abs(accumulatedRotation - lastHapticRotation) >= minorStep) {
+                                HapticUtil.performLightTick(haptics)
+                                lastHapticRotation = accumulatedRotation
+                            }
+
+                            if (!hasTriggeredEasterEgg && kotlin.math.abs(accumulatedRotation) >= 3600f) {
+                                onEasterEggTriggered()
+                                val rickRollUrl = "https://youtu.be/dQw4w9WgXcQ"
+                                val intent = Intent(Intent.ACTION_VIEW, rickRollUrl.toUri())
+                                context.startActivity(intent)
+                            }
+
+                            scope.launch {
+                                rotationAnimatable.animateTo(
+                                    accumulatedRotation,
+                                    animationSpec = spring(
+                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                        stiffness = Spring.StiffnessLow
+                                    )
+                                )
+                            }
+                        }
+                    }
+                    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
+                }
+
+                val observer = LifecycleEventObserver { _, event ->
+                    when (event) {
+                        Lifecycle.Event.ON_RESUME -> {
+                            sensorManager.registerListener(listener, gravitySensor, SensorManager.SENSOR_DELAY_UI)
+                        }
+                        Lifecycle.Event.ON_PAUSE -> {
+                            sensorManager.unregisterListener(listener)
+                        }
+                        else -> {}
+                    }
+                }
+
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                    sensorManager.unregisterListener(listener)
+                }
+            }
+
             Image(
                 painter = painterResource(id = R.drawable.ic_launcher_foreground),
                 contentDescription = null,
                 modifier = Modifier
                     .size(240.dp)
-                    .onSizeChanged {
-                        onCenterChanged(Offset(it.width / 2f, it.height / 2f))
-                    }
-                    .pointerInput(Unit) {
-                        val majorStep = 60f
-                        val minorStep = 2f
-
-                        var currentRotation = 0f
-                        var lastMajorNotch = 0
-                        var lastMinorNotch = 0
-
-                        detectDragGestures(
-                            onDragStart = {
-                                scope.launch { rotationAnimatable.stop() }
-                                currentRotation = rotationAnimatable.value
-                                lastMajorNotch = kotlin.math.round(currentRotation / majorStep).toInt()
-                                lastMinorNotch = kotlin.math.round(currentRotation / minorStep).toInt()
-                            },
-                            onDrag = { change, _ ->
-                                val oldAngle = atan2(
-                                    change.previousPosition.y - center.y,
-                                    change.previousPosition.x - center.x
-                                )
-                                val newAngle = atan2(
-                                    change.position.y - center.y,
-                                    change.position.x - center.x
-                                )
-                                var delta = (newAngle - oldAngle) * 180 / PI
-
-                                if (delta > 180) delta -= 360
-                                if (delta < -180) delta += 360
-
-                                currentRotation += delta.toFloat()
-
-                                // Easter Egg logic
-                                if (!hasTriggeredEasterEgg && kotlin.math.abs(currentRotation) >= 3600f) {
-                                    onEasterEggTriggered()
-                                    val rickRollUrl = "https://youtu.be/dQw4w9WgXcQ"
-                                    val intent = Intent(Intent.ACTION_VIEW, rickRollUrl.toUri())
-                                    context.startActivity(intent)
-                                }
-
-                                // Minor notches
-                                val currentMinorNotch = kotlin.math.round(currentRotation / minorStep).toInt()
-                                if (currentMinorNotch != lastMinorNotch) {
-                                    HapticUtil.performLightTick(haptics)
-                                    lastMinorNotch = currentMinorNotch
-                                }
-
-                                lastMajorNotch = kotlin.math.round(currentRotation / majorStep).toInt()
-
-                                scope.launch {
-                                    rotationAnimatable.snapTo(currentRotation)
-                                }
-                            },
-                            onDragEnd = {
-                                scope.launch {
-                                    rotationAnimatable.animateTo(
-                                        targetValue = 0f,
-                                        animationSpec = spring(
-                                            dampingRatio = Spring.DampingRatioMediumBouncy,
-                                            stiffness = Spring.StiffnessLow
-                                        )
-                                    ) {
-                                        val currentMajorNotch = kotlin.math.round(value / majorStep).toInt()
-                                        if (currentMajorNotch != lastMajorNotch) {
-                                            HapticUtil.performClick(haptics)
-                                            lastMajorNotch = currentMajorNotch
-                                        }
-                                    }
-                                    currentRotation = 0f
-                                    lastMajorNotch = 0
-                                    lastMinorNotch = 0
-                                }
-                            }
-                        )
-                    }
                     .graphicsLayer {
                         rotationZ = rotationAnimatable.value
                     }
@@ -714,7 +719,7 @@ fun PreferencesStepContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // App Settings Section
+
             Text(
                 text = stringResource(R.string.label_app_settings),
                 style = MaterialTheme.typography.titleMedium,
@@ -727,9 +732,8 @@ fun PreferencesStepContent(
                 IconToggleItem(
                     iconRes = R.drawable.rounded_mobile_vibrate_24,
                     title = stringResource(R.string.label_haptic_feedback),
-                    isChecked = true, // Default to true or load from setting if available
+                    isChecked = true,
                     onCheckedChange = { _ ->
-                        // Haptic settings usually global or handled by HapticUtil
                     }
                 )
                 IconToggleItem(
@@ -763,7 +767,7 @@ fun PreferencesStepContent(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Connection Section
+
             Text(
                 text = "Connection",
                 style = MaterialTheme.typography.titleMedium,
