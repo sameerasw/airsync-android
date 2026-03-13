@@ -1,0 +1,507 @@
+// Copyright 2020 Google LLC
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     https://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto2";
+
+package location.nearby.proto.sharing;
+
+option optimize_for = LITE_RUNTIME;
+option java_package = "com.google.android.gms.nearby.proto.sharing";
+option java_outer_classname = "SharingEnums";
+option objc_class_prefix = "GNSHP";
+
+enum EventType {
+  UNKNOWN_EVENT_TYPE = 0;
+
+  // Introduction phase
+  SEND_INTRODUCTION = 1;
+  RECEIVE_INTRODUCTION = 2;
+
+  // Response phase
+  SEND_RESPONSE = 3;
+  RECEIVE_RESPONSE = 4;
+
+  // Cancellation phase
+  SEND_CANCEL = 5;
+  RECEIVE_CANCEL = 6;
+
+  // Pairing phase
+  SEND_PAIRED_KEY_ENCRYPTION = 70;
+  RECEIVE_PAIRED_KEY_ENCRYPTION = 71;
+  SEND_PAIRED_KEY_RESULT = 72;
+  RECEIVE_PAIRED_KEY_RESULT = 73;
+
+  // Security phase
+  ESTABLISH_CONNECTION = 7;
+  VERIFY_UKEY2 = 8;
+
+  // Transfer phase
+  START_DECODING_PAYLOADS = 9;
+  START_TRANSFER = 10;
+  ACCEPT_TRANSFER = 11;
+  REJECT_TRANSFER = 12;
+  CANCEL_TRANSFER = 13;
+  COMPLETE_TRANSFER = 14;
+  FAIL_TRANSFER = 15;
+
+  // Discovery phase
+  START_ADVERTISING = 16;
+  STOP_ADVERTISING = 17;
+  START_DISCOVERY = 18;
+  STOP_DISCOVERY = 19;
+  DISCOVER_DEVICE = 20;
+  LOST_DEVICE = 21;
+
+  // External events
+  SCREEN_OFF_AUTO_CANCEL = 22;
+  DISCONNECT = 23;
+  MIN_CONNECTIONS_VERSION_CANCEL = 24 [deprecated = true];
+
+  // Settings events
+  ENABLE_NEARBY_SHARE = 25;
+  DISABLE_NEARBY_SHARE = 26;
+  CHANGE_DEVICE_NAME = 27;
+  CHANGE_VISIBILITY = 28;
+  CHANGE_DATA_USAGE = 29;
+
+  // Permission events
+  REQUEST_PERMISSION = 30;
+  GRANT_PERMISSION = 31;
+  REJECT_PERMISSION = 32;
+
+  // Certificate events
+  SEND_CERTIFICATE_INFO = 74 [deprecated = true];
+  RECEIVE_CERTIFICATE_INFO = 75 [deprecated = true];
+  PROCESS_CERTIFICATE_INFO = 76 [deprecated = true];
+
+  // GmsCore events
+  ADD_ACCOUNT = 33;
+  REMOVE_ACCOUNT = 34;
+
+  // Fast Initialization events
+  FAST_INIT_SCAN_START = 35;
+  FAST_INIT_SCAN_STOP = 36;
+  FAST_INIT_DISCOVER_DEVICE = 37;
+  FAST_INIT_LOST_DEVICE = 38;
+  FAST_INIT_ADVERTISE_START = 39;
+  FAST_INIT_ADVERTISE_STOP = 40;
+
+  // Notification events
+  DESCRIBE_ATTACHMENTS = 41;
+
+  // Onboarding events
+  START_ONBOARDING = 42;
+  COMPLETE_ONBOARDING = 43;
+
+  // Bluetooth events
+  BLE_START_ADVERTISING = 44;
+  BLE_STOP_ADVERTISING = 45;
+  BLE_START_SCANNING = 46;
+  BLE_STOP_SCANNING = 47;
+  BLUETOOTH_START_ADVERTISING = 48;
+  BLUETOOTH_STOP_ADVERTISING = 49;
+  BLUETOOTH_START_SCANNING = 50;
+  BLUETOOTH_STOP_SCANNING = 51;
+
+  // Wifi events
+  WIFI_START_ADVERTISING = 52;
+  WIFI_STOP_ADVERTISING = 53;
+  WIFI_START_SCANNING = 54;
+  WIFI_STOP_SCANNING = 55;
+
+  // MDNS events
+  MDNS_START_ADVERTISING = 56;
+  MDNS_STOP_ADVERTISING = 57;
+  MDNS_START_SCANNING = 58;
+  MDNS_STOP_SCANNING = 59;
+
+  // WebRtc events
+  WEBRTC_START_ADVERTISING = 60;
+  WEBRTC_STOP_ADVERTISING = 61;
+  WEBRTC_START_SCANNING = 62;
+  WEBRTC_STOP_SCANNING = 63;
+
+  // Network events
+  NETWORK_CONNECT = 64;
+  NETWORK_DISCONNECT = 65;
+
+  // Account events
+  CLICK_ON_CONTACTS_FOOTER_LINK = 66 [deprecated = true];
+
+  // Install events
+  INSTALL_GMSCORE_CLICKED = 67 [deprecated = true];
+
+  // More transfer events
+  REJECT_DUE_TO_ATTACHMENT_TYPE_MISMATCH = 68;
+
+  // More permission events
+  DISMISS_PERMISSION_DIALOG = 69;
+
+  // Feedback events
+  OPEN_FEEDBACK_FORM = 77;
+
+  // Transfer failure bubble events
+  DISMISS_TRANSFER_FAILURE_NOTIF = 78;
+
+  // Incompatible notification events
+  SHOW_INCOMPATIBLE_NOTIF = 79;
+
+  // More onboarding events
+  REONBOARDING_CHANGE_VISIBILITY = 80;
+
+  // More fast initializtion events
+  FAST_INIT_DISCOVER_NOTIFY_DEVICE = 81;
+
+  // Contacts events
+  SEND_CONTACTS = 82;
+  RECEIVE_CONTACTS = 83;
+
+  // Setup wizard events
+  SETUP_WIZARD_SCAN_START = 84;
+  SETUP_WIZARD_SCAN_STOP = 85;
+  SETUP_WIZARD_DISCOVER_DEVICE = 86;
+  SETUP_WIZARD_LOST_DEVICE = 87;
+
+  // Help center events
+  OPEN_HELP_CENTER = 88;
+
+  // Contacts events
+  INVITE_CONTACTS = 89;
+
+  // More discovery events
+  ADD_DEVICE_FOR_SCANNING = 90;
+  REMOVE_DEVICE_FOR_SCANNING = 91;
+
+  // Fast Initialization events
+  FAST_INIT_DISCOVER_SILENT_DEVICE = 92;
+
+  // Quick settings events
+  DISMISS_QUICK_SETTINGS_DIALOG = 93;
+
+  // More fast initializtion events
+  FAST_INIT_DISCOVER_SILENT_SENDER_DEVICE = 94;
+
+  // Settings events
+  OPEN_NEARBY_SHARE_SETTINGS = 95;
+
+  // More transfer events
+  AUTO_ACCEPT_TRANSFER = 96;
+
+  // Device settings events
+  OPEN_DEVICE_SETTINGS = 97;
+
+  // Visibility and device info sync events.
+  VISIBILITY_REMOTE_DEVICE_REGISTERED = 98;
+  VISIBILITY_DEVICE_INFO_UPDATED = 99;
+
+  // Scanning events
+  BLE_START_SCANNING_FOR_PRESENCE = 100;
+  BLE_STOP_SCANNING_FOR_PRESENCE = 101;
+}
+
+enum Visibility {
+  UNKNOWN_VISIBILITY = 0;
+  NO_ONE = 1;
+  ALL_CONTACTS = 2;
+  SELECTED_CONTACTS = 3;
+  EVERYONE = 4;
+  HIDDEN = 5;
+  SELF_SHARE = 6;
+}
+
+enum DeviceType {
+  UNKNOWN_DEVICE_TYPE = 0;
+  PHONE = 1;
+  TABLET = 2;
+  LAPTOP = 3;
+}
+
+enum OSType {
+  UNKNOWN_OS_TYPE = 0;
+  ANDROID = 1;
+  CHROME_OS = 2;
+  WINDOWS = 3;
+  APPLE = 4;
+}
+
+enum DataUsage {
+  UNKNOWN_DATA_USAGE = 0;
+  NOT_APPLICABLE = 1;
+  OFFLINE = 2;
+  ONLINE = 3;
+  WIFI_ONLY = 4;
+}
+
+enum SyncType {
+  UNKNOWN_SYNC_TYPE = 0;
+  ALL_CONTACTS_SYNC = 1;
+  CONTACT_CERTIFICATES_SYNC = 2;
+  SELF_CERTIFICATES_SYNC = 3;
+  PUBLIC_CERTIFICATES_SYNC = 4;
+  DEVICE_CONTACT_SYNC = 5;
+}
+
+enum SyncStatus {
+  UNKNOWN_SYNC_STATUS = 0;
+  SUCCESS = 1;
+  FAIL = 2;
+}
+
+enum SessionStatus {
+  UNKNOWN_SESSION_STATUS = 0;
+  SUCCEEDED = 1;
+  FAILED = 2;
+  CANCELLED = 3;
+  TIMED_OUT = 4;
+  REJECTED = 5;
+  NOT_ENOUGH_SPACE = 6;
+  UNSUPPORTED_ATTACHMENT_TYPE = 7;
+  CANCELED_BY_SENDER = 8;
+  CANCELED_BY_RECEIVER = 9;
+  REJECTED_BY_RECEIVER = 10;
+  FAILED_NO_RESPONSE = 11;
+  FAILED_NO_TRANSFER = 12;
+  FAILED_NETWORK_ERROR = 13;
+  FAILED_UNKNOWN_ERROR = 14;
+}
+
+enum DeviceRelationship {
+  UNKNOWN_RELATIONSHIP = 0;
+  IS_SELF = 1;
+  IS_CONTACT = 2;
+  IS_STRANGER = 3;
+}
+
+enum SendSurface {
+  UNKNOWN_SEND_SURFACE = 0;
+  SHARE_SHEET = 1;
+}
+
+enum ConnectionLayerStatus {
+  UNKNOWN_CONNECTION_LAYER_STATUS = 0;
+  CONNECTION_LAYER_SUCCESS = 1;
+  CONNECTION_LAYER_FAIL = 2;
+  CONNECTION_LAYER_CANCEL = 3;
+  CONNECTION_LAYER_TIMEOUT = 4;
+}
+
+enum UpgradeStatus {
+  UNKNOWN_UPGRADE_STATUS = 0;
+  UPGRADE_SUCCESS = 1;
+  UPGRADE_FAIL = 2;
+}
+
+enum DiscoveryType {
+  UNKNOWN_DISCOVERY_TYPE = 0;
+  BLE_DISCOVERY = 1;
+  WIFI_LAN_DISCOVERY = 2;
+  MDNS_DISCOVERY = 3;
+  WIFI_AWARE_DISCOVERY = 4;
+}
+
+enum AdvertisingType {
+  UNKNOWN_ADVERTISING_TYPE = 0;
+  BLE_ADVERTISING = 1;
+  WIFI_LAN_ADVERTISING = 2;
+  MDNS_ADVERTISING = 3;
+  WIFI_AWARE_ADVERTISING = 4;
+}
+
+enum TransferMedium {
+  UNKNOWN_MEDIUM = 0;
+  BLE = 1;
+  WIFI_LAN = 2;
+  WIFI_HOTSPOT = 3;
+  WIFI_DIRECT = 4;
+  WEB_RTC = 5;
+  WIFI_AWARE = 6;
+  BLUETOOTH = 7;
+}
+
+enum ScanType {
+  UNKNOWN_SCAN_TYPE = 0;
+  FOREGROUND_SCAN = 1;
+  BACKGROUND_SCAN = 2;
+}
+
+enum AdvertisingMode {
+  UNKNOWN_ADVERTISING_MODE = 0;
+  FOREGROUND_ADVERTISING = 1;
+  BACKGROUND_ADVERTISING = 2;
+}
+
+enum PeerResolutionStatus {
+  UNKNOWN_PEER_RESOLUTION_STATUS = 0;
+  PEER_RESOLUTION_SUCCESS = 1;
+  PEER_RESOLUTION_FAIL = 2;
+}
+
+enum PermissionRequestType {
+  PERMISSION_UNKNOWN_TYPE = 0;
+
+  PERMISSION_AIRPLANE_MODE_OFF = 1;
+  PERMISSION_WIFI = 2;
+  PERMISSION_BLUETOOTH = 3;
+  PERMISSION_LOCATION = 4;
+  PERMISSION_WIFI_HOTSPOT = 5;
+}
+
+enum SharingUseCase {
+  USE_CASE_UNKNOWN = 0;
+
+  USE_CASE_NEARBY_SHARE = 1;
+  USE_CASE_REMOTE_COPY_PASTE = 2;
+  USE_CASE_WIFI_CREDENTIAL = 3;
+  USE_CASE_APP_SHARE = 4;
+  USE_CASE_QUICK_SETTING_FILE_SHARE = 5;
+  USE_CASE_SETUP_WIZARD = 6;
+  // Deprecated. QR code is an addition to existing use cases rather than being
+  // a separate use case.
+  USE_CASE_NEARBY_SHARE_WITH_QR_CODE = 7 [deprecated = true];
+  // The user was redirected from Bluetooth sharing UI to Nearby Share
+  USE_CASE_REDIRECTED_FROM_BLUETOOTH_SHARE = 8;
+}
+
+// Used only for Windows App now.
+enum AppCrashReason {
+  APP_CRASH_REASON_UNKNOWN = 0;
+}
+
+// Thes source where the attachemnt comes from. It can be an action, app name,
+// etc. The first 6 source types are being used as FileSenderType in Nearby
+// Share Windows app.
+enum AttachmentSourceType {
+  ATTACHMENT_SOURCE_UNKNOWN = 0;
+  ATTACHMENT_SOURCE_CONTEXT_MENU = 1;
+  ATTACHMENT_SOURCE_DRAG_AND_DROP = 2;
+  ATTACHMENT_SOURCE_SELECT_FILES_BUTTON = 3;
+  ATTACHMENT_SOURCE_PASTE = 4;
+  ATTACHMENT_SOURCE_SELECT_FOLDERS_BUTTON = 5;
+  ATTACHMENT_SOURCE_SHARE_ACTIVATION = 6;
+}
+
+// The action to interact with preferences.
+// Used only for Windows App now.
+enum PreferencesAction {
+  PREFERENCES_ACTION_UNKNOWN = 0;
+  PREFERENCES_ACTION_NO_ACTION = 1;
+
+  // Primary actions/functions towards preferences
+  PREFERENCES_ACTION_LOAD_PREFERENCES = 2;
+  PREFERENCES_ACTION_SAVE_PREFERENCESS = 3;
+  PREFERENCES_ACTION_ATTEMPT_LOAD = 4;
+  PREFERENCES_ACTION_RESTORE_FROM_BACKUP = 5;
+
+  // Other actions within the 4 actions above
+  PREFERENCES_ACTION_CREATE_PREFERENCES_PATH = 6;
+  PREFERENCES_ACTION_MAKE_PREFERENCES_BACKUP_FILE = 7;
+  PREFERENCES_ACTION_CHECK_IF_PREFERENCES_PATH_EXISTS = 8;
+  PREFERENCES_ACTION_CHECK_IF_PREFERENCES_INPUT_STREAM_STATUS = 9;
+  PREFERENCES_ACTION_CHECK_IF_PREFERENCES_FILE_IS_CORRUPTED = 10;
+  PREFERENCES_ACTION_CHECK_IF_PREFERENCES_BACKUP_FILE_EXISTS = 11;
+}
+
+// The status of the action to interact with preferences.
+// Used only for Windows App now.
+enum PreferencesActionStatus {
+  PREFERENCES_ACTION_STATUS_UNKNOWN = 0;
+  PREFERENCES_ACTION_STATUS_SUCCESS = 1;
+  PREFERENCES_ACTION_STATUS_FAIL = 2;
+}
+
+/** The distance of the found nearby fast init advertisement. */
+enum FastInitState {
+  FAST_INIT_UNKNOWN_STATE = 0;
+  // A device was found in close proximity.
+  // distance < fast_init_distance_close_centimeters(50 cm)
+  FAST_INIT_CLOSE_STATE = 1;
+  // A device was found in far proximity.
+  // distance < fast_init_distance_close_centimeters(10 m)
+  FAST_INIT_FAR_STATE = 2;
+  // No devices have been found nearby. The default state.
+  FAST_INIT_LOST_STATE = 3;
+}
+
+/** The type of FastInit advertisement. */
+enum FastInitType {
+  FAST_INIT_UNKNOWN_TYPE = 0;
+  // Show HUN to notify the user.
+  FAST_INIT_NOTIFY_TYPE = 1;
+  // Not notify the user.
+  FAST_INIT_SILENT_TYPE = 2;
+}
+
+// LINT.IfChange
+/** The type of desktop notification event. */
+enum DesktopNotification {
+  DESKTOP_NOTIFICATION_UNKNOWN = 0;
+  DESKTOP_NOTIFICATION_CONNECTING = 1;
+  DESKTOP_NOTIFICATION_PROGRESS = 2;
+  DESKTOP_NOTIFICATION_ACCEPT = 3;
+  DESKTOP_NOTIFICATION_RECEIVED = 4;
+  DESKTOP_NOTIFICATION_ERROR = 5;
+}
+
+enum DesktopTransferEventType {
+  DESKTOP_TRANSFER_EVENT_TYPE_UNKNOWN = 0;
+
+  // Receive attachments.
+  DESKTOP_TRANSFER_EVENT_RECEIVE_TYPE_ACCEPT = 1;
+  DESKTOP_TRANSFER_EVENT_RECEIVE_TYPE_PROGRESS = 2;
+  DESKTOP_TRANSFER_EVENT_RECEIVE_TYPE_RECEIVED = 3;
+  DESKTOP_TRANSFER_EVENT_RECEIVE_TYPE_ERROR = 4;
+
+  // Send attachments.
+  DESKTOP_TRANSFER_EVENT_SEND_TYPE_START = 5;
+  DESKTOP_TRANSFER_EVENT_SEND_TYPE_SELECT_A_DEVICE = 6;
+  DESKTOP_TRANSFER_EVENT_SEND_TYPE_PROGRESS = 7;
+  DESKTOP_TRANSFER_EVENT_SEND_TYPE_SENT = 8;
+  DESKTOP_TRANSFER_EVENT_SEND_TYPE_ERROR = 9;
+}
+
+enum DecryptCertificateFailureStatus {
+  DECRYPT_CERT_UNKNOWN_FAILURE = 0;
+  DECRYPT_CERT_NO_SUCH_ALGORITHM_FAILURE = 1;
+  DECRYPT_CERT_NO_SUCH_PADDING_FAILURE = 2;
+  DECRYPT_CERT_INVALID_KEY_FAILURE = 3;
+  DECRYPT_CERT_INVALID_ALGORITHM_PARAMETER_FAILURE = 4;
+  DECRYPT_CERT_ILLEGAL_BLOCK_SIZE_FAILURE = 5;
+  DECRYPT_CERT_BAD_PADDING_FAILURE = 6;
+}
+
+// Refer to go/qs-contacts-consent-2024 for the detail.
+enum ContactAccess {
+  CONTACT_ACCESS_UNKNOWN = 0;
+
+  CONTACT_ACCESS_NO_CONTACT_UPLOADED = 1;
+  CONTACT_ACCESS_ONLY_UPLOAD_GOOGLE_CONTACT = 2;
+  CONTACT_ACCESS_UPLOAD_CONTACT_FOR_DEVICE_CONTACT_CONSENT = 3;
+  CONTACT_ACCESS_UPLOAD_CONTACT_FOR_QUICK_SHARE_CONSENT = 4;
+}
+
+// Refer to go/qs-contacts-consent-2024 for the detail.
+enum IdentityVerification {
+  IDENTITY_VERIFICATION_UNKNOWN = 0;
+
+  IDENTITY_VERIFICATION_NO_PHONE_NUMBER_VERIFIED = 1;
+  IDENTITY_VERIFICATION_PHONE_NUMBER_VERIFIED_NOT_LINKED_TO_GAIA = 2;
+  IDENTITY_VERIFICATION_PHONE_NUMBER_VERIFIED_LINKED_TO_QS_GAIA = 3;
+}
+
+enum ButtonStatus {
+  BUTTON_STATUS_UNKNOWN = 0;
+  BUTTON_STATUS_CLICK_ACCEPT = 1;
+  BUTTON_STATUS_CLICK_REJECT = 2;
+  BUTTON_STATUS_IGNORE = 3;
+}

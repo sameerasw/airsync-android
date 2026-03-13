@@ -166,6 +166,13 @@ class AirSyncViewModel(
                 _uiState.value = _uiState.value.copy(isOnboardingCompleted = !firstRun)
             }
         }
+
+        // Observe Quick Share preference
+        viewModelScope.launch {
+            repository.isQuickShareEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isQuickShareEnabled = enabled)
+            }
+        }
     }
 
     override fun onCleared() {
@@ -270,6 +277,7 @@ class AirSyncViewModel(
             val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
+            val isQuickShareEnabled = repository.isQuickShareEnabled().first()
             
             // Replicate Essentials logic for initial state
             val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
@@ -331,7 +339,8 @@ class AirSyncViewModel(
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
                 isSentryReportingEnabled = isSentryReportingEnabled,
-                isOnboardingCompleted = !isFirstRun
+                isOnboardingCompleted = !isFirstRun,
+                isQuickShareEnabled = isQuickShareEnabled
             )
 
             updateRatingPromptDisplay()
@@ -633,6 +642,23 @@ class AirSyncViewModel(
                 // If no connection, the service should still run for WakeupService but maybe without scanning?
                 // For now, let's just trigger a service update that checks the new flag.
                 com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+            }
+        }
+    }
+
+    fun setQuickShareEnabled(context: Context, enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isQuickShareEnabled = enabled)
+        viewModelScope.launch {
+            repository.setQuickShareEnabled(enabled)
+            val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java)
+            if (enabled) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } else {
+                context.stopService(intent)
             }
         }
     }

@@ -452,6 +452,10 @@ fun FeatureIntroStepContent(
                     isClipboardTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                         context,
                         com.sameerasw.airsync.service.ClipboardTileService::class.java
+                    ),
+                    isQuickShareTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                        context,
+
                     )
                 )
             }

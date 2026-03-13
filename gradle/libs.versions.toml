@@ -17,6 +17,9 @@ okhttp = "4.11.0"
 playReview = "2.0.2"
 ksp = "2.3.5"
 sentry = "8.0.0"
+protobuf = "4.28.2"
+wire = "6.0.0-alpha03"
+bouncycastle = "1.78.1"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -49,12 +52,15 @@ okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhtt
 play-review = { group = "com.google.android.play", name = "review", version.ref = "playReview" }
 play-review-ktx = { group = "com.google.android.play", name = "review-ktx", version.ref = "playReview" }
 sentry-android = { group = "io.sentry", name = "sentry-android", version.ref = "sentry" }
+wire-runtime = { group = "com.squareup.wire", name = "wire-runtime", version.ref = "wire" }
+bouncycastle = { group = "org.bouncycastle", name = "bcprov-jdk18on", version.ref = "bouncycastle" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 google-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
+wire = { id = "com.squareup.wire", version.ref = "wire" }
 
 
 

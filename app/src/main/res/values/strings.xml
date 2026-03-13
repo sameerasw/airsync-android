@@ -79,4 +79,6 @@
     <string name="sentry_report_mode_title">Crash reporting</string>
     <string name="sentry_mode_off">Off</string>
     <string name="sentry_mode_auto">Auto</string>
+    <string name="label_app_icon_credits">App icon credits: @Syntrop2k2 on Telegram</string>
+    <string name="url_syntrop_telegram">https://t.me/Syntrop2k2</string>
 </resources>
