@@ -2,6 +2,7 @@ package com.sameerasw.airsync.utils
 
 import FileBrowserUtil
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import android.widget.Toast
 import com.sameerasw.airsync.BuildConfig
@@ -57,11 +58,13 @@ object WebSocketMessageHandler {
      * @param context Application context for performing actions.
      * @param message Raw JSON message string.
      */
-    fun handleIncomingMessage(context: Context, message: String) {
+    fun handleIncomingMessage(context: Context, json: String) {
+        Log.d(TAG, "Received WebSocket message: $json")
         try {
-            val json = JSONObject(message)
-            val type = json.optString("type")
-            val data = json.optJSONObject("data")
+            val jsonObject = JSONObject(json)
+            val type = jsonObject.optString("type")
+            Log.d(TAG, "Processing message type: $type")
+            val data = jsonObject.optJSONObject("data") ?: JSONObject()
 
             if (type != "ping") {
                 Log.d(TAG, "Handling message type: $type")
@@ -90,6 +93,7 @@ object WebSocketMessageHandler {
                 "fileTransferCancel" -> handleFileTransferCancel(context, data)
                 "browseLs" -> handleBrowseLs(context, data)
                 "filePull" -> handleFilePull(context, data)
+                "startQuickShare" -> handleStartQuickShare(context)
                 else -> {
                     Log.w(TAG, "Unknown message type: $type")
                 }
@@ -994,4 +998,19 @@ object WebSocketMessageHandler {
             false
         }
     }
+
+    private fun handleStartQuickShare(context: Context) {
+        try {
+            Log.d(TAG, "Triggering Quick Share receiving mode via WebSocket")
+            val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java)
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                context.startForegroundService(intent)
+            } else {
+                context.startService(intent)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error starting Quick Share service: ${e.message}")
+        }
+    }
 }
+

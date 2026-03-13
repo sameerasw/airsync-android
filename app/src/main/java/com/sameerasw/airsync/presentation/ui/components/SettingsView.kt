@@ -165,6 +165,10 @@ fun SettingsView(
                 isClipboardTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
                     context,
                     com.sameerasw.airsync.service.ClipboardTileService::class.java
+                ),
+                isQuickShareTileAdded = com.sameerasw.airsync.utils.QuickSettingsUtil.isQSTileAdded(
+                    context,
+
                 )
             )
         }
@@ -255,6 +259,15 @@ fun SettingsView(
                     onToggleMacMediaControls = { enabled ->
                         viewModel.setMacMediaControlsEnabled(enabled)
                     }
+                )
+
+                SendNowPlayingCard(
+                    isSendNowPlayingEnabled = uiState.isQuickShareEnabled,
+                    onToggleSendNowPlaying = { enabled: Boolean ->
+                        viewModel.setQuickShareEnabled(context, enabled)
+                    },
+                    title = "Quick Share",
+                    subtitle = "Allow receiving files from nearby devices"
                 )
             }
         }

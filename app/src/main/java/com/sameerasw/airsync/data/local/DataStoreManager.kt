@@ -91,6 +91,7 @@ class DataStoreManager(private val context: Context) {
         private val USE_BLUR = booleanPreferencesKey("use_blur")
         private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
         private val SENTRY_REPORTING_ENABLED = booleanPreferencesKey("sentry_reporting_enabled")
+        private val QUICK_SHARE_ENABLED = booleanPreferencesKey("quick_share_enabled")
 
         // Widget preferences
         private val WIDGET_TRANSPARENCY = androidx.datastore.preferences.core.floatPreferencesKey("widget_transparency")
@@ -325,6 +326,18 @@ class DataStoreManager(private val context: Context) {
     fun getSentryReportingEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[SENTRY_REPORTING_ENABLED] ?: true // Default to enabled
+        }
+    }
+
+    suspend fun setQuickShareEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[QUICK_SHARE_ENABLED] = enabled
+        }
+    }
+
+    fun isQuickShareEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[QUICK_SHARE_ENABLED] ?: false // Default to disabled
         }
     }
 
