@@ -1002,7 +1002,9 @@ object WebSocketMessageHandler {
     private fun handleStartQuickShare(context: Context) {
         try {
             Log.d(TAG, "Triggering Quick Share receiving mode via WebSocket")
-            val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java)
+            val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java).apply {
+                action = com.sameerasw.airsync.quickshare.QuickShareService.ACTION_START_DISCOVERY
+            }
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
