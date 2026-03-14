@@ -523,12 +523,14 @@ object WebSocketMessageHandler {
                 // Version compatibility check
                 val minVersion = BuildConfig.MIN_MAC_APP_VERSION
                 if (isVersionOutdated(macVersion, minVersion)) {
-                    launch(Dispatchers.Main) {
-                        Toast.makeText(
-                            context,
-                            "Mac app is outdated ($macVersion < $minVersion). Please update the mac app and reconnect.",
-                            Toast.LENGTH_LONG
-                        ).show()
+                    if (com.sameerasw.airsync.AirSyncApp.isAppForeground()) {
+                        launch(Dispatchers.Main) {
+                            Toast.makeText(
+                                context,
+                                "Mac app is outdated ($macVersion < $minVersion). Please update the mac app and reconnect.",
+                                Toast.LENGTH_LONG
+                            ).show()
+                        }
                     }
                 }
 
