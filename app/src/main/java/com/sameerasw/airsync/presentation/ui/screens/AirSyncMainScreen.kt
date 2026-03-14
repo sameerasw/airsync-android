@@ -100,10 +100,10 @@ import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
 import com.sameerasw.airsync.presentation.ui.modifiers.BlurDirection
 import com.sameerasw.airsync.presentation.ui.modifiers.progressiveBlur
+import com.sameerasw.airsync.presentation.ui.components.FloatingMediaPlayer
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
-import com.sameerasw.airsync.presentation.ui.components.cards.MediaPlayerCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
@@ -696,7 +696,7 @@ fun AirSyncMainScreen(
         val statusBarHeightPx = with(density) {
             WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
         }
-        val bottomBlurHeightPx = with(density) { 130.dp.toPx() }
+        val bottomBlurHeightPx = with(density) { 180.dp.toPx() }
 
         Box(
             modifier = Modifier
@@ -776,33 +776,7 @@ fun AirSyncMainScreen(
                                         onRemoteAction = { sendRemoteAction(it) }
                                     )
                                 }
-
-
-                                // Media Player Card
-                                AnimatedVisibility(
-                                    visible = uiState.isConnected,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    MediaPlayerCard(
-                                        musicInfo = macStatus?.music,
-                                        albumArtBitmap = albumArtBitmap,
-                                        volume = volume,
-                                        isMuted = isMuted,
-                                        onVolumeChange = {
-                                            volume = it
-                                            sendRemoteAction("vol_set", it.toInt())
-                                        },
-                                        onToggleMute = {
-                                            sendRemoteAction("vol_mute")
-                                            isMuted = !isMuted
-                                        },
-                                        onMediaAction = { sendRemoteAction(it) }
-                                    )
-                                }
                             }
-
-
 
                             RoundedCardContainer {
                                 // Nearby Devices (UDP Discovery)
@@ -1046,7 +1020,7 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = statusBarHeight, bottom = 100.dp),
+                                    .padding(top = statusBarHeight, bottom = 180.dp),
                                 showKeyboard = showKeyboard,
                                 onDismissKeyboard = { showKeyboard = false }
                             )
@@ -1091,7 +1065,7 @@ fun AirSyncMainScreen(
                                 onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = topSpacing, bottom = 100.dp),
+                                    .padding(top = topSpacing, bottom = 180.dp),
                             )
                         } else {
                             Box(Modifier.fillMaxSize())
@@ -1193,6 +1167,33 @@ fun AirSyncMainScreen(
                     }
                 }
             )
+
+            // Floating Media Player
+            AnimatedVisibility(
+                visible = uiState.isConnected,
+                enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 108.dp) // Positioned above the floating toolbar
+                    .zIndex(2f)
+            ) {
+                FloatingMediaPlayer(
+                    musicInfo = macStatus?.music,
+                    albumArtBitmap = albumArtBitmap,
+                    volume = volume,
+                    isMuted = isMuted,
+                    onVolumeChange = {
+                        volume = it
+                        sendRemoteAction("vol_set", it.toInt())
+                    },
+                    onToggleMute = {
+                        sendRemoteAction("vol_mute")
+                        isMuted = !isMuted
+                    },
+                    onMediaAction = { sendRemoteAction(it) }
+                )
+            }
         }
     }
 

@@ -471,7 +471,7 @@ fun SettingsView(
             onAvatarLongClick = onToggleDeveloperMode
         )
 
-        Spacer(modifier = Modifier.height(100.dp))
+        Spacer(modifier = Modifier.height(180.dp))
     }
 }
 
