@@ -19,6 +19,12 @@ object MacModelMapper {
     }
 
     @DrawableRes
+    fun getTileIconRes(device: ConnectedDevice?): Int {
+        if (device == null) return R.drawable.rounded_laptop_mac_24
+        return getTileIconRes(device.name, device.model, device.deviceType)
+    }
+
+    @DrawableRes
     fun getPreviewRes(name: String, model: String?, deviceType: String?): Int {
         val modelStr = model?.replace(" ", "") ?: ""
         val nameStr = name.replace(" ", "").lowercase()
@@ -31,6 +37,25 @@ object MacModelMapper {
     fun getIconRes(name: String, model: String?, deviceType: String?): Int {
         // For now, same logic as preview as per user request to use these vectors everywhere
         return getPreviewRes(name, model, deviceType)
+    }
+
+    @DrawableRes
+    fun getTileIconRes(name: String, model: String?, deviceType: String?): Int {
+        val modelStr = model?.replace(" ", "") ?: ""
+        val nameStr = name.replace(" ", "").lowercase()
+        val typeStr = deviceType?.replace(" ", "")?.lowercase() ?: ""
+        val hay = "$nameStr$modelStr$typeStr".lowercase()
+        
+        return when {
+            hay.contains("macbookair") -> R.drawable.rounded_laptop_mac_24
+            hay.contains("macbookpro") -> R.drawable.rounded_laptop_mac_24
+            hay.contains("macmini") -> R.drawable.ic_mac_mini_24
+            hay.contains("imac") -> R.drawable.ic_desktop_24
+            hay.contains("macstudio") -> R.drawable.ic_mac_studio_24
+            hay.contains("macpro") -> R.drawable.ic_mac_pro_24
+            hay.contains("macbookneo") -> R.drawable.rounded_laptop_mac_24
+            else -> R.drawable.rounded_laptop_mac_24
+        }
     }
 
     @DrawableRes

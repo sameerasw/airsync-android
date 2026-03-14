@@ -29,6 +29,11 @@ object DeviceIconResolver {
     }
 
     @DrawableRes
+    fun getTileIconRes(device: ConnectedDevice?): Int {
+        return MacModelMapper.getTileIconRes(device)
+    }
+
+    @DrawableRes
     fun getIconResForName(name: String?, model: String?, deviceType: String?): Int {
         return MacModelMapper.getIconRes(name ?: "", model, deviceType)
     }
