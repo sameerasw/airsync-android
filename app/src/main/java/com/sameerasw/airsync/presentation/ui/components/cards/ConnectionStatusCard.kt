@@ -86,7 +86,8 @@ fun ConnectionStatusCard(
                     contentDescription = "Connected Mac preview",
                     modifier = Modifier
                         .fillMaxWidth(0.75f),
-                    contentScale = ContentScale.Fit
+                    contentScale = ContentScale.Fit,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
             }
 

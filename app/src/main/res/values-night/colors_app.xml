@@ -3,4 +3,5 @@
     <!-- Dark theme window background -->
     <color name="app_window_background">@color/widget_background</color>
     <color name="branding_icon_background">#FFD0BCFF</color>
+    <color name="material_primary">#FFD0BCFF</color>
 </resources>

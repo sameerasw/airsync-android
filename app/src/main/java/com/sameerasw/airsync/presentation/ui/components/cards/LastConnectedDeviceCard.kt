@@ -59,7 +59,8 @@ fun LastConnectedDeviceCard(
                     contentDescription = "Connected Mac preview",
                     modifier = Modifier
                         .fillMaxWidth(0.45f),
-                    contentScale = ContentScale.Fit
+                    contentScale = ContentScale.Fit,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
             }
 
