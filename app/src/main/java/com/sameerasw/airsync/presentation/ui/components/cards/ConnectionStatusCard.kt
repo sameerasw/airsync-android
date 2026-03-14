@@ -3,6 +3,7 @@ package com.sameerasw.airsync.presentation.ui.components.cards
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,6 +34,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
+import com.sameerasw.airsync.presentation.ui.components.RotatingAppIcon
+import com.sameerasw.airsync.presentation.ui.components.SlowlyRotatingAppIcon
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
@@ -100,8 +104,8 @@ fun ConnectionStatusCard(
                 ) {
                     Text(
                         "${connectedDevice.name}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -169,7 +173,12 @@ fun ConnectionStatusCard(
                 }
 
                 if (isConnected) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) { LoadingIndicator() }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        SlowlyRotatingAppIcon(
+                            modifier = Modifier
+                                .size(54.dp)
+                        )
+                    }
 //                    Icon(
 //                        painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_24),
 //                        contentDescription = "Connected",

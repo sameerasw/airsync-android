@@ -43,8 +43,12 @@ import androidx.compose.material.icons.filled.Phonelink
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Phonelink
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.Keyboard
+import androidx.compose.material.icons.rounded.Phonelink
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularWavyProgressIndicator
@@ -648,15 +652,15 @@ fun AirSyncMainScreen(
     val tabs = remember(uiState.isConnected) {
         if (uiState.isConnected) {
             listOf(
-                AirSyncTab(R.string.tab_connect, Icons.Outlined.Phonelink, 0),
-                AirSyncTab(R.string.tab_remote, Icons.Filled.Gamepad, 1),
-                AirSyncTab(R.string.tab_clipboard, Icons.Filled.ContentPaste, 2),
-                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 3)
+                AirSyncTab(R.string.tab_connect, Icons.Rounded.Phonelink, 0),
+                AirSyncTab(R.string.tab_remote, Icons.Rounded.Gamepad, 1),
+                AirSyncTab(R.string.tab_clipboard, Icons.Rounded.ContentPaste, 2),
+                AirSyncTab(R.string.tab_settings, Icons.Rounded.Settings, 3)
             )
         } else {
             listOf(
-                AirSyncTab(R.string.tab_connect, Icons.Filled.Phonelink, 0),
-                AirSyncTab(R.string.tab_settings, Icons.Filled.Settings, 1)
+                AirSyncTab(R.string.tab_connect, Icons.Rounded.Phonelink, 0),
+                AirSyncTab(R.string.tab_settings, Icons.Rounded.Settings, 1)
             )
         }
     }
@@ -751,6 +755,7 @@ fun AirSyncMainScreen(
                                     )
                                 }
 
+
                                 // Connection Status Card
                                 ConnectionStatusCard(
                                     isConnected = uiState.isConnected,
@@ -771,6 +776,7 @@ fun AirSyncMainScreen(
                                         onRemoteAction = { sendRemoteAction(it) }
                                     )
                                 }
+
 
                                 // Media Player Card
                                 AnimatedVisibility(
@@ -795,6 +801,8 @@ fun AirSyncMainScreen(
                                     )
                                 }
                             }
+
+
 
                             RoundedCardContainer {
                                 // Nearby Devices (UDP Discovery)

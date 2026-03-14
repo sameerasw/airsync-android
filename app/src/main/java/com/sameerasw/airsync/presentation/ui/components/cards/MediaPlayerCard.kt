@@ -60,7 +60,9 @@ fun MediaPlayerCard(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
+        )
     ) {
         Box(
             modifier = Modifier.fillMaxWidth()
@@ -79,7 +81,7 @@ fun MediaPlayerCard(
                 Box(
                     modifier = Modifier
                         .matchParentSize()
-                        .background(MaterialTheme.colorScheme.background.copy(alpha = 0.6f))
+                        .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f))
                 )
             }
             Column(
@@ -102,15 +104,13 @@ fun MediaPlayerCard(
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                     Text(
                         text = musicInfo?.artist?.takeIf { it.isNotEmpty() }
                             ?: "from your Mac",
                         style = MaterialTheme.typography.titleMedium,
-                        color = if (albumArtBitmap != null) MaterialTheme.colorScheme.onBackground.copy(
-                            alpha = 0.7f
-                        ) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -184,7 +184,7 @@ fun MediaPlayerCard(
                         Icon(
                             imageVector = if (isMuted) Icons.AutoMirrored.Filled.VolumeOff else Icons.AutoMirrored.Filled.VolumeUp,
                             contentDescription = "Mute",
-                            tint = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.onSurface
+                            tint = MaterialTheme.colorScheme.primary
                         )
                     }
 
@@ -194,9 +194,9 @@ fun MediaPlayerCard(
                         valueRange = 0f..100f,
                         modifier = Modifier.weight(1f),
                         colors = SliderDefaults.colors(
-                            thumbColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                            activeTrackColor = if (albumArtBitmap != null) Color.White else MaterialTheme.colorScheme.primary,
-                            inactiveTrackColor = if (albumArtBitmap != null) Color.White.copy(alpha = 0.3f) else MaterialTheme.colorScheme.surfaceVariant
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary,
+                            inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
                     )
                 }

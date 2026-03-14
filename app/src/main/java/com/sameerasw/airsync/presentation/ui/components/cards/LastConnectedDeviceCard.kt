@@ -69,11 +69,29 @@ fun LastConnectedDeviceCard(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(
-                    "${device.name}",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(bottom = 10.dp)
-                )
+                Column{
+
+                    Text(
+                        "${device.name}",
+                        style = MaterialTheme.typography.headlineSmall
+                    )
+
+                    val lastConnectedTime = remember(device.lastConnected) {
+                        val currentTime = System.currentTimeMillis()
+                        val diffMinutes = (currentTime - device.lastConnected) / (1000 * 60)
+                        when {
+                            diffMinutes < 1 -> "Just now"
+                            diffMinutes < 60 -> "${diffMinutes}m ago"
+                            diffMinutes < 1440 -> "${diffMinutes / 60}h ago"
+                            else -> "${diffMinutes / 1440}d ago"
+                        }
+                    }
+                    Text(
+                        "Last seen $lastConnectedTime",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+
+                }
 
                 // Display status badge - PLUS or FREE
                 Card(
@@ -97,46 +115,11 @@ fun LastConnectedDeviceCard(
                 }
             }
 
-
-            // Display device model and type if available
-            device.model?.let { model ->
-                Text(
-                    "Model: $model",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
 //            device.deviceType?.let { type ->
 //                Text("Type: $type", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 //            }
 
-            val lastConnectedTime = remember(device.lastConnected) {
-                val currentTime = System.currentTimeMillis()
-                val diffMinutes = (currentTime - device.lastConnected) / (1000 * 60)
-                when {
-                    diffMinutes < 1 -> "Just now"
-                    diffMinutes < 60 -> "${diffMinutes}m ago"
-                    diffMinutes < 1440 -> "${diffMinutes / 60}h ago"
-                    else -> "${diffMinutes / 1440}d ago"
-                }
-            }
-            Text("Last seen $lastConnectedTime", style = MaterialTheme.typography.bodyMedium)
 
-            // Auto-reconnect toggle
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Auto reconnect", style = MaterialTheme.typography.bodyMedium)
-                Switch(checked = isAutoReconnectEnabled, onCheckedChange = { enabled ->
-                    if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
-                        haptics
-                    )
-                    onToggleAutoReconnect(enabled)
-                })
-            }
 
             Button(
                 onClick = {
@@ -151,10 +134,26 @@ fun LastConnectedDeviceCard(
                 Icon(
                     painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_sync_desktop_24),
                     contentDescription = "Quick connect",
-                    modifier = Modifier.padding(end = 8.dp),
+                    modifier = Modifier.padding(end = 12.dp),
 //                    tint = MaterialTheme.colorScheme.primary
                 )
                 Text("Quick Connect")
+            }
+
+            // Auto-reconnect toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth().padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("Auto reconnect", style = MaterialTheme.typography.bodyMedium)
+                Switch(checked = isAutoReconnectEnabled, onCheckedChange = { enabled ->
+                    if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
+                        haptics
+                    )
+                    onToggleAutoReconnect(enabled)
+                })
             }
 
         }

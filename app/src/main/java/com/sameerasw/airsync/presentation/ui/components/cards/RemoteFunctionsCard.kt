@@ -44,7 +44,7 @@ fun RemoteFunctionsCard(
         modifier = modifier
             .fillMaxWidth(),
         shape = MaterialTheme.shapes.extraSmall,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHighest)
     ) {
         Row(
             modifier = Modifier
@@ -60,7 +60,7 @@ fun RemoteFunctionsCard(
                     onRemoteAction("lock_screen")
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceBright,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 contentPadding = PaddingValues(horizontal = 8.dp),
@@ -88,7 +88,7 @@ fun RemoteFunctionsCard(
                     onRemoteAction("screensaver")
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceBright,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 contentPadding = PaddingValues(horizontal = 8.dp),
@@ -116,7 +116,7 @@ fun RemoteFunctionsCard(
                     onRemoteAction("brightness_down")
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceBright,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 contentPadding = PaddingValues(0.dp),
@@ -138,7 +138,7 @@ fun RemoteFunctionsCard(
                     onRemoteAction("brightness_up")
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    containerColor = MaterialTheme.colorScheme.surfaceBright,
                     contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                 ),
                 contentPadding = PaddingValues(0.dp),
