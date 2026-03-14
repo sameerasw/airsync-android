@@ -210,7 +210,6 @@ fun ConnectionStatusCard(
 
                 if (isConnected) {
 
-                    // Screensaver Button
                     Button(
                         onClick = {
                             HapticUtil.performClick(haptics)
@@ -220,7 +219,6 @@ fun ConnectionStatusCard(
                             containerColor = MaterialTheme.colorScheme.surfaceBright,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                         ),
-                        contentPadding = PaddingValues(horizontal = 8.dp),
                         modifier = Modifier
                             .height(48.dp)
                     ) {

@@ -69,12 +69,15 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.IntOffset
 import com.sameerasw.airsync.domain.model.MacMusicInfo
+import com.sameerasw.airsync.utils.HapticUtil
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -96,6 +99,7 @@ fun FloatingMediaPlayer(
     val config = LocalConfiguration.current
     val screenHeight = config.screenHeightDp.dp
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
 
     val collapsedHeight = 72.dp
     val expandedHeight = 280.dp
@@ -115,6 +119,11 @@ fun FloatingMediaPlayer(
             snapAnimationSpec = spring(),
             decayAnimationSpec = exponentialDecay()
         )
+    }
+
+    // Trigger haptic feedback on expansion state change
+    LaunchedEffect(anchoredDraggableState.currentValue) {
+        HapticUtil.performLightTick(haptics)
     }
 
     // Sync state with anchoredDraggableState
