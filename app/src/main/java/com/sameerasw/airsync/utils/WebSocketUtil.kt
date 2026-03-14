@@ -347,9 +347,11 @@ object WebSocketUtil {
                             ) {
                                 if (webSocket == WebSocketUtil.webSocket) {
                                     if (code != 1000) {
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val msg = reason.ifEmpty { "Unknown Server Disconnect" }
-                                            android.widget.Toast.makeText(context, "Disconnected: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                                        if (com.sameerasw.airsync.AirSyncApp.isAppForeground()) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val msg = reason.ifEmpty { "Unknown Server Disconnect" }
+                                                android.widget.Toast.makeText(context, "Disconnected: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     }
                                     isConnected.set(false)
@@ -391,15 +393,17 @@ object WebSocketUtil {
 
                                 if (wasActive || isFinalManualAttempt) {
                                     if (manualAttempt || isSocketOpen.get()) {
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val msg = when (t) {
-                                                is java.net.ConnectException -> "Connection Refused (Is AirSync Mac running?)"
-                                                is java.net.SocketTimeoutException -> "Could not discover your mac"
-                                                is java.net.UnknownHostException -> "Could not reach your mac"
-                                                is java.io.EOFException, is java.net.SocketException -> "Lost connection to your mac"
-                                                else -> t.message ?: "Unknown connection error"
+                                        if (com.sameerasw.airsync.AirSyncApp.isAppForeground()) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val msg = when (t) {
+                                                    is java.net.ConnectException -> "Connection Refused (Is AirSync Mac running?)"
+                                                    is java.net.SocketTimeoutException -> "Could not discover your mac"
+                                                    is java.net.UnknownHostException -> "Could not reach your mac"
+                                                    is java.io.EOFException, is java.net.SocketException -> "Lost connection to your mac"
+                                                    else -> t.message ?: "Unknown connection error"
+                                                }
+                                                android.widget.Toast.makeText(context, "AirSync: $msg", android.widget.Toast.LENGTH_LONG).show()
                                             }
-                                            android.widget.Toast.makeText(context, "AirSync: $msg", android.widget.Toast.LENGTH_LONG).show()
                                         }
                                     }
                                     isConnected.set(false)

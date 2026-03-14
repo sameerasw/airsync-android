@@ -25,34 +25,17 @@ object DeviceIconResolver {
 
     @DrawableRes
     fun getIconRes(device: ConnectedDevice?): Int {
-        if (device == null) return R.drawable.ic_laptop_24
+        return MacModelMapper.getIconRes(device)
+    }
 
-        val name = device.name
-        val model = device.model
-        val type = device.deviceType
-
-        return getIconResForName(name, model, type)
+    @DrawableRes
+    fun getTileIconRes(device: ConnectedDevice?): Int {
+        return MacModelMapper.getTileIconRes(device)
     }
 
     @DrawableRes
     fun getIconResForName(name: String?, model: String?, deviceType: String?): Int {
-        val hay = buildString {
-            if (!name.isNullOrBlank()) append(name).append(' ')
-            if (!model.isNullOrBlank()) append(model).append(' ')
-            if (!deviceType.isNullOrBlank()) append(deviceType)
-        }.trim().lowercase()
-
-        // Check top categories by substring
-        return when {
-            hay.contains("imac") -> R.drawable.ic_desktop_24
-            hay.contains("mac mini") || hay.contains("macmini") -> R.drawable.ic_mac_mini_24
-            hay.contains("mac studio") -> R.drawable.ic_mac_studio_24
-            // Ensure "mac pro" (desktop) is checked before generic "pro" in MacBook Pro names
-            hay.contains("mac pro") -> R.drawable.ic_mac_pro_24
-            // MacBook covers both Air and Pro; we keep existing laptop icon for both
-            hay.contains("macbook") -> R.drawable.ic_laptop_24
-            else -> R.drawable.ic_laptop_24
-        }
+        return MacModelMapper.getIconRes(name ?: "", model, deviceType)
     }
 
     /** Convenience for places without direct device: read last device once. */
@@ -63,7 +46,7 @@ object DeviceIconResolver {
             val last = ds.getLastConnectedDevice().first()
             getIconRes(last)
         } catch (_: Exception) {
-            R.drawable.ic_laptop_24
+            R.drawable.macbook_air_gen2
         }
     }
 }
