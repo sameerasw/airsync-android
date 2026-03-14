@@ -98,7 +98,10 @@ class WakeupService : Service() {
     private suspend fun startHttpServer() {
         withContext(Dispatchers.IO) {
             try {
-                httpServerSocket = ServerSocket(HTTP_PORT)
+                httpServerSocket = ServerSocket().apply {
+                    reuseAddress = true
+                    bind(java.net.InetSocketAddress(HTTP_PORT))
+                }
 
                 serviceScope.launch {
                     while (isRunning && httpServerSocket?.isClosed == false) {

@@ -820,6 +820,78 @@ object WebSocketUtil {
     }
 
     /**
+     * Attempts to re-establish a direct LAN connection while relay is active.
+     * Called when WiFi becomes available again after being lost.
+     * On success the existing relay stays warm but message routing automatically
+     * prefers LAN via sendMessage().
+     */
+    fun requestLanReconnectFromRelay(context: Context) {
+        if (isConnected.get() || isConnecting.get()) return
+        Log.i(TAG, "Attempting LAN reconnect while relay is active")
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+                val manual = ds.getUserManuallyDisconnected().first()
+                val autoEnabled = ds.getAutoReconnectEnabled().first()
+                if (manual || !autoEnabled) {
+                    Log.d(TAG, "LAN reconnect from relay skipped: manual=$manual autoEnabled=$autoEnabled")
+                    return@launch
+                }
+
+                val last = ds.getLastConnectedDevice().first() ?: return@launch
+                val all = ds.getAllNetworkDeviceConnections().first()
+                val targetConnection = all.firstOrNull { it.deviceName == last.name }
+
+                if (targetConnection != null) {
+                    // Discover fresh IPs via UDP burst first, then attempt connect
+                    UDPDiscoveryManager.burstBroadcast(context)
+                    delay(1500) // Allow time for discovery responses
+
+                    // Check discovered devices for the target
+                    val discovered = UDPDiscoveryManager.discoveredDevices.value
+                    val match = discovered.find { it.name == last.name }
+
+                    val ips = match?.ips?.joinToString(",")
+                        ?: targetConnection.getClientIpForNetwork(DeviceInfoUtil.getWifiIpAddress(context) ?: "")
+                        ?: last.ipAddress
+                    val port = targetConnection.port.toIntOrNull() ?: 6996
+
+                    Log.i(TAG, "LAN reconnect from relay: trying $ips:$port")
+                    connect(
+                        context = context,
+                        ipAddress = ips,
+                        port = port,
+                        symmetricKey = targetConnection.symmetricKey,
+                        manualAttempt = false,
+                        onConnectionStatus = { connected ->
+                            if (connected) {
+                                Log.i(TAG, "LAN reconnect succeeded — relay stays warm as backup")
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    try {
+                                        ds.updateNetworkDeviceLastConnected(
+                                            targetConnection.deviceName,
+                                            System.currentTimeMillis()
+                                        )
+                                    } catch (_: Exception) {}
+                                }
+                            } else {
+                                Log.d(TAG, "LAN reconnect from relay failed — staying on relay")
+                            }
+                        }
+                    )
+                } else {
+                    Log.d(TAG, "No target connection found for LAN reconnect from relay")
+                    // Fall back to generic auto-reconnect which monitors discovery
+                    tryStartAutoReconnect(context)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error in requestLanReconnectFromRelay: ${e.message}")
+            }
+        }
+    }
+
+    /**
      * Handles an authChallenge message from the Mac LAN server.
      * Computes HMAC-SHA256(symmetricKey, nonce) and sends back an authResponse.
      */

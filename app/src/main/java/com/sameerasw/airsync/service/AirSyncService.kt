@@ -17,6 +17,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.DiscoveryMode
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
 import com.sameerasw.airsync.utils.WebSocketUtil
@@ -158,6 +159,13 @@ class AirSyncService : Service() {
                     if (isScanning) {
                         UDPDiscoveryManager.burstBroadcast(applicationContext)
                         WebSocketUtil.requestAutoReconnect(applicationContext)
+                    }
+                    // When WiFi returns while relay is active but LAN is down,
+                    // attempt to re-establish the preferred local connection.
+                    if (!isScanning && !WebSocketUtil.isConnected() && AirBridgeClient.isRelayActive()) {
+                        Log.i(TAG, "WiFi available while relay is active — attempting LAN reconnect")
+                        UDPDiscoveryManager.burstBroadcast(applicationContext)
+                        WebSocketUtil.requestLanReconnectFromRelay(applicationContext)
                     }
                 }
             }

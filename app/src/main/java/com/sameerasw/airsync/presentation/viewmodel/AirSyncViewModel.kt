@@ -113,6 +113,7 @@ class AirSyncViewModel(
             _uiState.value = _uiState.value.copy(
                 isConnected = unifiedConnected,
                 isConnecting = unifiedConnecting,
+                isRelayConnection = relayConnected && !lastWebSocketConnected,
                 response = when {
                     unifiedConnected -> "Connected successfully!"
                     unifiedConnecting -> "Connecting..."

@@ -8,9 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -130,21 +133,48 @@ fun ConnectionStatusCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val ips =
-                        uiState.ipAddress.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-                    ips.forEach { ip ->
-                        val isActive = ip == uiState.activeIp
+                    if (uiState.isRelayConnection) {
+                        // When connected via relay only, show AirBridge indicator instead of LAN IPs
                         Surface(
                             shape = RoundedCornerShape(12.dp),
-                            color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                            color = MaterialTheme.colorScheme.tertiaryContainer,
                             modifier = Modifier.animateContentSize()
                         ) {
-                            Text(
-                                text = "$ip:${connectedDevice.port}",
+                            Row(
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_web_24),
+                                    contentDescription = "AirBridge",
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                                Text(
+                                    text = "via AirBridge relay",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                )
+                            }
+                        }
+                    } else {
+                        val ips =
+                            uiState.ipAddress.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                        ips.forEach { ip ->
+                            val isActive = ip == uiState.activeIp
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                                modifier = Modifier.animateContentSize()
+                            ) {
+                                Text(
+                                    text = "$ip:${connectedDevice.port}",
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = if (isActive) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                     }
                 }
@@ -190,6 +220,47 @@ fun ConnectionStatusCard(
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
+
+                // Connection transport indicator (WiFi vs Relay)
+                if (isConnected) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = if (uiState.isRelayConnection)
+                            MaterialTheme.colorScheme.tertiaryContainer
+                        else
+                            MaterialTheme.colorScheme.secondaryContainer,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                painter = painterResource(
+                                    id = if (uiState.isRelayConnection)
+                                        com.sameerasw.airsync.R.drawable.rounded_web_24
+                                    else
+                                        com.sameerasw.airsync.R.drawable.rounded_android_wifi_3_bar_24
+                                ),
+                                contentDescription = if (uiState.isRelayConnection) "Relay connection" else "Local connection",
+                                modifier = Modifier.size(16.dp),
+                                tint = if (uiState.isRelayConnection)
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Text(
+                                text = if (uiState.isRelayConnection) "Relay" else "Local",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (uiState.isRelayConnection)
+                                    MaterialTheme.colorScheme.onTertiaryContainer
+                                else
+                                    MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+                }
 
                 if (isConnected) {
                     OutlinedButton(onClick = {
