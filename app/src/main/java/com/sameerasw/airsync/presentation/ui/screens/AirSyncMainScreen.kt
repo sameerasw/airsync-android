@@ -181,6 +181,14 @@ fun AirSyncMainScreen(
     val macStatus by MacDeviceStatusManager.macDeviceStatus.collectAsState()
     val albumArtBitmap by MacDeviceStatusManager.albumArt.collectAsState()
 
+    // Sync volume and mute state with Mac status updates
+    LaunchedEffect(macStatus?.music) {
+        macStatus?.music?.let { music ->
+            volume = music.volume.toFloat()
+            isMuted = music.isMuted
+        }
+    }
+
     // Volume updates from Mac
     DisposableEffect(Unit) {
         val callback = { newVolume: Int ->
