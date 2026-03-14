@@ -1,5 +1,6 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -23,13 +24,10 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -51,14 +49,11 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
-import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
-import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -79,7 +74,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -107,6 +101,8 @@ import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottom
 import com.sameerasw.airsync.presentation.ui.composables.WelcomeScreen
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
+import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.ClipboardSyncManager
 import com.sameerasw.airsync.utils.HapticUtil
 import com.sameerasw.airsync.utils.JsonUtil
@@ -121,13 +117,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
-import java.net.URLDecoder
 
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3ExpressiveApi::class
 )
+@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun AirSyncMainScreen(
     modifier: Modifier = Modifier,
@@ -206,8 +202,6 @@ fun AirSyncMainScreen(
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
-    var fabVisible by remember { mutableStateOf(true) }
-    var fabExpanded by remember { mutableStateOf(true) }
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
     var showHelpSheet by remember { mutableStateOf(false) }
     val onDismissHelp = { showHelpSheet = false }
@@ -428,23 +422,34 @@ fun AirSyncMainScreen(
                         }
                     }
 
-                    // Parse query parameters
+                    // Parse query parameters (legacy '?' and modern '&' separators)
                     var pcName: String? = null
                     var isPlus = false
                     var symmetricKey: String? = null
+                    var relayUrl: String? = null
+                    var airBridgePairingId: String? = null
+                    var airBridgeSecret: String? = null
 
                     val queryPart = uri.toString().substringAfter('?', "")
                     if (queryPart.isNotEmpty()) {
-                        val params = queryPart.split('?')
-                        val paramMap = params.associate { param ->
-                            val parts = param.split('=', limit = 2)
-                            val key = parts.getOrNull(0) ?: ""
-                            val value = parts.getOrNull(1) ?: ""
-                            key to value
-                        }
-                        pcName = paramMap["name"]?.let { URLDecoder.decode(it, "UTF-8") }
+                        val paramMap = queryPart.split("[?&]".toRegex())
+                            .mapNotNull { raw ->
+                                if (raw.isBlank()) return@mapNotNull null
+                                val parts = raw.split('=', limit = 2)
+                                val key = parts.getOrNull(0)?.trim().orEmpty()
+                                if (key.isEmpty()) return@mapNotNull null
+                                key to (parts.getOrNull(1).orEmpty())
+                            }
+                            .toMap()
+
+                        pcName = paramMap["name"]?.let { android.net.Uri.decode(it) }
                         isPlus = paramMap["plus"]?.toBooleanStrictOrNull() ?: false
-                        symmetricKey = paramMap["key"]
+                        symmetricKey = paramMap["key"]?.let { android.net.Uri.decode(it) }
+                        relayUrl = paramMap["relay"]?.let { android.net.Uri.decode(it) }
+                        airBridgePairingId =
+                            paramMap["pairingId"]?.let { android.net.Uri.decode(it) }
+                        airBridgeSecret =
+                            paramMap["secret"]?.let { android.net.Uri.decode(it) }
                     }
 
                     if (ip.isNotEmpty() && port.isNotEmpty()) {
@@ -459,6 +464,36 @@ fun AirSyncMainScreen(
 
                         // Trigger connection
                         scope.launch {
+                            // Save AirBridge credentials from QR when present.
+                            if (!relayUrl.isNullOrBlank() &&
+                                !airBridgePairingId.isNullOrBlank() &&
+                                !airBridgeSecret.isNullOrBlank()
+                            ) {
+                                try {
+                                    val ds = DataStoreManager.getInstance(context)
+                                    ds.setAirBridgeRelayUrl(relayUrl!!)
+                                    ds.setAirBridgePairingId(airBridgePairingId!!)
+                                    ds.setAirBridgeSecret(airBridgeSecret!!)
+                                    ds.setAirBridgeEnabled(true)
+
+                                    // Supply the symmetric key from the QR code
+                                    // so AirBridge can encrypt/decrypt immediately,
+                                    // even before a LAN connection saves the key.
+                                    if (!symmetricKey.isNullOrEmpty()) {
+                                        AirBridgeClient.updateSymmetricKey(symmetricKey)
+                                    }
+
+                                    AirBridgeClient.disconnect()
+                                    AirBridgeClient.connect(context)
+                                } catch (e: Exception) {
+                                    Log.e(
+                                        "AirSyncMainScreen",
+                                        "Failed to apply AirBridge QR config: ${e.message}",
+                                        e
+                                    )
+                                }
+                            }
+
                             delay(300)  // Brief delay to ensure UI updates
                             connect()
                         }
@@ -545,17 +580,13 @@ fun AirSyncMainScreen(
         val last = state.value
         snapshotFlow { state.value }.collect { value ->
             val delta = value - last
-            if (delta > 2) fabVisible = false
-            else if (delta < -2) fabVisible = true
         }
     }
 
     // Expand FAB on first launch and whenever variant changes (connect <-> disconnect), then collapse after 5s
     LaunchedEffect(uiState.isConnected) {
-        fabExpanded = true
         // Give users a hint for a short period, then collapse to icon-only
         delay(5000)
-        fabExpanded = false
     }
 
     // Start/stop clipboard sync based on connection status and settings
@@ -676,7 +707,7 @@ fun AirSyncMainScreen(
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        ) { innerPadding ->
+        ) { _ ->
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
 
@@ -830,6 +861,44 @@ fun AirSyncMainScreen(
                                                     viewModel.updatePort(device.port)
                                                     viewModel.updateSymmetricKey(device.symmetricKey)
                                                     connect()
+                                                }
+                                            },
+                                            onConnectWithRelay = {
+                                                scope.launch {
+                                                    try {
+                                                        val ds = DataStoreManager.getInstance(context)
+                                                        val relayUrl = ds.getAirBridgeRelayUrl().first()
+                                                        val pairingId = ds.getAirBridgePairingId().first()
+                                                        val secret = ds.getAirBridgeSecret().first()
+
+                                                        if (relayUrl.isBlank() ||
+                                                            pairingId.isBlank() ||
+                                                            secret.isBlank()
+                                                        ) {
+                                                            Toast.makeText(
+                                                                context,
+                                                                "AirBridge credentials are missing. Please scan a QR code with AirBridge info to use relay connection.",
+                                                                Toast.LENGTH_LONG
+                                                            ).show()
+                                                            return@launch
+                                                        }
+
+                                                        ds.setAirBridgeEnabled(true)
+                                                        AirBridgeClient.disconnect()
+                                                        AirBridgeClient.connect(context)
+
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Attempting to connect via relay. This may take a moment...",
+                                                            Toast.LENGTH_SHORT
+                                                        ).show()
+                                                    } catch (e: Exception) {
+                                                        Toast.makeText(
+                                                            context,
+                                                            "Failed to connect via relay: ${e.message}",
+                                                            Toast.LENGTH_LONG
+                                                        ).show()
+                                                    }
                                                 }
                                             }
                                         )

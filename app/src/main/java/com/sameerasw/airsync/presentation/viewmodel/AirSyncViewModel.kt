@@ -18,6 +18,7 @@ import com.sameerasw.airsync.domain.repository.AirSyncRepository
 import com.sameerasw.airsync.smartspacer.AirSyncDeviceTarget
 import com.sameerasw.airsync.utils.DeviceInfoUtil
 import com.sameerasw.airsync.utils.DiscoveredDevice
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.NetworkMonitor
 import com.sameerasw.airsync.utils.PermissionUtil
@@ -71,6 +72,9 @@ class AirSyncViewModel(
     // Network monitoring
     private var isNetworkMonitoringActive = false
     private var previousNetworkIp: String? = null
+    private var lastWebSocketConnected = false
+    private var lastRelayState: AirBridgeClient.State = AirBridgeClient.State.DISCONNECTED
+    private var lastUnifiedConnected = false
 
     private var appContext: Context? = null
 
@@ -93,19 +97,36 @@ class AirSyncViewModel(
 
     // Connection status listener for WebSocket updates
     private val connectionStatusListener: (Boolean) -> Unit = { isConnected ->
+        lastWebSocketConnected = isConnected
+        updateUnifiedConnectionState()
+    }
+
+    private fun updateUnifiedConnectionState() {
         viewModelScope.launch {
+            val relayConnected = lastRelayState == AirBridgeClient.State.RELAY_ACTIVE
+            val relayConnecting = lastRelayState == AirBridgeClient.State.CONNECTING ||
+                lastRelayState == AirBridgeClient.State.REGISTERING ||
+                lastRelayState == AirBridgeClient.State.WAITING_FOR_PEER
+            val unifiedConnected = lastWebSocketConnected || relayConnected
+            val unifiedConnecting = !unifiedConnected && (WebSocketUtil.isConnecting() || relayConnecting)
+
             _uiState.value = _uiState.value.copy(
-                isConnected = isConnected,
-                isConnecting = false,
-                response = if (isConnected) "Connected successfully!" else "Disconnected",
-                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null,
-                macDeviceStatus = if (isConnected) _uiState.value.macDeviceStatus else null
+                isConnected = unifiedConnected,
+                isConnecting = unifiedConnecting,
+                response = when {
+                    unifiedConnected -> "Connected successfully!"
+                    unifiedConnecting -> "Connecting..."
+                    else -> "Disconnected"
+                },
+                activeIp = if (lastWebSocketConnected) WebSocketUtil.currentIpAddress else null,
+                macDeviceStatus = if (unifiedConnected) _uiState.value.macDeviceStatus else null
             )
 
-            if (isConnected) {
+            if (unifiedConnected && !lastUnifiedConnected) {
                 repository.setFirstMacConnectionTime(System.currentTimeMillis())
                 updateRatingPromptDisplay()
             }
+            lastUnifiedConnected = unifiedConnected
 
             // Notify Smartspacer of connection status change
             appContext?.let { context ->
@@ -124,6 +145,12 @@ class AirSyncViewModel(
         try {
             WebSocketUtil.registerManualConnectListener(manualConnectCanceler)
         } catch (_: Exception) {
+        }
+        viewModelScope.launch {
+            AirBridgeClient.connectionState.collect { relayState ->
+                lastRelayState = relayState
+                updateUnifiedConnectionState()
+            }
         }
 
         // Observe Mac device status updates
@@ -302,7 +329,14 @@ class AirSyncViewModel(
             val isNotificationEnabled = PermissionUtil.isNotificationListenerEnabled(context)
 
             // Check current WebSocket connection status
-            val currentlyConnected = WebSocketUtil.isConnected()
+            lastWebSocketConnected = WebSocketUtil.isConnected()
+            lastRelayState = AirBridgeClient.connectionState.value
+            val relayConnected = lastRelayState == AirBridgeClient.State.RELAY_ACTIVE
+            val relayConnecting = lastRelayState == AirBridgeClient.State.CONNECTING ||
+                lastRelayState == AirBridgeClient.State.REGISTERING ||
+                lastRelayState == AirBridgeClient.State.WAITING_FOR_PEER
+            val currentlyConnected = lastWebSocketConnected || relayConnected
+            val currentlyConnecting = !currentlyConnected && (WebSocketUtil.isConnecting() || relayConnecting)
 
             _uiState.value = _uiState.value.copy(
                 ipAddress = savedIp,
@@ -318,6 +352,7 @@ class AirSyncViewModel(
                 isClipboardSyncEnabled = isClipboardSyncEnabled,
                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                 isConnected = currentlyConnected,
+                isConnecting = currentlyConnecting,
                 symmetricKey = symmetricKey ?: lastConnectedSymmetricKey,
                 isContinueBrowsingEnabled = isContinueBrowsingEnabled,
                 isSendNowPlayingEnabled = isSendNowPlayingEnabled,
@@ -333,6 +368,7 @@ class AirSyncViewModel(
                 isSentryReportingEnabled = isSentryReportingEnabled,
                 isOnboardingCompleted = !isFirstRun
             )
+            lastUnifiedConnected = currentlyConnected
 
             updateRatingPromptDisplay()
 

@@ -1,5 +1,6 @@
 package com.sameerasw.airsync.utils
 
+import android.Manifest
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -7,6 +8,7 @@ import android.os.Build
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationManagerCompat
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.utils.transfer.FileTransferProtocol
@@ -29,6 +31,7 @@ object FileReceiver {
         var index: Int = 0,
         var pfd: android.os.ParcelFileDescriptor? = null,
         var uri: Uri? = null,
+        val receivedChunkIndexes: MutableSet<Int> = mutableSetOf(),
         // Speed / ETA tracking
         var lastUpdateTime: Long = System.currentTimeMillis(),
         var bytesAtLastUpdate: Int = 0,
@@ -148,18 +151,25 @@ object FileReceiver {
                 val state = incoming[id] ?: return@launch
                 val bytes = android.util.Base64.decode(base64Chunk, android.util.Base64.NO_WRAP)
 
+                var shouldUpdateProgress = false
                 synchronized(state) {
-                    state.pfd?.fileDescriptor?.let { fd ->
-                        val channel = java.io.FileOutputStream(fd).channel
-                        val offset = index.toLong() * state.chunkSize
-                        channel.position(offset)
-                        channel.write(java.nio.ByteBuffer.wrap(bytes))
-                        state.receivedBytes += bytes.size
-                        state.index = index
+                    // Ignore duplicate chunks (common with retransmissions on lossy links/relay).
+                    if (state.receivedChunkIndexes.add(index)) {
+                        state.pfd?.fileDescriptor?.let { fd ->
+                            val channel = java.io.FileOutputStream(fd).channel
+                            val offset = index.toLong() * state.chunkSize
+                            channel.position(offset)
+                            channel.write(java.nio.ByteBuffer.wrap(bytes))
+                            state.receivedBytes += bytes.size
+                            state.index = index
+                            shouldUpdateProgress = true
+                        }
                     }
                 }
 
-                updateProgressNotification(context, id, state)
+                if (shouldUpdateProgress) {
+                    updateProgressNotification(context, id, state)
+                }
                 // send ack for this chunk
                 try {
                     val ack = FileTransferProtocol.buildChunkAck(id, index)
@@ -277,6 +287,7 @@ object FileReceiver {
     }
 
 
+    @RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
     private fun updateProgressNotification(context: Context, id: String, state: IncomingFileState) {
         if (state.isClipboard) return
 
@@ -312,7 +323,9 @@ object FileReceiver {
             state.lastUpdateTime = now
             state.bytesAtLastUpdate = state.receivedBytes
 
-            val percent = if (state.size > 0) (state.receivedBytes * 100 / state.size) else 0
+            val percent = if (state.size > 0) {
+                (state.receivedBytes * 100 / state.size).coerceIn(0, 100)
+            } else 0
             NotificationUtil.showFileProgress(
                 context,
                 id.hashCode(),

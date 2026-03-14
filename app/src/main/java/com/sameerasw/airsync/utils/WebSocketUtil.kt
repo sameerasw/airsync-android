@@ -54,6 +54,15 @@ object WebSocketUtil {
     // Application context for side-effects (notifications/services) when explicit context isn't provided
     private var appContext: Context? = null
 
+    // Handle LAN authentication challenge by responding with HMAC of the nonce using the symmetric key
+    private fun extractMessageType(message: String): String {
+        return try {
+            org.json.JSONObject(message).optString("type", "unknown")
+        } catch (_: Exception) {
+            "non_json"
+        }
+    }
+
     // Global connection status listeners for UI updates
     private val connectionStatusListeners = mutableSetOf<(Boolean) -> Unit>()
 
@@ -155,7 +164,25 @@ object WebSocketUtil {
             }
             currentIpAddress = ipAddress
             currentPort = port
-            currentSymmetricKey = symmetricKey?.let { CryptoUtil.decodeKey(it) }
+            currentSymmetricKey = try {
+                symmetricKey?.let { CryptoUtil.decodeKey(it) }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to decode symmetric key: ${e.message}")
+                null
+            }
+            if (symmetricKey != null && currentSymmetricKey == null) {
+                Log.e(TAG, "Invalid symmetric key format, aborting connection")
+                isConnecting.set(false)
+                onConnectionStatus?.invoke(false)
+                notifyConnectionStatusListeners(false)
+                try {
+                    AirSyncWidgetProvider.updateAllWidgets(context)
+                } catch (_: Exception) {
+                }
+                return@launch
+            }
+            // Keep relay key aligned with current active key for seamless LAN<->relay switching.
+            AirBridgeClient.updateSymmetricKey(symmetricKey)
             onConnectionStatusChanged = onConnectionStatus
             onMessageReceived = onMessage
 
@@ -222,10 +249,9 @@ object WebSocketUtil {
                                 isConnected.set(false)
                                 isConnecting.set(true)
 
-                                try {
-                                    SyncManager.performInitialSync(context)
-                                } catch (_: Exception) {
-                                }
+                                // Note: performInitialSync is deferred until after LAN auth succeeds.
+                                // The Mac will send an authChallenge first; we respond with HMAC.
+                                // Once authResult(success=true) arrives, we trigger initial sync.
 
                                 handshakeTimeoutJob?.cancel()
                                 handshakeTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
@@ -263,9 +289,48 @@ object WebSocketUtil {
                             }
 
                             override fun onMessage(webSocket: WebSocket, text: String) {
-                                val decryptedMessage = currentSymmetricKey?.let { key ->
-                                    CryptoUtil.decryptMessage(text, key)
-                                } ?: text
+                                // Never accept plaintext LAN messages — refuse if no key.
+                                val key = currentSymmetricKey
+                                if (key == null) {
+                                    Log.e(TAG, "SECURITY: Received LAN message but no symmetric key. Dropping.")
+                                    return
+                                }
+                                val decryptedMessage = CryptoUtil.decryptMessage(text, key)
+                                if (decryptedMessage == null) {
+                                    Log.e(TAG, "SECURITY: LAN message decryption failed (corrupted/tampered/replay). Dropping.")
+                                    return
+                                }
+
+                                // Handle LAN authentication challenge-response
+                                val msgType = try {
+                                    org.json.JSONObject(decryptedMessage).optString("type", "")
+                                } catch (_: Exception) { "" }
+
+                                if (msgType == "authChallenge") {
+                                    handleAuthChallenge(decryptedMessage, webSocket)
+                                    return
+                                }
+
+                                if (msgType == "authResult") {
+                                    val authData = try {
+                                        org.json.JSONObject(decryptedMessage).optJSONObject("data")
+                                    } catch (_: Exception) { null }
+                                    val success = authData?.optBoolean("success", false) ?: false
+                                    if (!success) {
+                                        val reason = authData?.optString("reason", "Unknown") ?: "Unknown"
+                                        Log.e(TAG, "LAN authentication failed: $reason")
+                                        webSocket.close(4003, "Auth failed: $reason")
+                                        return
+                                    }
+                                    Log.i(TAG, "LAN authentication succeeded, starting initial sync")
+                                    // Auth passed — now safe to send device info / initial sync
+                                    try {
+                                        SyncManager.performInitialSync(context)
+                                    } catch (_: Exception) {
+                                    }
+                                    // Continue — next message should be macInfo for handshake
+                                    return
+                                }
 
                                 if (!handshakeCompleted.get()) {
                                     val handshakeOk = try {
@@ -322,6 +387,9 @@ object WebSocketUtil {
                                         onConnectionStatusChanged?.invoke(true)
                                         notifyConnectionStatusListeners(true)
                                         cancelAutoReconnect()
+                                        // Keep relay warm in background (if enabled) for instant failover.
+                                        AirBridgeClient.ensureConnected(context, immediate = false)
+                                        Log.i(TAG, "LAN handshake completed on $ip:$port, relay kept warm")
                                         try {
                                             AirSyncWidgetProvider.updateAllWidgets(context)
                                         } catch (_: Exception) {
@@ -368,7 +436,14 @@ object WebSocketUtil {
                                     }
                                     onConnectionStatusChanged?.invoke(false)
                                     notifyConnectionStatusListeners(false)
-                                    tryStartAutoReconnect(context)
+                                    // If relay is enabled, force immediate relay reconnect for seamless fallback.
+                                    AirBridgeClient.ensureConnected(context, immediate = true)
+                                    Log.w(TAG, "LAN socket closing, requested immediate relay fallback")
+                                    if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        tryStartAutoReconnect(context)
+                                    } else {
+                                        Log.d(TAG, "Skipping LAN auto-reconnect: relay already connected/connecting")
+                                    }
                                     try {
                                         AirSyncWidgetProvider.updateAllWidgets(context)
                                     } catch (_: Exception) {
@@ -388,15 +463,18 @@ object WebSocketUtil {
 
                                 if (wasActive || isFinalManualAttempt) {
                                     if (manualAttempt || isSocketOpen.get()) {
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val msg = when (t) {
-                                                is java.net.ConnectException -> "Connection Refused (Is AirSync Mac running?)"
-                                                is java.net.SocketTimeoutException -> "Could not discover your mac"
-                                                is java.net.UnknownHostException -> "Could not reach your mac"
-                                                is java.io.EOFException, is java.net.SocketException -> "Lost connection to your mac"
-                                                else -> t.message ?: "Unknown connection error"
+                                        // Avoid noisy LAN error toasts when relay failover is already available.
+                                        if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val msg = when (t) {
+                                                    is java.net.ConnectException -> "Connection Refused (Is AirSync Mac running?)"
+                                                    is java.net.SocketTimeoutException -> "Could not discover your mac"
+                                                    is java.net.UnknownHostException -> "Could not reach your mac"
+                                                    is java.io.EOFException, is java.net.SocketException -> "Lost connection to your mac"
+                                                    else -> t.message ?: "Unknown connection error"
+                                                }
+                                                android.widget.Toast.makeText(context, "AirSync: $msg", android.widget.Toast.LENGTH_LONG).show()
                                             }
-                                            android.widget.Toast.makeText(context, "AirSync: $msg", android.widget.Toast.LENGTH_LONG).show()
                                         }
                                     }
                                     isConnected.set(false)
@@ -419,7 +497,14 @@ object WebSocketUtil {
                                     }
                                     onConnectionStatusChanged?.invoke(false)
                                     notifyConnectionStatusListeners(false)
-                                    tryStartAutoReconnect(context)
+                                    // If relay is enabled, force immediate relay reconnect for seamless fallback.
+                                    AirBridgeClient.ensureConnected(context, immediate = true)
+                                    Log.w(TAG, "LAN failure, requested immediate relay fallback: ${t.message}")
+                                    if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        tryStartAutoReconnect(context)
+                                    } else {
+                                        Log.d(TAG, "Skipping LAN auto-reconnect: relay already connected/connecting")
+                                    }
                                     try {
                                         AirSyncWidgetProvider.updateAllWidgets(context)
                                     } catch (_: Exception) {
@@ -480,15 +565,28 @@ object WebSocketUtil {
      */
     fun sendMessage(message: String): Boolean {
         // Allow sending as soon as the socket is open (even before handshake completes)
+        val type = extractMessageType(message)
         return if (isSocketOpen.get() && webSocket != null) {
-            Log.d(TAG, "Sending message: $message")
-            val messageToSend = currentSymmetricKey?.let { key ->
-                CryptoUtil.encryptMessage(message, key)
-            } ?: message
+            Log.d(TAG, "TX via LAN type=$type")
+            // SECURITY: Never send plaintext — refuse if no key is available.
+            val key = currentSymmetricKey
+            if (key == null) {
+                Log.e(TAG, "SECURITY: Cannot send LAN message — no symmetric key. Dropping.")
+                return false
+            }
+            val messageToSend = CryptoUtil.encryptMessage(message, key)
+            if (messageToSend == null) {
+                Log.e(TAG, "SECURITY: LAN encryption failed. Dropping message.")
+                return false
+            }
 
             webSocket!!.send(messageToSend)
+        } else if (AirBridgeClient.isRelayActive()) {
+            // Fallback: route through AirBridge relay if local connection is down
+            Log.d(TAG, "TX via RELAY type=$type")
+            AirBridgeClient.sendMessage(message)
         } else {
-            Log.w(TAG, "WebSocket not connected, cannot send message")
+            Log.w(TAG, "Drop TX type=$type: no LAN/relay available")
             false
         }
     }
@@ -649,6 +747,10 @@ object WebSocketUtil {
                 // Monitor discovered devices
                 UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
                     if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
+                    if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                        Log.d(TAG, "Auto-reconnect paused: relay connected/connecting")
+                        return@collect
+                    }
 
                     val manual = ds.getUserManuallyDisconnected().first()
                     val autoEnabled = ds.getAutoReconnectEnabled().first()
@@ -715,5 +817,45 @@ object WebSocketUtil {
         // Only if not already connected or connecting
         if (isConnected.get() || isConnecting.get()) return
         tryStartAutoReconnect(context)
+    }
+
+    /**
+     * Handles an authChallenge message from the Mac LAN server.
+     * Computes HMAC-SHA256(symmetricKey, nonce) and sends back an authResponse.
+     */
+    private fun handleAuthChallenge(decryptedMessage: String, webSocket: WebSocket) {
+        try {
+            val json = org.json.JSONObject(decryptedMessage)
+            val data = json.optJSONObject("data") ?: return
+            val nonceHex = data.optString("nonce", "")
+            if (nonceHex.isEmpty()) {
+                Log.e(TAG, "authChallenge missing nonce")
+                return
+            }
+
+            val key = currentSymmetricKey
+            if (key == null) {
+                Log.e(TAG, "No symmetric key for auth challenge response")
+                webSocket.close(4003, "No symmetric key")
+                return
+            }
+
+            val nonceBytes = CryptoUtil.hexToBytes(nonceHex)
+            val hmacHex = CryptoUtil.hmacSha256(key, nonceBytes)
+
+            val responseJson = """{"type":"authResponse","data":{"hmac":"$hmacHex"}}"""
+            val encrypted = CryptoUtil.encryptMessage(responseJson, key)
+            if (encrypted != null) {
+                webSocket.send(encrypted)
+            } else {
+                // SECURITY: Never send auth HMAC in plaintext — close connection instead.
+                Log.e(TAG, "SECURITY: Failed to encrypt auth response. Closing connection to prevent HMAC leak.")
+                webSocket.close(4003, "Encryption failure")
+                return
+            }
+            Log.d(TAG, "Sent authResponse for LAN challenge")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling authChallenge: ${e.message}")
+        }
     }
 }
