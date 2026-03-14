@@ -55,9 +55,32 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.gestures.AnchoredDraggableState
+import androidx.compose.foundation.gestures.DraggableAnchors
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.anchoredDraggable
+import androidx.compose.foundation.gestures.animateTo
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 import com.sameerasw.airsync.domain.model.MacMusicInfo
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+enum class DragValue { Collapsed, Expanded }
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun FloatingMediaPlayer(
     musicInfo: MacMusicInfo?,
@@ -69,19 +92,50 @@ fun FloatingMediaPlayer(
     onMediaAction: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isExpanded by remember { mutableStateOf(false) }
+    val density = LocalDensity.current
+    val config = LocalConfiguration.current
+    val screenHeight = config.screenHeightDp.dp
+    val scope = rememberCoroutineScope()
+
+    val collapsedHeight = 72.dp
+    val expandedHeight = 280.dp
+    
+    val collapsedPx = with(density) { collapsedHeight.toPx() }
+    val expandedPx = with(density) { expandedHeight.toPx() }
+
+    val anchoredDraggableState = remember {
+        AnchoredDraggableState<DragValue>(
+            initialValue = DragValue.Collapsed,
+            anchors = DraggableAnchors {
+                DragValue.Collapsed at 0f
+                DragValue.Expanded at -(expandedPx - collapsedPx)
+            },
+            positionalThreshold = { distance: Float -> distance * 0.5f },
+            velocityThreshold = { with(density) { 100.dp.toPx() } },
+            snapAnimationSpec = spring(),
+            decayAnimationSpec = exponentialDecay()
+        )
+    }
+
+    // Sync state with anchoredDraggableState
+    val currentOffset = anchoredDraggableState.requireOffset()
+    val isExpanded = anchoredDraggableState.currentValue == DragValue.Expanded
+    val progress = if (currentOffset.isNaN()) 0f else {
+        (currentOffset / -(expandedPx - collapsedPx)).coerceIn(0f, 1f)
+    }
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .animateContentSize(),
-        shape = if (isExpanded) RoundedCornerShape(24.dp) else RoundedCornerShape(64.dp),
+            .height(collapsedHeight + (expandedHeight - collapsedHeight) * progress)
+            .anchoredDraggable<DragValue>(anchoredDraggableState, Orientation.Vertical),
+        shape = RoundedCornerShape(lerp(64f, 24f, progress).dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         )
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
+        Box(modifier = Modifier.fillMaxSize()) {
             // Background Image (Album Art)
             if (albumArtBitmap != null) {
                 Image(
@@ -100,18 +154,23 @@ fun FloatingMediaPlayer(
                 )
             }
 
-            if (!isExpanded) {
-                // Mini Player Layout
+            // Adaptive content based on progress
+            if (progress < 0.5f) {
+                // Mini Player Layout (Fading out)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(8.dp),
+                        .height(collapsedHeight)
+                        .padding(8.dp)
+                        .graphicsLayer(alpha = 1f - progress * 2),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Expand Button
                     IconButton(
-                        onClick = { isExpanded = true },
+                        onClick = { 
+                            scope.launch { anchoredDraggableState.animateTo(DragValue.Expanded) }
+                        },
                         modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
@@ -155,11 +214,12 @@ fun FloatingMediaPlayer(
                     }
                 }
             } else {
-                // Expanded Player Layout
+                // Expanded Player Layout (Fading in)
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(24.dp)
+                        .graphicsLayer(alpha = (progress - 0.5f) * 2),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
@@ -169,7 +229,9 @@ fun FloatingMediaPlayer(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        IconButton(onClick = { isExpanded = false }) {
+                        IconButton(onClick = { 
+                            scope.launch { anchoredDraggableState.animateTo(DragValue.Collapsed) }
+                        }) {
                             Icon(
                                 imageVector = Icons.Rounded.KeyboardArrowDown,
                                 contentDescription = "Collapse",
@@ -242,6 +304,8 @@ fun FloatingMediaPlayer(
                         )
                     }
 
+                    Spacer(modifier = Modifier.weight(1f))
+
                     // Volume Control
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -272,4 +336,8 @@ fun FloatingMediaPlayer(
             }
         }
     }
+}
+
+fun lerp(start: Float, stop: Float, fraction: Float): Float {
+    return (1 - fraction) * start + fraction * stop
 }

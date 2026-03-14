@@ -7,9 +7,11 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -23,6 +25,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -681,7 +684,12 @@ fun AirSyncMainScreen(
             modifier = Modifier.fillMaxSize(),
             containerColor = MaterialTheme.colorScheme.surfaceContainer,
         ) { innerPadding ->
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+        val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        
         val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val statusBarHeightPx = with(density) { statusBarHeight.toPx() }
         val topSpacing = (statusBarHeight - 24.dp).coerceAtLeast(0.dp)
 
         // Track page changes for haptic feedback on swipe
@@ -692,11 +700,9 @@ fun AirSyncMainScreen(
         }
 
         // Blur heights
-        val density = androidx.compose.ui.platform.LocalDensity.current
-        val statusBarHeightPx = with(density) {
-            WindowInsets.statusBars.asPaddingValues().calculateTopPadding().toPx()
+        val bottomBlurHeightPx = with(density) { 
+            if (isLandscape) 100.dp.toPx() else 180.dp.toPx() 
         }
-        val bottomBlurHeightPx = with(density) { 180.dp.toPx() }
 
         Box(
             modifier = Modifier
@@ -1020,7 +1026,7 @@ fun AirSyncMainScreen(
                             RemoteControlScreen(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = statusBarHeight, bottom = 180.dp),
+                                    .padding(top = statusBarHeight, bottom = if (isLandscape) 100.dp else 180.dp),
                                 showKeyboard = showKeyboard,
                                 onDismissKeyboard = { showKeyboard = false }
                             )
@@ -1065,7 +1071,7 @@ fun AirSyncMainScreen(
                                 onHistoryToggle = { viewModel.setClipboardHistoryEnabled(it) },
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .padding(top = topSpacing, bottom = 180.dp),
+                                    .padding(top = topSpacing, bottom = if (isLandscape) 100.dp else 180.dp),
                             )
                         } else {
                             Box(Modifier.fillMaxSize())
@@ -1098,101 +1104,136 @@ fun AirSyncMainScreen(
                 }
             }
 
-            AirSyncFloatingToolbar(
+            // Adaptive Bottom Bars Container
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    // .offset(y = -ScreenOffset)
-                    .zIndex(1f),
-                currentPage = pagerState.currentPage,
-                tabs = tabs,
-                onTabSelected = { index ->
-                    scope.launch {
-                        val distance = kotlin.math.abs(index - pagerState.currentPage)
-                        if (distance == 1) {
-                            pagerState.animateScrollToPage(index)
-                        } else {
-                            pagerState.scrollToPage(index)
-                        }
-                    }
-                },
-                floatingActionButton = @Composable {
-                    val currentTab = tabs.getOrNull(pagerState.currentPage)
-                    FloatingToolbarDefaults.StandardFloatingActionButton(
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            val titleStr = currentTab?.let { context.getString(it.title) }
-                            when (titleStr) {
-                                "Remote" -> {
-                                    showKeyboard = !showKeyboard
-                                }
-
-                                "Clipboard" -> {
-                                    viewModel.clearClipboardHistory()
-                                }
-
-                                else -> { // Connect or Settings
-                                    if (uiState.isConnected) {
-                                        disconnect()
-                                    } else {
-                                        launchScanner(context)
-                                    }
-                                }
-                            }
-                        }
-                    ) {
-                        val titleStr = currentTab?.let { context.getString(it.title) }
-                        when (titleStr) {
-                            "Remote" -> {
-                                Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
-                            }
-
-                            "Clipboard" -> {
-                                Icon(Icons.Rounded.Delete, contentDescription = "Clear History")
-                            }
-
-                            else -> { // Connect or Settings
-                                if (uiState.isConnected) {
-                                    Icon(
-                                        imageVector = Icons.Filled.LinkOff,
-                                        contentDescription = "Disconnect"
-                                    )
-                                } else {
-                                    Icon(
-                                        imageVector = Icons.Filled.QrCodeScanner,
-                                        contentDescription = "Scan QR"
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            )
-
-            // Floating Media Player
-            AnimatedVisibility(
-                visible = uiState.isConnected,
-                enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
-                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 108.dp) // Positioned above the floating toolbar
+                    .fillMaxWidth()
+                    .padding(bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding())
+//                    .padding(bottom = 16.dp)
                     .zIndex(2f)
             ) {
-                FloatingMediaPlayer(
-                    musicInfo = macStatus?.music,
-                    albumArtBitmap = albumArtBitmap,
-                    volume = volume,
-                    isMuted = isMuted,
-                    onVolumeChange = {
-                        volume = it
-                        sendRemoteAction("vol_set", it.toInt())
-                    },
-                    onToggleMute = {
-                        sendRemoteAction("vol_mute")
-                        isMuted = !isMuted
-                    },
-                    onMediaAction = { sendRemoteAction(it) }
-                )
+                if (isLandscape) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterHorizontally),
+                        verticalAlignment = Alignment.Bottom
+                    ) {
+                        AnimatedVisibility(
+                            visible = uiState.isConnected,
+                            enter = fadeIn() + expandHorizontally(),
+                            exit = fadeOut() + shrinkHorizontally(),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            FloatingMediaPlayer(
+                                musicInfo = macStatus?.music,
+                                albumArtBitmap = albumArtBitmap,
+                                volume = volume,
+                                isMuted = isMuted,
+                                onVolumeChange = {
+                                    volume = it
+                                    sendRemoteAction("vol_set", it.toInt())
+                                },
+                                onToggleMute = {
+                                    sendRemoteAction("vol_mute")
+                                    isMuted = !isMuted
+                                },
+                                onMediaAction = { sendRemoteAction(it) }
+                            )
+                        }
+
+                        AirSyncFloatingToolbar(
+                            modifier = Modifier.zIndex(1f),
+                            currentPage = pagerState.currentPage,
+                            tabs = tabs,
+                            onTabSelected = { index ->
+                                scope.launch {
+                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                    if (distance == 1) {
+                                        pagerState.animateScrollToPage(index)
+                                    } else {
+                                        pagerState.scrollToPage(index)
+                                    }
+                                }
+                            },
+                            floatingActionButton = {
+                                MainFAB(
+                                    currentTab = tabs.getOrNull(pagerState.currentPage),
+                                    isConnected = uiState.isConnected,
+                                    onAction = { action ->
+                                        when (action) {
+                                            "keyboard" -> showKeyboard = !showKeyboard
+                                            "clear_history" -> viewModel.clearClipboardHistory()
+                                            "disconnect" -> disconnect()
+                                            "scan" -> launchScanner(context)
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                } else {
+                    // Portrait: Stacked
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = uiState.isConnected,
+                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+                        ) {
+                            FloatingMediaPlayer(
+                                musicInfo = macStatus?.music,
+                                albumArtBitmap = albumArtBitmap,
+                                volume = volume,
+                                isMuted = isMuted,
+                                onVolumeChange = {
+                                    volume = it
+                                    sendRemoteAction("vol_set", it.toInt())
+                                },
+                                onToggleMute = {
+                                    sendRemoteAction("vol_mute")
+                                    isMuted = !isMuted
+                                },
+                                onMediaAction = { sendRemoteAction(it) }
+                            )
+                        }
+
+                        AirSyncFloatingToolbar(
+                            modifier = Modifier.zIndex(1f),
+                            currentPage = pagerState.currentPage,
+                            tabs = tabs,
+                            onTabSelected = { index ->
+                                scope.launch {
+                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                    if (distance == 1) {
+                                        pagerState.animateScrollToPage(index)
+                                    } else {
+                                        pagerState.scrollToPage(index)
+                                    }
+                                }
+                            },
+                            floatingActionButton = {
+                                MainFAB(
+                                    currentTab = tabs.getOrNull(pagerState.currentPage),
+                                    isConnected = uiState.isConnected,
+                                    onAction = { action ->
+                                        when (action) {
+                                            "keyboard" -> showKeyboard = !showKeyboard
+                                            "clear_history" -> viewModel.clearClipboardHistory()
+                                            "disconnect" -> disconnect()
+                                            "scan" -> launchScanner(context)
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
+                }
             }
         }
     }
@@ -1236,6 +1277,45 @@ fun AirSyncMainScreen(
                     viewModel.setOnboardingCompleted(true)
                 }
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun MainFAB(
+    currentTab: AirSyncTab?,
+    isConnected: Boolean,
+    onAction: (String) -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    
+    FloatingToolbarDefaults.StandardFloatingActionButton(
+        onClick = {
+            HapticUtil.performClick(haptics)
+            when (currentTab?.title) {
+                R.string.tab_remote -> onAction("keyboard")
+                R.string.tab_clipboard -> onAction("clear_history")
+                else -> {
+                    if (isConnected) onAction("disconnect") else onAction("scan")
+                }
+            }
+        }
+    ) {
+        when (currentTab?.title) {
+            R.string.tab_remote -> {
+                Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
+            }
+            R.string.tab_clipboard -> {
+                Icon(Icons.Rounded.Delete, contentDescription = "Clear History")
+            }
+            else -> {
+                if (isConnected) {
+                    Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
+                } else {
+                    Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
+                }
+            }
         }
     }
 }
