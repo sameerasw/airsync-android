@@ -601,11 +601,12 @@ fun AirSyncMainScreen(
     // Hide FAB on scroll down, show on scroll up for the active tab
     LaunchedEffect(pagerState.currentPage) {
         val state = if (pagerState.currentPage == 0) connectScrollState else settingsScrollState
-        val last = state.value
+        var last = state.value
         snapshotFlow { state.value }.collect { value ->
             val delta = value - last
             if (delta > 2) fabVisible = false
             else if (delta < -2) fabVisible = true
+            last = value
         }
     }
 
