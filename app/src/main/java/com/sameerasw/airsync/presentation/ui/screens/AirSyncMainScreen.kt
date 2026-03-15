@@ -610,12 +610,12 @@ fun AirSyncMainScreen(
     }
 
     // Expand FAB on first launch and whenever variant changes (connect <-> disconnect), then collapse after 5s
-    LaunchedEffect(uiState.isConnected) {
-        fabExpanded = true
-        // Give users a hint for a short period, then collapse to icon-only
-        delay(5000)
-        fabExpanded = false
-    }
+    // LaunchedEffect(uiState.isConnected) {
+    //     fabExpanded = true
+    //     // Give users a hint for a short period, then collapse to icon-only
+    //     delay(5000)
+    //     fabExpanded = false
+    // }
 
     // Start/stop clipboard sync based on connection status and settings
     LaunchedEffect(uiState.isConnected, uiState.isClipboardSyncEnabled) {
@@ -1243,7 +1243,6 @@ fun AirSyncMainScreen(
                                 modifier = Modifier.zIndex(1f),
                                 currentPage = pagerState.currentPage,
                                 tabs = tabs,
-                                expanded = fabExpanded,
                                 onTabSelected = { index ->
                                     scope.launch {
                                         val distance = kotlin.math.abs(index - pagerState.currentPage)
@@ -1309,7 +1308,6 @@ fun AirSyncMainScreen(
                                 modifier = Modifier.zIndex(1f),
                                 currentPage = pagerState.currentPage,
                                 tabs = tabs,
-                                expanded = fabExpanded,
                                 onTabSelected = { index ->
                                     scope.launch {
                                         val distance = kotlin.math.abs(index - pagerState.currentPage)
