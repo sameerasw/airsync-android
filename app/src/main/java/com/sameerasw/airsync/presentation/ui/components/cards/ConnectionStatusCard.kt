@@ -236,47 +236,6 @@ fun ConnectionStatusCard(
                     modifier = Modifier.weight(1f)
                 )
 
-                // Connection transport indicator (WiFi vs Relay)
-                if (isConnected) {
-                    Surface(
-                        shape = RoundedCornerShape(12.dp),
-                        color = if (uiState.isRelayConnection)
-                            MaterialTheme.colorScheme.tertiaryContainer
-                        else
-                            MaterialTheme.colorScheme.secondaryContainer,
-                        modifier = Modifier.padding(end = 8.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Icon(
-                                painter = painterResource(
-                                    id = if (uiState.isRelayConnection)
-                                        com.sameerasw.airsync.R.drawable.rounded_web_24
-                                    else
-                                        com.sameerasw.airsync.R.drawable.rounded_android_wifi_3_bar_24
-                                ),
-                                contentDescription = if (uiState.isRelayConnection) "Relay connection" else "Local connection",
-                                modifier = Modifier.size(16.dp),
-                                tint = if (uiState.isRelayConnection)
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text(
-                                text = if (uiState.isRelayConnection) "Relay" else "Local",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = if (uiState.isRelayConnection)
-                                    MaterialTheme.colorScheme.onTertiaryContainer
-                                else
-                                    MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                        }
-                    }
-                }
-
                 if (isConnected) {
 
                     Button(

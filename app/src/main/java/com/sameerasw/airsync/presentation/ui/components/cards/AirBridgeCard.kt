@@ -162,7 +162,7 @@ fun AirBridgeCard(context: Context) {
                         value = relayUrl,
                         onValueChange = { relayUrl = it },
                         label = { Text("Relay Server URL") },
-                        placeholder = { Text("wss://airbridge") },
+                        placeholder = { Text("airbridge.yourdomain.com") },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )

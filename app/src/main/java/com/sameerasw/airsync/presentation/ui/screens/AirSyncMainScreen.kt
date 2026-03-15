@@ -32,6 +32,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -57,11 +59,14 @@ import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingToolbarDefaults
+import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
+import androidx.compose.material3.FloatingToolbarExitDirection.Companion.Bottom
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -82,6 +87,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -218,6 +224,8 @@ fun AirSyncMainScreen(
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
+    var fabVisible by remember { mutableStateOf(true) }
+    var fabExpanded by remember { mutableStateOf(true) }
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
     var showHelpSheet by remember { mutableStateOf(false) }
     val onDismissHelp = { showHelpSheet = false }
@@ -596,13 +604,17 @@ fun AirSyncMainScreen(
         val last = state.value
         snapshotFlow { state.value }.collect { value ->
             val delta = value - last
+            if (delta > 2) fabVisible = false
+            else if (delta < -2) fabVisible = true
         }
     }
 
     // Expand FAB on first launch and whenever variant changes (connect <-> disconnect), then collapse after 5s
     LaunchedEffect(uiState.isConnected) {
+        fabExpanded = true
         // Give users a hint for a short period, then collapse to icon-only
         delay(5000)
+        fabExpanded = false
     }
 
     // Start/stop clipboard sync based on connection status and settings
@@ -1222,35 +1234,42 @@ fun AirSyncMainScreen(
                             )
                         }
 
-                        AirSyncFloatingToolbar(
-                            modifier = Modifier.zIndex(1f),
-                            currentPage = pagerState.currentPage,
-                            tabs = tabs,
-                            onTabSelected = { index ->
-                                scope.launch {
-                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
-                                    if (distance == 1) {
-                                        pagerState.animateScrollToPage(index)
-                                    } else {
-                                        pagerState.scrollToPage(index)
-                                    }
-                                }
-                            },
-                            floatingActionButton = {
-                                MainFAB(
-                                    currentTab = tabs.getOrNull(pagerState.currentPage),
-                                    isConnected = uiState.isConnected,
-                                    onAction = { action ->
-                                        when (action) {
-                                            "keyboard" -> showKeyboard = !showKeyboard
-                                            "clear_history" -> viewModel.clearClipboardHistory()
-                                            "disconnect" -> disconnect()
-                                            "scan" -> launchScanner(context)
+                        AnimatedVisibility(
+                            visible = fabVisible,
+                            enter = fadeIn() + expandHorizontally(),
+                            exit = fadeOut() + shrinkHorizontally(),
+                        ) {
+                            AirSyncFloatingToolbar(
+                                modifier = Modifier.zIndex(1f),
+                                currentPage = pagerState.currentPage,
+                                tabs = tabs,
+                                expanded = fabExpanded,
+                                onTabSelected = { index ->
+                                    scope.launch {
+                                        val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                        if (distance == 1) {
+                                            pagerState.animateScrollToPage(index)
+                                        } else {
+                                            pagerState.scrollToPage(index)
                                         }
                                     }
-                                )
-                            }
-                        )
+                                },
+                                floatingActionButton = {
+                                    MainFAB(
+                                        currentTab = tabs.getOrNull(pagerState.currentPage),
+                                        isConnected = uiState.isConnected,
+                                        onAction = { action ->
+                                            when (action) {
+                                                "keyboard" -> showKeyboard = !showKeyboard
+                                                "clear_history" -> viewModel.clearClipboardHistory()
+                                                "disconnect" -> disconnect()
+                                                "scan" -> launchScanner(context)
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 } else {
                     // Portrait: Stacked
@@ -1281,35 +1300,42 @@ fun AirSyncMainScreen(
                             )
                         }
 
-                        AirSyncFloatingToolbar(
-                            modifier = Modifier.zIndex(1f),
-                            currentPage = pagerState.currentPage,
-                            tabs = tabs,
-                            onTabSelected = { index ->
-                                scope.launch {
-                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
-                                    if (distance == 1) {
-                                        pagerState.animateScrollToPage(index)
-                                    } else {
-                                        pagerState.scrollToPage(index)
-                                    }
-                                }
-                            },
-                            floatingActionButton = {
-                                MainFAB(
-                                    currentTab = tabs.getOrNull(pagerState.currentPage),
-                                    isConnected = uiState.isConnected,
-                                    onAction = { action ->
-                                        when (action) {
-                                            "keyboard" -> showKeyboard = !showKeyboard
-                                            "clear_history" -> viewModel.clearClipboardHistory()
-                                            "disconnect" -> disconnect()
-                                            "scan" -> launchScanner(context)
+                        AnimatedVisibility(
+                            visible = fabVisible,
+                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
+                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
+                        ) {
+                            AirSyncFloatingToolbar(
+                                modifier = Modifier.zIndex(1f),
+                                currentPage = pagerState.currentPage,
+                                tabs = tabs,
+                                expanded = fabExpanded,
+                                onTabSelected = { index ->
+                                    scope.launch {
+                                        val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                        if (distance == 1) {
+                                            pagerState.animateScrollToPage(index)
+                                        } else {
+                                            pagerState.scrollToPage(index)
                                         }
                                     }
-                                )
-                            }
-                        )
+                                },
+                                floatingActionButton = {
+                                    MainFAB(
+                                        currentTab = tabs.getOrNull(pagerState.currentPage),
+                                        isConnected = uiState.isConnected,
+                                        onAction = { action ->
+                                            when (action) {
+                                                "keyboard" -> showKeyboard = !showKeyboard
+                                                "clear_history" -> viewModel.clearClipboardHistory()
+                                                "disconnect" -> disconnect()
+                                                "scan" -> launchScanner(context)
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

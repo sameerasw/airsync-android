@@ -93,7 +93,7 @@ fun AirSyncFloatingToolbar(
                     ),
                     label = "spacer_width_$index"
                 )
-                
+
                 // Always render the button, but animate its visibility
                 if (itemWidth > 0.dp || isSelected) {
                     IconButton(
