@@ -394,9 +394,10 @@ object WebSocketMessageHandler {
 
     private fun handlePing(context: Context) {
         try {
-            // Respond to ping with current device status to keep connection alive
-            // We must force sync here because the server expects a response to every ping
-            SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
+            // Respond with lightweight pong for keepalive (works for both LAN and Relay)
+            CoroutineScope(Dispatchers.IO).launch {
+                WebSocketUtil.sendMessage("{\"type\":\"pong\"}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
         }

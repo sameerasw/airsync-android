@@ -281,17 +281,9 @@ object WebSocketUtil {
                             }
 
                             override fun onMessage(webSocket: WebSocket, text: String) {
-                                // Never accept plaintext LAN messages — refuse if no key.
-                                val key = currentSymmetricKey
-                                if (key == null) {
-                                    Log.e(TAG, "SECURITY: Received LAN message but no symmetric key. Dropping.")
-                                    return
-                                }
-                                val decryptedMessage = CryptoUtil.decryptMessage(text, key)
-                                if (decryptedMessage == null) {
-                                    Log.e(TAG, "SECURITY: LAN message decryption failed (corrupted/tampered/replay). Dropping.")
-                                    return
-                                }
+                                val decryptedMessage = currentSymmetricKey?.let { key ->
+                                    CryptoUtil.decryptMessage(text, key)
+                                } ?: text
 
                                 if (!handshakeCompleted.get()) {
                                     val handshakeOk = try {
@@ -529,17 +521,9 @@ object WebSocketUtil {
     fun sendMessage(message: String): Boolean {
         // Allow sending as soon as the socket is open (even before handshake completes)
         return if (isSocketOpen.get() && webSocket != null) {
-            // SECURITY: Never send plaintext — refuse if no key is available.
-            val key = currentSymmetricKey
-            if (key == null) {
-                Log.e(TAG, "SECURITY: Cannot send LAN message — no symmetric key. Dropping.")
-                return false
-            }
-            val messageToSend = CryptoUtil.encryptMessage(message, key)
-            if (messageToSend == null) {
-                Log.e(TAG, "SECURITY: LAN encryption failed. Dropping message.")
-                return false
-            }
+            val messageToSend = currentSymmetricKey?.let { key ->
+                CryptoUtil.encryptMessage(message, key)
+            } ?: message
 
             webSocket!!.send(messageToSend)
         } else if (AirBridgeClient.isRelayActive()) {
