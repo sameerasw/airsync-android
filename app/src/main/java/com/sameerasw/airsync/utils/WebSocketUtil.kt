@@ -54,15 +54,6 @@ object WebSocketUtil {
     // Application context for side-effects (notifications/services) when explicit context isn't provided
     private var appContext: Context? = null
 
-    // Handle LAN authentication challenge by responding with HMAC of the nonce using the symmetric key
-    private fun extractMessageType(message: String): String {
-        return try {
-            org.json.JSONObject(message).optString("type", "unknown")
-        } catch (_: Exception) {
-            "non_json"
-        }
-    }
-
     // Global connection status listeners for UI updates
     private val connectionStatusListeners = mutableSetOf<(Boolean) -> Unit>()
 
@@ -249,9 +240,10 @@ object WebSocketUtil {
                                 isConnected.set(false)
                                 isConnecting.set(true)
 
-                                // Note: performInitialSync is deferred until after LAN auth succeeds.
-                                // The Mac will send an authChallenge first; we respond with HMAC.
-                                // Once authResult(success=true) arrives, we trigger initial sync.
+                                try {
+                                    SyncManager.performInitialSync(context)
+                                } catch (_: Exception) {
+                                }
 
                                 handshakeTimeoutJob?.cancel()
                                 handshakeTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
@@ -298,37 +290,6 @@ object WebSocketUtil {
                                 val decryptedMessage = CryptoUtil.decryptMessage(text, key)
                                 if (decryptedMessage == null) {
                                     Log.e(TAG, "SECURITY: LAN message decryption failed (corrupted/tampered/replay). Dropping.")
-                                    return
-                                }
-
-                                // Handle LAN authentication challenge-response
-                                val msgType = try {
-                                    org.json.JSONObject(decryptedMessage).optString("type", "")
-                                } catch (_: Exception) { "" }
-
-                                if (msgType == "authChallenge") {
-                                    handleAuthChallenge(decryptedMessage, webSocket)
-                                    return
-                                }
-
-                                if (msgType == "authResult") {
-                                    val authData = try {
-                                        org.json.JSONObject(decryptedMessage).optJSONObject("data")
-                                    } catch (_: Exception) { null }
-                                    val success = authData?.optBoolean("success", false) ?: false
-                                    if (!success) {
-                                        val reason = authData?.optString("reason", "Unknown") ?: "Unknown"
-                                        Log.e(TAG, "LAN authentication failed: $reason")
-                                        webSocket.close(4003, "Auth failed: $reason")
-                                        return
-                                    }
-                                    Log.i(TAG, "LAN authentication succeeded, starting initial sync")
-                                    // Auth passed — now safe to send device info / initial sync
-                                    try {
-                                        SyncManager.performInitialSync(context)
-                                    } catch (_: Exception) {
-                                    }
-                                    // Continue — next message should be macInfo for handshake
                                     return
                                 }
 
@@ -567,9 +528,7 @@ object WebSocketUtil {
      */
     fun sendMessage(message: String): Boolean {
         // Allow sending as soon as the socket is open (even before handshake completes)
-        val type = extractMessageType(message)
         return if (isSocketOpen.get() && webSocket != null) {
-            Log.d(TAG, "TX via LAN type=$type")
             // SECURITY: Never send plaintext — refuse if no key is available.
             val key = currentSymmetricKey
             if (key == null) {
@@ -585,10 +544,10 @@ object WebSocketUtil {
             webSocket!!.send(messageToSend)
         } else if (AirBridgeClient.isRelayActive()) {
             // Fallback: route through AirBridge relay if local connection is down
-            Log.d(TAG, "TX via RELAY type=$type")
+            Log.d(TAG, "TX via RELAY")
             AirBridgeClient.sendMessage(message)
         } else {
-            Log.w(TAG, "Drop TX type=$type: no LAN/relay available")
+            Log.w(TAG, "Drop TX: no LAN/relay available")
             false
         }
     }
@@ -893,43 +852,5 @@ object WebSocketUtil {
         }
     }
 
-    /**
-     * Handles an authChallenge message from the Mac LAN server.
-     * Computes HMAC-SHA256(symmetricKey, nonce) and sends back an authResponse.
-     */
-    private fun handleAuthChallenge(decryptedMessage: String, webSocket: WebSocket) {
-        try {
-            val json = org.json.JSONObject(decryptedMessage)
-            val data = json.optJSONObject("data") ?: return
-            val nonceHex = data.optString("nonce", "")
-            if (nonceHex.isEmpty()) {
-                Log.e(TAG, "authChallenge missing nonce")
-                return
-            }
 
-            val key = currentSymmetricKey
-            if (key == null) {
-                Log.e(TAG, "No symmetric key for auth challenge response")
-                webSocket.close(4003, "No symmetric key")
-                return
-            }
-
-            val nonceBytes = CryptoUtil.hexToBytes(nonceHex)
-            val hmacHex = CryptoUtil.hmacSha256(key, nonceBytes)
-
-            val responseJson = """{"type":"authResponse","data":{"hmac":"$hmacHex"}}"""
-            val encrypted = CryptoUtil.encryptMessage(responseJson, key)
-            if (encrypted != null) {
-                webSocket.send(encrypted)
-            } else {
-                // SECURITY: Never send auth HMAC in plaintext — close connection instead.
-                Log.e(TAG, "SECURITY: Failed to encrypt auth response. Closing connection to prevent HMAC leak.")
-                webSocket.close(4003, "Encryption failure")
-                return
-            }
-            Log.d(TAG, "Sent authResponse for LAN challenge")
-        } catch (e: Exception) {
-            Log.e(TAG, "Error handling authChallenge: ${e.message}")
-        }
-    }
 }
