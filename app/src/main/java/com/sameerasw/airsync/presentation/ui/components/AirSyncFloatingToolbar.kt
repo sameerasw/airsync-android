@@ -48,10 +48,10 @@ fun AirSyncFloatingToolbar(
     var expanded by remember { mutableStateOf(true) }
 
     HorizontalFloatingToolbar(
-        modifier = modifier
-            .windowInsetsPadding(
-                androidx.compose.foundation.layout.WindowInsets.navigationBars
-            ),
+//        modifier = modifier
+//            .windowInsetsPadding(
+//                androidx.compose.foundation.layout.WindowInsets.navigationBars
+//            ),
         expanded = expanded,
         floatingActionButton = floatingActionButton,
         scrollBehavior = scrollBehavior,

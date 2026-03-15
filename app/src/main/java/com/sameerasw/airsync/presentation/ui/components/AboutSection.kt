@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -22,13 +26,25 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.sameerasw.airsync.R
@@ -43,6 +59,8 @@ fun AboutSection(
     description: String = "AirSync enables seamless synchronization between your Android device and Mac. Share notifications, clipboard content, and device status wirelessly over your local network."
 ) {
     val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+    var showAppLogo by remember { mutableStateOf(false) }
 
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -73,21 +91,40 @@ fun AboutSection(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Image(
-                painter = painterResource(id = R.drawable.avatar),
-                contentDescription = "Developer Avatar",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(RoundedCornerShape(32.dp))
-                    .background(MaterialTheme.colorScheme.primary)
-                    .combinedClickable(
-                        onClick = { },
-                        onLongClick = {
-                            onAvatarLongClick()
-                        }
+            AnimatedContent(
+                targetState = showAppLogo,
+                transitionSpec = {
+                    fadeIn() togetherWith fadeOut()
+                },
+                label = "AvatarLogoToggle"
+            ) { isLogoVisible ->
+                if (isLogoVisible) {
+                    RotatingAppIcon(
+                        haptics = haptics,
+                        modifier = Modifier
+                            .size(200.dp)
+                            .combinedClickable(
+                                onClick = { showAppLogo = false },
+                                onLongClick = { onAvatarLongClick() }
+                            ),
+                        isVisible = true
                     )
-            )
+                } else {
+                    Image(
+                        painter = painterResource(id = R.drawable.avatar),
+                        contentDescription = "Developer Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(120.dp)
+                            .clip(RoundedCornerShape(32.dp))
+                            .background(MaterialTheme.colorScheme.primary)
+                            .combinedClickable(
+                                onClick = { showAppLogo = true },
+                                onLongClick = { onAvatarLongClick() }
+                            )
+                    )
+                }
+            }
 
             Text(
                 text = "Developed by $developerName",
@@ -135,6 +172,44 @@ fun AboutSection(
                     outlined = true
                 )
             }
+
+            val creditText = stringResource(id = R.string.label_app_icon_credits)
+            val annotatedString = buildAnnotatedString {
+                append(creditText)
+                val startIndex = creditText.indexOf("@Syntrop2k2")
+                val endIndex = startIndex + "@Syntrop2k2".length
+                if (startIndex != -1) {
+                    addStringAnnotation(
+                        tag = "URL",
+                        annotation = stringResource(id = R.string.url_syntrop_telegram),
+                        start = startIndex,
+                        end = endIndex
+                    )
+                    addStyle(
+                        style = SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = TextDecoration.Underline
+                        ),
+                        start = startIndex,
+                        end = endIndex
+                    )
+                }
+            }
+
+            ClickableText(
+                text = annotatedString,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                onClick = { offset ->
+                    annotatedString.getStringAnnotations(tag = "URL", start = offset, end = offset)
+                        .firstOrNull()?.let { annotation ->
+                            openUrl(context, annotation.item)
+                        }
+                }
+            )
 
             Text(
                 text = "Other Apps",

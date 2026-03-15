@@ -66,7 +66,7 @@ fun DefaultTabCard(
             ) {
                 TabOption(
                     title = "Connect",
-                    icon = Icons.Filled.Phonelink,
+                    iconRes = R.drawable.ic_launcher_monochrome,
                     isSelected = currentDefaultTab == "connect",
                     onClick = {
                         HapticUtil.performClick(haptics)

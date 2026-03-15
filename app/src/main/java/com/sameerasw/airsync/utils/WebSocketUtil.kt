@@ -412,9 +412,11 @@ object WebSocketUtil {
                             ) {
                                 if (webSocket == WebSocketUtil.webSocket) {
                                     if (code != 1000) {
-                                        CoroutineScope(Dispatchers.Main).launch {
-                                            val msg = reason.ifEmpty { "Unknown Server Disconnect" }
-                                            android.widget.Toast.makeText(context, "Disconnected: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                                        if (com.sameerasw.airsync.AirSyncApp.isAppForeground()) {
+                                            CoroutineScope(Dispatchers.Main).launch {
+                                                val msg = reason.ifEmpty { "Unknown Server Disconnect" }
+                                                android.widget.Toast.makeText(context, "Disconnected: $msg", android.widget.Toast.LENGTH_SHORT).show()
+                                            }
                                         }
                                     }
                                     isConnected.set(false)
@@ -464,7 +466,7 @@ object WebSocketUtil {
                                 if (wasActive || isFinalManualAttempt) {
                                     if (manualAttempt || isSocketOpen.get()) {
                                         // Avoid noisy LAN error toasts when relay failover is already available.
-                                        if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        if (!AirBridgeClient.isRelayConnectedOrConnecting() && com.sameerasw.airsync.AirSyncApp.isAppForeground()) {
                                             CoroutineScope(Dispatchers.Main).launch {
                                                 val msg = when (t) {
                                                     is java.net.ConnectException -> "Connection Refused (Is AirSync Mac running?)"

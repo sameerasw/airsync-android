@@ -3,18 +3,23 @@ package com.sameerasw.airsync.presentation.ui.components.cards
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
@@ -32,9 +37,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
+import com.sameerasw.airsync.presentation.ui.components.RotatingAppIcon
+import com.sameerasw.airsync.presentation.ui.components.SlowlyRotatingAppIcon
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
@@ -67,16 +76,16 @@ fun ConnectionStatusCard(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    brush = Brush.linearGradient(
-                        colors = listOf(
-                            gradientColor.copy(alpha = 0.3f),
-                            Color.Transparent
-                        ),
-                        start = Offset(0f, 1f),
-                        end = Offset.Infinite
-                    )
-                )
+//                .background(
+//                    brush = Brush.linearGradient(
+//                        colors = listOf(
+//                            gradientColor.copy(alpha = 0.3f),
+//                            Color.Transparent
+//                        ),
+//                        start = Offset(0f, 1f),
+//                        end = Offset.Infinite
+//                    )
+//                )
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -89,7 +98,8 @@ fun ConnectionStatusCard(
                     contentDescription = "Connected Mac preview",
                     modifier = Modifier
                         .fillMaxWidth(0.75f),
-                    contentScale = ContentScale.Fit
+                    contentScale = ContentScale.Fit,
+                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
             }
 
@@ -102,8 +112,8 @@ fun ConnectionStatusCard(
                 ) {
                     Text(
                         "${connectedDevice.name}",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.headlineSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.weight(1f)
                     )
 
@@ -198,7 +208,12 @@ fun ConnectionStatusCard(
                 }
 
                 if (isConnected) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) { LoadingIndicator() }
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        SlowlyRotatingAppIcon(
+                            modifier = Modifier
+                                .size(54.dp)
+                        )
+                    }
 //                    Icon(
 //                        painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_24),
 //                        contentDescription = "Connected",
@@ -263,11 +278,30 @@ fun ConnectionStatusCard(
                 }
 
                 if (isConnected) {
-                    OutlinedButton(onClick = {
-                        HapticUtil.performClick(haptics)
-                        onDisconnect()
-                    }) {
-                        Text("Disconnect")
+
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            onDisconnect()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceBright,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        modifier = Modifier
+                            .height(48.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_off_24),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(
+                            text = "Disconnect",
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1
+                        )
                     }
                 }
             }

@@ -128,4 +128,8 @@ interface AirSyncRepository {
     fun getLastPromptDismissedVersion(): Flow<Int>
     suspend fun setHasRatedApp(hasRated: Boolean)
     fun hasRatedApp(): Flow<Boolean>
+
+    // Quick Share (receiving)
+    suspend fun setQuickShareEnabled(enabled: Boolean)
+    fun isQuickShareEnabled(): Flow<Boolean>
 }

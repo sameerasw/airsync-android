@@ -30,7 +30,8 @@ import com.sameerasw.airsync.utils.QuickSettingsUtil
 @Composable
 fun QuickSettingsTilesCard(
     isConnectionTileAdded: Boolean,
-    isClipboardTileAdded: Boolean
+    isClipboardTileAdded: Boolean,
+    isQuickShareTileAdded: Boolean
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

@@ -230,7 +230,13 @@ class MainActivity : ComponentActivity() {
                         // Switch to device icon - with null check for OEM device compatibility
                         try {
                             splashIcon.setImageResource(deviceIconRes)
-                            Log.d("MainActivity", "Switched to device icon")
+                            // Apply Material You primary color tint
+                            val colorPrimary = androidx.core.content.ContextCompat.getColor(
+                                this@MainActivity,
+                                R.color.material_primary
+                            )
+                            splashIcon.imageTintList = android.content.res.ColorStateList.valueOf(colorPrimary)
+                            Log.d("MainActivity", "Switched to device icon with primary tint")
 
                             // Fade in the new device icon
                             val fadeInIcon =

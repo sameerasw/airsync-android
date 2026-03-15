@@ -184,7 +184,7 @@ class AirSyncTileService : TileService() {
 
             qsTile?.apply {
                 val dynamicIcon =
-                    com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(lastDevice)
+                    com.sameerasw.airsync.utils.DeviceIconResolver.getTileIconRes(lastDevice)
                 icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
 
                 if (isConnected && lastDevice != null) {
@@ -229,7 +229,8 @@ class AirSyncTileService : TileService() {
                 state = Tile.STATE_INACTIVE
                 label = "AirSync"
                 subtitle = "Error"
-                val dynamicIcon = com.sameerasw.airsync.utils.DeviceIconResolver.getIconRes(null)
+                val dynamicIcon =
+                    com.sameerasw.airsync.utils.DeviceIconResolver.getTileIconRes(null)
                 icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
                 updateTile()
             }
