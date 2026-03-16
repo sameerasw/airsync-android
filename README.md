@@ -1,5 +1,5 @@
 # airsync-android
-Android app for AirSync 2.0 built with Kotlin Jetpack Compose
+Android app for AirSync 3.0 built with Kotlin Jetpack Compose
 
 Min : Android 11
 

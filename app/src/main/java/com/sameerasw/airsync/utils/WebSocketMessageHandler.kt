@@ -513,7 +513,7 @@ object WebSocketMessageHandler {
 
                 val macName = data.optString("name", "")
                 val isPlus = data.optBoolean("isPlusSubscription", false)
-                val macVersion = data.optString("version", "2.0.0")
+                val macVersion = data.optString("version", "3.0.0")
 
                 Log.d(
                     TAG,
