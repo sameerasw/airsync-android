@@ -30,6 +30,8 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -44,6 +46,7 @@ import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.presentation.ui.components.RotatingAppIcon
 import com.sameerasw.airsync.presentation.ui.components.SlowlyRotatingAppIcon
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
@@ -138,6 +141,8 @@ fun ConnectionStatusCard(
                     }
                 }
 
+                val peerReallyActive by AirBridgeClient.peerReallyActive.collectAsState()
+
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -167,6 +172,21 @@ fun ConnectionStatusCard(
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
+                        }
+
+                        // Peer health badge when connected via relay
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = if (peerReallyActive) Color(0xFF4CAF50).copy(alpha = 0.16f) else Color(
+                                0xFFFF9800
+                            ).copy(alpha = 0.16f)
+                        ) {
+                            Text(
+                                text = if (peerReallyActive) "Peer online" else "Peer offline",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                style = MaterialTheme.typography.labelMedium,
+                                color = if (peerReallyActive) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                            )
                         }
                     } else {
                         val ips =
