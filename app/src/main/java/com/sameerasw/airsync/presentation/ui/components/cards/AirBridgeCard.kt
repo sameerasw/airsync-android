@@ -63,6 +63,7 @@ fun AirBridgeCard(context: Context) {
     var secret by remember { mutableStateOf("") }
 
     val connectionState by AirBridgeClient.connectionState.collectAsState()
+    val peerReallyActive by AirBridgeClient.peerReallyActive.collectAsState()
 
     LaunchedEffect(Unit) {
         launch { ds.getAirBridgeEnabled().collect { enabled = it } }
@@ -153,6 +154,24 @@ fun AirBridgeCard(context: Context) {
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
+                    }
+
+                    if (connectionState == AirBridgeClient.State.RELAY_ACTIVE && !peerReallyActive) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFFF9800))
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                "Peer offline",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFFFF9800)
+                            )
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))

@@ -83,6 +83,7 @@ object WebSocketMessageHandler {
                 "modifierStatus" -> handleModifierStatus(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
+                "macWake" -> handleMacWake(context)
                 "macInfo" -> handleMacInfo(context, data)
                 "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "browseLs" -> handleBrowseLs(context, data)
@@ -400,6 +401,21 @@ object WebSocketMessageHandler {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
+        }
+    }
+
+    private fun handleMacWake(context: Context) {
+        try {
+            Log.d(TAG, "Received macWake via relay – requesting LAN reconnect from relay")
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    WebSocketUtil.requestLanReconnectFromRelay(context)
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error requesting LAN reconnect from relay: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling macWake: ${e.message}")
         }
     }
 

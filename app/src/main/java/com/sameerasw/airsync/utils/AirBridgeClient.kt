@@ -58,6 +58,7 @@ object AirBridgeClient {
 
     // Reconnect backoff
     private var reconnectJob: Job? = null
+    private var statusQueryJob: Job? = null
 
     // Number of consecutive reconnect attempts, used for exponential backoff calculation.
     private var reconnectAttempt = 0
@@ -68,6 +69,12 @@ object AirBridgeClient {
     // Prevent concurrent connect attempts to
     private val connectInProgress = AtomicBoolean(false)
     private val activeConnectionGeneration = AtomicLong(0L)
+
+    // Cached view of last status_reply from relay
+    @Volatile
+    private var lastStatusBothConnected: Boolean = false
+    private val _peerReallyActive = MutableStateFlow(false)
+    val peerReallyActive: StateFlow<Boolean> = _peerReallyActive
 
     // Message callback — routes relayed messages to the existing handler
     private var onMessageReceived: ((Context, String) -> Unit)? = null
@@ -81,6 +88,9 @@ object AirBridgeClient {
             Log.d(TAG, "State unchanged: $newState | $reason")
         }
         _connectionState.value = newState
+        if (newState != State.RELAY_ACTIVE) {
+            _peerReallyActive.value = false
+        }
     }
 
     /**
@@ -227,7 +237,11 @@ object AirBridgeClient {
         isManuallyDisconnected.set(true)
         reconnectJob?.cancel()
         reconnectJob = null
+        statusQueryJob?.cancel()
+        statusQueryJob = null
         reconnectAttempt = 0
+        lastStatusBothConnected = false
+        _peerReallyActive.value = false
 
         // Close WebSocket connection gracefully.
         try {
@@ -289,6 +303,12 @@ object AirBridgeClient {
      * Returns true if the relay is active and ready to forward messages.
      */
     fun isRelayActive(): Boolean = _connectionState.value == State.RELAY_ACTIVE
+
+    /**
+     * Returns true if the relay reports that both Mac and Android are currently attached
+     * to the same pairing session (based on the latest status_reply snapshot).
+     */
+    fun isPeerReallyActive(): Boolean = isRelayActive() && lastStatusBothConnected
 
     /**
      * Returns true if relay transport is already usable or being established.
@@ -370,6 +390,9 @@ object AirBridgeClient {
                 if (ws.send(regMsg.toString())) {
                     Log.d(TAG, "Registration sent for pairingId: $pairingId")
                     setState(State.WAITING_FOR_PEER, "Registration accepted, waiting peer")
+                    // Reset status cache on fresh registration
+                    lastStatusBothConnected = false
+                    _peerReallyActive.value = false
                 } else {
                     Log.e(TAG, "Failed to send registration")
                     setState(State.FAILED, "Registration send failed")
@@ -386,6 +409,10 @@ object AirBridgeClient {
                 Log.d(TAG, "Relay closing: $code $reason")
                 ws.close(1000, null)
                 setState(State.DISCONNECTED, "Socket closing code=$code")
+                statusQueryJob?.cancel()
+                statusQueryJob = null
+                lastStatusBothConnected = false
+                _peerReallyActive.value = false
                 if (webSocket == ws) {
                     webSocket = null
                 }
@@ -397,6 +424,10 @@ object AirBridgeClient {
                 val msg = if (t is java.io.EOFException) "Server closed connection (EOF)" else (t.message ?: "Unknown error ($t)")
                 Log.e(TAG, "Relay connection failed: $msg")
                 setState(State.FAILED, "Socket failure: $msg")
+                statusQueryJob?.cancel()
+                statusQueryJob = null
+                lastStatusBothConnected = false
+                _peerReallyActive.value = false
                 if (webSocket == ws) {
                     webSocket = null
                 }
@@ -420,6 +451,7 @@ object AirBridgeClient {
                     reconnectJob?.cancel()
                     reconnectJob = null
                     reconnectAttempt = 0
+                    startStatusPolling()
 
                     // Trigger initial sync via relay now that the tunnel is active
                     appContext?.let { ctx ->
@@ -432,6 +464,16 @@ object AirBridgeClient {
                             }
                         }
                     }
+                    return
+                }
+                "status_reply" -> {
+                    // Health snapshot from relay: record whether both peers are currently attached.
+                    val both = json.optBoolean("bothConnected", false)
+                    val macActive = json.optBoolean("macActive", false)
+                    val androidActive = json.optBoolean("androidActive", false)
+                    lastStatusBothConnected = both && macActive && androidActive
+                    _peerReallyActive.value = isRelayActive() && lastStatusBothConnected
+                    Log.d(TAG, "Relay status_reply: macActive=$macActive androidActive=$androidActive bothConnected=$both")
                     return
                 }
                 "mac_info" -> {
@@ -496,6 +538,29 @@ object AirBridgeClient {
             if (!isManuallyDisconnected.get() && sourceGeneration == activeConnectionGeneration.get()) {
                 connectInternal(relayUrl, pairingId, secret)
             }
+        }
+    }
+
+    // Periodically asks relay for session health so UI can detect relay-zombie situations.
+    private fun startStatusPolling() {
+        statusQueryJob?.cancel()
+        statusQueryJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isRelayActive() && !isManuallyDisconnected.get()) {
+                sendStatusQuery()
+                delay(5_000)
+            }
+        }
+    }
+
+    private fun sendStatusQuery() {
+        val ws = webSocket ?: return
+        val msg = JSONObject().apply {
+            put("action", "query_status")
+        }.toString()
+        try {
+            ws.send(msg)
+        } catch (e: Exception) {
+            Log.d(TAG, "query_status send failed: ${e.message}")
         }
     }
 
