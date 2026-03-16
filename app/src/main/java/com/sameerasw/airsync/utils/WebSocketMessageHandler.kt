@@ -328,7 +328,7 @@ object WebSocketMessageHandler {
 
             val success = NotificationDismissalUtil.dismissNotification(notificationId)
             val message =
-                if (success) "Notification dismissed" else "Failed to dismiss notification or notification not found"
+                if (success) "Notification dismissed" else "Failed to dismiss notification or not found"
 
             sendNotificationDismissalResponse(notificationId, success, message)
         } catch (e: Exception) {

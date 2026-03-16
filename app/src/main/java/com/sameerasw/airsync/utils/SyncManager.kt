@@ -247,7 +247,7 @@ object SyncManager {
                 val statusJson = DeviceInfoUtil.generateDeviceStatusJson(context)
                 if (WebSocketUtil.sendMessage(statusJson)) {
                     Log.d(TAG, "Device status sent")
-                    // Update  cache
+                    // Update cache
                     lastAudioInfo = DeviceInfoUtil.getAudioInfo(context, includeNowPlaying)
                     lastBatteryInfo = DeviceInfoUtil.getBatteryInfo(context)
                 } else {
