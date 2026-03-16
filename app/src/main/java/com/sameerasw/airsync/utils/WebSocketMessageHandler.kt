@@ -84,6 +84,7 @@ object WebSocketMessageHandler {
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
                 "macWake" -> handleMacWake(context)
+                "peerTransport" -> handlePeerTransport(data)
                 "macInfo" -> handleMacInfo(context, data)
                 "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "browseLs" -> handleBrowseLs(context, data)
@@ -416,6 +417,16 @@ object WebSocketMessageHandler {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling macWake: ${e.message}")
+        }
+    }
+
+    private fun handlePeerTransport(data: JSONObject?) {
+        try {
+            val transport = data?.optString("transport", "unknown") ?: "unknown"
+            val source = data?.optString("source", "peer") ?: "peer"
+            Log.d(TAG, "Peer transport update received: source=$source transport=$transport")
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling peerTransport: ${e.message}")
         }
     }
 

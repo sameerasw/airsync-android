@@ -452,6 +452,7 @@ object AirBridgeClient {
                     reconnectJob = null
                     reconnectAttempt = 0
                     startStatusPolling()
+                    WebSocketUtil.notifyPeerTransportChanged("relay", force = true)
 
                     // Trigger initial sync via relay now that the tunnel is active
                     appContext?.let { ctx ->

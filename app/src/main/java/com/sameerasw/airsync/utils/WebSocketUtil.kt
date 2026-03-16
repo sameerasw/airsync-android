@@ -14,6 +14,7 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -48,6 +49,7 @@ object WebSocketUtil {
     private var autoReconnectStartTime: Long = 0L
     private var autoReconnectAttempts: Int = 0
     private val lastRelayLanRetryMs = AtomicLong(0L)
+    private val lastAdvertisedTransport = java.util.concurrent.atomic.AtomicReference<String?>(null)
 
     // Callback for connection status changes
     private var onConnectionStatusChanged: ((Boolean) -> Unit)? = null
@@ -58,6 +60,34 @@ object WebSocketUtil {
 
     // Global connection status listeners for UI updates
     private val connectionStatusListeners = mutableSetOf<(Boolean) -> Unit>()
+    // Advertises the current Android transport to peer so desktop UI can switch immediately.
+    fun notifyPeerTransportChanged(transport: String, force: Boolean = false): Boolean {
+        if (!force && lastAdvertisedTransport.get() == transport) return true
+        val payload = JSONObject().apply {
+            put("type", "peerTransport")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("transport", transport) // "wifi" | "relay"
+                put("ts", System.currentTimeMillis())
+            })
+        }.toString()
+
+        val sent = if (transport == "relay") {
+            if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                AirBridgeClient.sendMessage(payload)
+            } else {
+                sendMessage(payload)
+            }
+        } else {
+            sendMessage(payload)
+        }
+
+        if (sent) {
+            lastAdvertisedTransport.set(transport)
+        }
+        return sent
+    }
+
 
     private fun createClient(): OkHttpClient {
         return OkHttpClient.Builder()
@@ -344,6 +374,7 @@ object WebSocketUtil {
                                         cancelAutoReconnect()
                                         // Keep relay warm in background (if enabled) for instant failover.
                                         AirBridgeClient.ensureConnected(context, immediate = false)
+                                        notifyPeerTransportChanged("wifi", force = true)
                                         Log.i(TAG, "LAN handshake completed on $ip:$port, relay kept warm")
                                         try {
                                             AirSyncWidgetProvider.updateAllWidgets(context)
@@ -395,6 +426,7 @@ object WebSocketUtil {
                                     notifyConnectionStatusListeners(false)
                                     // If relay is enabled, force immediate relay reconnect for seamless fallback.
                                     AirBridgeClient.ensureConnected(context, immediate = true)
+                                    notifyPeerTransportChanged("relay", force = true)
                                     Log.w(TAG, "LAN socket closing, requested immediate relay fallback")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
@@ -456,6 +488,7 @@ object WebSocketUtil {
                                     notifyConnectionStatusListeners(false)
                                     // If relay is enabled, force immediate relay reconnect for seamless fallback.
                                     AirBridgeClient.ensureConnected(context, immediate = true)
+                                    notifyPeerTransportChanged("relay", force = true)
                                     Log.w(TAG, "LAN failure, requested immediate relay fallback: ${t.message}")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
@@ -553,6 +586,7 @@ object WebSocketUtil {
 
         // Stop periodic sync when disconnecting
         SyncManager.stopPeriodicSync()
+        lastAdvertisedTransport.set(null)
 
         webSocket?.close(1000, "Manual disconnection")
         webSocket = null
