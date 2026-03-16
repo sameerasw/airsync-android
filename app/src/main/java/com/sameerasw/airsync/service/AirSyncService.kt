@@ -159,6 +159,10 @@ class AirSyncService : Service() {
                     if (isScanning) {
                         UDPDiscoveryManager.burstBroadcast(applicationContext)
                         WebSocketUtil.requestAutoReconnect(applicationContext)
+                        // If relay is already active, also force a direct LAN retry immediately.
+                        if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                            WebSocketUtil.requestLanReconnectFromRelay(applicationContext)
+                        }
                     }
                     // When WiFi returns while relay is active but LAN is down,
                     // attempt to re-establish the preferred local connection.

@@ -20,6 +20,7 @@ import org.json.JSONObject
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 import javax.crypto.SecretKey
 
 /**
@@ -66,6 +67,7 @@ object AirBridgeClient {
 
     // Prevent concurrent connect attempts to
     private val connectInProgress = AtomicBoolean(false)
+    private val activeConnectionGeneration = AtomicLong(0L)
 
     // Message callback — routes relayed messages to the existing handler
     private var onMessageReceived: ((Context, String) -> Unit)? = null
@@ -88,6 +90,11 @@ object AirBridgeClient {
     fun connect(context: Context) {
         appContext = context.applicationContext
         isManuallyDisconnected.set(false)
+
+        // Guard against duplicate connect attempts while a usable relay connection is already active/in-flight.
+        if (isRelayConnectedOrConnecting()) {
+            return
+        }
 
         if (!connectInProgress.compareAndSet(false, true)) {
             return
@@ -227,6 +234,7 @@ object AirBridgeClient {
             webSocket?.close(1000, "Manual disconnect")
         } catch (_: Exception) {}
         webSocket = null
+        activeConnectionGeneration.incrementAndGet()
 
         client?.dispatcher?.executorService?.shutdown()
         client = null
@@ -307,6 +315,9 @@ object AirBridgeClient {
      * Internal function to establish WebSocket connection and handle relay protocol.
      */
     private fun connectInternal(relayUrl: String, pairingId: String, secret: String) {
+        // Allocate a fresh generation so callbacks from older sockets are ignored.
+        val generation = activeConnectionGeneration.incrementAndGet()
+
         // Set state early to prevent concurrent connect attempts and log spam while connection is in progress.
         setState(State.CONNECTING, "Opening websocket to relay")
 
@@ -331,8 +342,16 @@ object AirBridgeClient {
 
         // Create a new WebSocket connection with a listener to handle the relay protocol.
         val listener = object : WebSocketListener() {
+            fun isStale(): Boolean = generation != activeConnectionGeneration.get()
+
             // On open, send the registration message with the pairing ID and secret hash.
             override fun onOpen(ws: WebSocket, response: Response) {
+                if (isStale()) {
+                    try {
+                        ws.close(1000, "Stale relay socket")
+                    } catch (_: Exception) {}
+                    return
+                }
                 Log.d(TAG, "WebSocket opened to relay")
                 webSocket = ws
                 setState(State.REGISTERING, "Socket open, sending register")
@@ -358,22 +377,30 @@ object AirBridgeClient {
             }
 
             override fun onMessage(ws: WebSocket, text: String) {
+                if (isStale()) return
                 handleTextMessage(text)
             }
 
             override fun onClosing(ws: WebSocket, code: Int, reason: String) {
+                if (isStale()) return
                 Log.d(TAG, "Relay closing: $code $reason")
                 ws.close(1000, null)
                 setState(State.DISCONNECTED, "Socket closing code=$code")
-                scheduleReconnect(relayUrl, pairingId, secret)
+                if (webSocket == ws) {
+                    webSocket = null
+                }
+                scheduleReconnect(relayUrl, pairingId, secret, generation)
             }
 
             override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+                if (isStale()) return
                 val msg = if (t is java.io.EOFException) "Server closed connection (EOF)" else (t.message ?: "Unknown error ($t)")
                 Log.e(TAG, "Relay connection failed: $msg")
                 setState(State.FAILED, "Socket failure: $msg")
-                webSocket = null
-                scheduleReconnect(relayUrl, pairingId, secret)
+                if (webSocket == ws) {
+                    webSocket = null
+                }
+                scheduleReconnect(relayUrl, pairingId, secret, generation)
             }
         }
 
@@ -390,6 +417,9 @@ object AirBridgeClient {
                 "relay_started" -> {
                     Log.i(TAG, "Relay tunnel established!")
                     setState(State.RELAY_ACTIVE, "Server confirmed relay tunnel")
+                    reconnectJob?.cancel()
+                    reconnectJob = null
+                    reconnectAttempt = 0
 
                     // Trigger initial sync via relay now that the tunnel is active
                     appContext?.let { ctx ->
@@ -447,8 +477,9 @@ object AirBridgeClient {
     }
 
     // Schedules a reconnect attempt with exponential backoff. Resets the backoff if the connection is successful. Does nothing if the disconnect was manual.
-    private fun scheduleReconnect(relayUrl: String, pairingId: String, secret: String) {
+    private fun scheduleReconnect(relayUrl: String, pairingId: String, secret: String, sourceGeneration: Long) {
         if (isManuallyDisconnected.get()) return
+        if (sourceGeneration != activeConnectionGeneration.get()) return
 
         val delayMs = minOf(
             (1L shl minOf(reconnectAttempt, 10)) * 1000L,
@@ -462,7 +493,7 @@ object AirBridgeClient {
         reconnectJob?.cancel()
         reconnectJob = CoroutineScope(Dispatchers.IO).launch {
             delay(delayMs)
-            if (!isManuallyDisconnected.get()) {
+            if (!isManuallyDisconnected.get() && sourceGeneration == activeConnectionGeneration.get()) {
                 connectInternal(relayUrl, pairingId, secret)
             }
         }

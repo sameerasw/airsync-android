@@ -787,18 +787,26 @@ class AirSyncViewModel(
                         val target = hasNetworkAwareMappingForLastDevice()
 
                         if (currentIp == "No Wi-Fi" || currentIp == "Unknown") {
-                            // No usable Wi‑Fi: ensure we stop any active connection and do not attempt reconnect
-                            try {
-                                WebSocketUtil.disconnect(context)
-                            } catch (_: Exception) {
+                            // No usable Wi‑Fi. If relay is active, keep service/relay alive.
+                            if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                Log.d(
+                                    "AirSyncViewModel",
+                                    "Wi-Fi unavailable but relay is active; keeping relay path alive"
+                                )
+                                _uiState.value = _uiState.value.copy(isConnecting = false)
+                            } else {
+                                // No LAN and no relay: stop active LAN path and service.
+                                try {
+                                    WebSocketUtil.disconnect(context)
+                                } catch (_: Exception) {
+                                }
+                                try {
+                                    com.sameerasw.airsync.service.AirSyncService.stop(context)
+                                } catch (_: Exception) {
+                                }
+                                _uiState.value =
+                                    _uiState.value.copy(isConnected = false, isConnecting = false)
                             }
-                            // Stop service when no WiFi
-                            try {
-                                com.sameerasw.airsync.service.AirSyncService.stop(context)
-                            } catch (_: Exception) {
-                            }
-                            _uiState.value =
-                                _uiState.value.copy(isConnected = false, isConnecting = false)
                             return@collect
                         } else {
                             // Ensure service is running when WiFi is available
@@ -883,7 +891,11 @@ class AirSyncViewModel(
                             }
                             if (autoOn && !manual) {
                                 try {
-                                    WebSocketUtil.requestAutoReconnect(context)
+                                    if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        WebSocketUtil.requestLanReconnectFromRelay(context)
+                                    } else {
+                                        WebSocketUtil.requestAutoReconnect(context)
+                                    }
                                 } catch (_: Exception) {
                                 }
                             }

@@ -16,6 +16,7 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * Singleton utility for managing the WebSocket connection to the AirSync Mac server.
@@ -46,6 +47,7 @@ object WebSocketUtil {
     private var autoReconnectActive = AtomicBoolean(false)
     private var autoReconnectStartTime: Long = 0L
     private var autoReconnectAttempts: Int = 0
+    private val lastRelayLanRetryMs = AtomicLong(0L)
 
     // Callback for connection status changes
     private var onConnectionStatusChanged: ((Boolean) -> Unit)? = null
@@ -693,7 +695,14 @@ object WebSocketUtil {
                 UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
                     if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
                     if (AirBridgeClient.isRelayConnectedOrConnecting()) {
-                        Log.d(TAG, "Auto-reconnect paused: relay connected/connecting")
+                        val now = System.currentTimeMillis()
+                        val last = lastRelayLanRetryMs.get()
+                        if (now - last >= 10_000L && lastRelayLanRetryMs.compareAndSet(last, now)) {
+                            Log.d(TAG, "Relay active: trying LAN reconnect from relay path")
+                            requestLanReconnectFromRelay(context)
+                        } else {
+                            Log.d(TAG, "Auto-reconnect paused: relay connected/connecting")
+                        }
                         return@collect
                     }
 
@@ -752,7 +761,11 @@ object WebSocketUtil {
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Error in discovery auto-reconnect: ${e.message}")
+                if (e is kotlinx.coroutines.CancellationException) {
+                    Log.d(TAG, "Discovery auto-reconnect cancelled")
+                } else {
+                    Log.e(TAG, "Error in discovery auto-reconnect: ${e.message}")
+                }
             }
         }
     }
