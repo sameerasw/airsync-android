@@ -689,6 +689,8 @@ class AirSyncViewModel(
             repository.setQuickShareEnabled(enabled)
             val intent = Intent(context, com.sameerasw.airsync.quickshare.QuickShareService::class.java)
             if (enabled) {
+                // Start QuickShareService in foreground discovery mode so it can immediately call startForeground().
+                intent.action = com.sameerasw.airsync.quickshare.QuickShareService.ACTION_START_DISCOVERY
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)
                 } else {

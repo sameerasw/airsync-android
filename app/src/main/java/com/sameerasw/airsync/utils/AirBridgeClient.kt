@@ -452,7 +452,10 @@ object AirBridgeClient {
                     reconnectJob = null
                     reconnectAttempt = 0
                     startStatusPolling()
-                    WebSocketUtil.notifyPeerTransportChanged("relay", force = true)
+                    // Advertise effective transport immediately so desktop UI can switch
+                    // icon/actions without waiting for stale local session cleanup.
+                    val transport = if (WebSocketUtil.isConnected()) "wifi" else "relay"
+                    WebSocketUtil.notifyPeerTransportChanged(transport, force = true)
 
                     // Trigger initial sync via relay now that the tunnel is active
                     appContext?.let { ctx ->

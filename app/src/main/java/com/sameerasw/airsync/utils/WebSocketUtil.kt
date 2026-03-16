@@ -60,9 +60,17 @@ object WebSocketUtil {
 
     // Global connection status listeners for UI updates
     private val connectionStatusListeners = mutableSetOf<(Boolean) -> Unit>()
+
     // Advertises the current Android transport to peer so desktop UI can switch immediately.
     fun notifyPeerTransportChanged(transport: String, force: Boolean = false): Boolean {
-        if (!force && lastAdvertisedTransport.get() == transport) return true
+        val previous = lastAdvertisedTransport.get()
+        if (!force && previous == transport) return true
+
+        Log.d(
+            TAG,
+            "transport_sync: direction=android->mac source=android transport_old=${previous ?: "null"} transport_new=$transport force=$force relayActive=${AirBridgeClient.isRelayConnectedOrConnecting()} lanConnected=${isConnected.get()}"
+        )
+
         val payload = JSONObject().apply {
             put("type", "peerTransport")
             put("data", JSONObject().apply {
