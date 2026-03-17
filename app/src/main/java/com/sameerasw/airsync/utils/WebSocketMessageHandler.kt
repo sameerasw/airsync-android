@@ -11,6 +11,7 @@ import com.sameerasw.airsync.data.repository.AirSyncRepositoryImpl
 import com.sameerasw.airsync.service.MediaNotificationListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -25,6 +26,9 @@ object WebSocketMessageHandler {
 
     // Track if we're currently receiving playing media from Mac to prevent feedback loop
     private var isReceivingPlayingMedia = false
+
+    // macWake LAN reconnect retry loop (avoid spamming / overlapping jobs)
+    private var macWakeLanReconnectJob: Job? = null
 
     // Callback for clipboard entry history tracking
     private var onClipboardEntryReceived: ((text: String) -> Unit)? = null
@@ -83,7 +87,7 @@ object WebSocketMessageHandler {
                 "modifierStatus" -> handleModifierStatus(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
-                "macWake" -> handleMacWake(context)
+                "macWake" -> handleMacWake(context, data)
                 "peerTransport" -> handlePeerTransport(data)
                 "macInfo" -> handleMacInfo(context, data)
                 "refreshAdbPorts" -> handleRefreshAdbPorts(context)
@@ -405,14 +409,64 @@ object WebSocketMessageHandler {
         }
     }
 
-    private fun handleMacWake(context: Context) {
+    private fun handleMacWake(context: Context, data: JSONObject?) {
         try {
-            Log.d(TAG, "Received macWake via relay – requesting LAN reconnect from relay")
-            CoroutineScope(Dispatchers.IO).launch {
+            val ips = data?.optString("ips", "") ?: ""
+            val port = data?.optInt("port", -1) ?: -1
+            val adapter = data?.optString("adapter", "auto") ?: "auto"
+
+            Log.d(TAG, "transport_sync: direction=mac->android type=macWake ips=$ips port=$port adapter=$adapter")
+            Log.d(TAG, "Received macWake via relay – scheduling LAN reconnect attempts")
+
+            macWakeLanReconnectJob?.cancel()
+            macWakeLanReconnectJob = CoroutineScope(Dispatchers.IO).launch {
                 try {
-                    WebSocketUtil.requestLanReconnectFromRelay(context)
+                    val ds = DataStoreManager.getInstance(context)
+                    val last = ds.getLastConnectedDevice().first()
+                    val key = last?.symmetricKey
+
+                    val canDirectAttempt = ips.isNotBlank() && port > 0 && key != null
+                    val start = System.currentTimeMillis()
+                    val maxWindowMs = 120_000L
+                    val intervalMs = 15_000L
+                    var attempt = 0
+
+                    while (System.currentTimeMillis() - start <= maxWindowMs) {
+                        if (WebSocketUtil.isConnected()) {
+                            Log.d(TAG, "macWake: LAN connected, stopping retry loop")
+                            return@launch
+                        }
+                        if (!WebSocketUtil.isConnecting()) {
+                            if (canDirectAttempt) {
+                                Log.d(TAG, "macWake: LAN attempt #$attempt to $ips:$port")
+                                WebSocketUtil.connect(
+                                    context = context,
+                                    ipAddress = ips,
+                                    port = port,
+                                    symmetricKey = key,
+                                    manualAttempt = false
+                                )
+                            } else {
+                                // If we can't do a direct connect, at least keep discovery warm.
+                                try {
+                                    UDPDiscoveryManager.burstBroadcast(context)
+                                } catch (_: Exception) {}
+                            }
+                        } else {
+                            Log.d(TAG, "macWake: skipping attempt #$attempt (already connecting)")
+                        }
+
+                        attempt += 1
+                        delay(intervalMs)
+                    }
+
+                    // After the retry window, fall back to the broader reconnect strategy.
+                    if (!WebSocketUtil.isConnected()) {
+                        Log.d(TAG, "macWake: retry window ended, falling back to requestLanReconnectFromRelay()")
+                        WebSocketUtil.requestLanReconnectFromRelay(context)
+                    }
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error requesting LAN reconnect from relay: ${e.message}")
+                    Log.e(TAG, "Error handling macWake LAN retry loop: ${e.message}")
                 }
             }
         } catch (e: Exception) {
