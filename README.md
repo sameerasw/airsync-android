@@ -1,5 +1,5 @@
 # airsync-android
-Android app for AirSync 2.0 built with Kotlin Jetpack Compose
+Android app for AirSync 3.0 built with Kotlin Jetpack Compose
 
 Min : Android 11
 
@@ -7,7 +7,7 @@ Min : Android 11
 
 
 ## How to connect?
-Use your built-in camera or Google lense or anything that can scan a QR code. I twill prompt you to open the app. Once authorized, The last device will be saved on the mobile for now for easier re-connection.
+Use your built-in camera or Google Lens or anything that can scan a QR code. It will prompt you to open the app. Once authorized, the last device will be saved on the mobile for now for easier reconnection.
 
 ## [Read Documentation and How-To](https://airsync.notion.site/)
 

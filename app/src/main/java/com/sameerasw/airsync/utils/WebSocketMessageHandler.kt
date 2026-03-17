@@ -328,7 +328,7 @@ object WebSocketMessageHandler {
 
             val success = NotificationDismissalUtil.dismissNotification(notificationId)
             val message =
-                if (success) "Notification dismissed" else "Failed to dismiss notification or notification not found"
+                if (success) "Notification dismissed" else "Failed to dismiss notification or not found"
 
             sendNotificationDismissalResponse(notificationId, success, message)
         } catch (e: Exception) {
@@ -513,7 +513,7 @@ object WebSocketMessageHandler {
 
                 val macName = data.optString("name", "")
                 val isPlus = data.optBoolean("isPlusSubscription", false)
-                val macVersion = data.optString("version", "2.0.0")
+                val macVersion = data.optString("version", "3.0.0")
 
                 Log.d(
                     TAG,

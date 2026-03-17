@@ -1,4 +1,4 @@
-# Contributing to AirSync Android (2.0)
+# Contributing to AirSync Android (3.0)
 
 Thank you for your interest in contributing!  
 Before you submit a pull request, please read the following guidelines.
