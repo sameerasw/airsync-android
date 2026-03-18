@@ -107,6 +107,14 @@ class AirSyncService : Service() {
             UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
             startForeground(NOTIFICATION_ID, buildNotification()) // Update notification if needed
         }
+        if (!WebSocketUtil.isConnected() && AirBridgeClient.isRelayConnectedOrConnecting()) {
+            WebSocketUtil.startLanFirstRelayProbe(
+                context = applicationContext,
+                immediate = true,
+                source = "app_foreground",
+                resetBackoff = true
+            )
+        }
     }
 
     private fun handleAppBackground() {
@@ -161,7 +169,12 @@ class AirSyncService : Service() {
                         WebSocketUtil.requestAutoReconnect(applicationContext)
                         // If relay is already active, also force a direct LAN retry immediately.
                         if (AirBridgeClient.isRelayConnectedOrConnecting()) {
-                            WebSocketUtil.requestLanReconnectFromRelay(applicationContext)
+                            WebSocketUtil.startLanFirstRelayProbe(
+                                context = applicationContext,
+                                immediate = true,
+                                source = "network_onAvailable_scanning",
+                                resetBackoff = true
+                            )
                         }
                     }
                     // When WiFi returns while relay is active but LAN is down,
@@ -169,7 +182,12 @@ class AirSyncService : Service() {
                     if (!isScanning && !WebSocketUtil.isConnected() && AirBridgeClient.isRelayActive()) {
                         Log.i(TAG, "WiFi available while relay is active — attempting LAN reconnect")
                         UDPDiscoveryManager.burstBroadcast(applicationContext)
-                        WebSocketUtil.requestLanReconnectFromRelay(applicationContext)
+                        WebSocketUtil.startLanFirstRelayProbe(
+                            context = applicationContext,
+                            immediate = true,
+                            source = "network_onAvailable_sync",
+                            resetBackoff = true
+                        )
                     }
                 }
             }

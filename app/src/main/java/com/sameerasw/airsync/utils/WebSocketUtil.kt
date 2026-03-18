@@ -8,6 +8,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -50,6 +51,14 @@ object WebSocketUtil {
     private var autoReconnectAttempts: Int = 0
     private val lastRelayLanRetryMs = AtomicLong(0L)
     private val lastAdvertisedTransport = java.util.concurrent.atomic.AtomicReference<String?>(null)
+    private var relayLanProbeJob: Job? = null
+    private val relayLanProbeStartedAtMs = AtomicLong(0L)
+
+    private const val RELAY_LAN_PROBE_FAST_WINDOW_MS = 120_000L
+    private const val RELAY_LAN_PROBE_MEDIUM_WINDOW_MS = 10 * 60_000L
+    private const val RELAY_LAN_PROBE_FAST_INTERVAL_MS = 15_000L
+    private const val RELAY_LAN_PROBE_MEDIUM_INTERVAL_MS = 30_000L
+    private const val RELAY_LAN_PROBE_SLOW_INTERVAL_MS = 60_000L
 
     // Callback for connection status changes
     private var onConnectionStatusChanged: ((Boolean) -> Unit)? = null
@@ -94,6 +103,77 @@ object WebSocketUtil {
             lastAdvertisedTransport.set(transport)
         }
         return sent
+    }
+
+    /**
+     * Starts a LAN-first probe loop while relay is active.
+     * The loop keeps relay as fallback and periodically retries direct LAN recovery.
+     */
+    fun startLanFirstRelayProbe(
+        context: Context,
+        immediate: Boolean = true,
+        source: String = "unknown",
+        resetBackoff: Boolean = false
+    ) {
+        appContext = context.applicationContext
+
+        if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+            stopLanFirstRelayProbe("relay_not_active")
+            return
+        }
+
+        val now = System.currentTimeMillis()
+        if (relayLanProbeJob?.isActive == true) {
+            if (resetBackoff) {
+                relayLanProbeStartedAtMs.set(now)
+                Log.d(TAG, "LAN-first probe backoff reset (source=$source)")
+            }
+            Log.d(TAG, "LAN-first probe already running (source=$source resetBackoff=$resetBackoff)")
+            if (immediate) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    requestLanReconnectFromRelay(context, source = "immediate:$source")
+                }
+            }
+            return
+        }
+
+        relayLanProbeStartedAtMs.set(now)
+        relayLanProbeJob = CoroutineScope(Dispatchers.IO).launch {
+            Log.i(TAG, "Starting LAN-first probe loop (source=$source resetBackoff=$resetBackoff)")
+            if (immediate) {
+                requestLanReconnectFromRelay(context, source = "start:$source")
+            }
+
+            while (isActive) {
+                val elapsed = (System.currentTimeMillis() - relayLanProbeStartedAtMs.get()).coerceAtLeast(0L)
+                val intervalMs = computeAdaptiveLanProbeInterval(elapsed)
+                delay(intervalMs)
+                if (isConnected.get()) {
+                    Log.d(TAG, "Stopping LAN-first probe: LAN is connected")
+                    break
+                }
+                if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
+                    Log.d(TAG, "Stopping LAN-first probe: relay not connected/connecting")
+                    break
+                }
+                requestLanReconnectFromRelay(context, source = "periodic:$source")
+            }
+        }
+    }
+
+    private fun computeAdaptiveLanProbeInterval(elapsedMs: Long): Long {
+        return when {
+            elapsedMs < RELAY_LAN_PROBE_FAST_WINDOW_MS -> RELAY_LAN_PROBE_FAST_INTERVAL_MS
+            elapsedMs < (RELAY_LAN_PROBE_FAST_WINDOW_MS + RELAY_LAN_PROBE_MEDIUM_WINDOW_MS) -> RELAY_LAN_PROBE_MEDIUM_INTERVAL_MS
+            else -> RELAY_LAN_PROBE_SLOW_INTERVAL_MS
+        }
+    }
+
+    fun stopLanFirstRelayProbe(reason: String = "unspecified") {
+        relayLanProbeJob?.cancel()
+        relayLanProbeJob = null
+        relayLanProbeStartedAtMs.set(0L)
+        Log.d(TAG, "Stopped LAN-first probe loop (reason=$reason)")
     }
 
 
@@ -380,6 +460,7 @@ object WebSocketUtil {
                                         onConnectionStatusChanged?.invoke(true)
                                         notifyConnectionStatusListeners(true)
                                         cancelAutoReconnect()
+                                        stopLanFirstRelayProbe("lan_handshake_completed")
                                         // Keep relay warm in background (if enabled) for instant failover.
                                         AirBridgeClient.ensureConnected(context, immediate = false)
                                         notifyPeerTransportChanged("wifi", force = true)
@@ -435,6 +516,9 @@ object WebSocketUtil {
                                     // If relay is enabled, force immediate relay reconnect for seamless fallback.
                                     AirBridgeClient.ensureConnected(context, immediate = true)
                                     notifyPeerTransportChanged("relay", force = true)
+                                    if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        startLanFirstRelayProbe(context, immediate = true, source = "lan_onClosing", resetBackoff = true)
+                                    }
                                     Log.w(TAG, "LAN socket closing, requested immediate relay fallback")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
@@ -497,6 +581,9 @@ object WebSocketUtil {
                                     // If relay is enabled, force immediate relay reconnect for seamless fallback.
                                     AirBridgeClient.ensureConnected(context, immediate = true)
                                     notifyPeerTransportChanged("relay", force = true)
+                                    if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                                        startLanFirstRelayProbe(context, immediate = true, source = "lan_onFailure", resetBackoff = true)
+                                    }
                                     Log.w(TAG, "LAN failure, requested immediate relay fallback: ${t.message}")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
@@ -595,6 +682,7 @@ object WebSocketUtil {
         // Stop periodic sync when disconnecting
         SyncManager.stopPeriodicSync()
         lastAdvertisedTransport.set(null)
+        stopLanFirstRelayProbe("manual_disconnect")
 
         webSocket?.close(1000, "Manual disconnection")
         webSocket = null
@@ -656,6 +744,7 @@ object WebSocketUtil {
         onMessageReceived = null
         handshakeCompleted.set(false)
         handshakeTimeoutJob?.cancel()
+        stopLanFirstRelayProbe("cleanup")
         appContext = null
     }
 
@@ -737,14 +826,7 @@ object WebSocketUtil {
                 UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
                     if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
                     if (AirBridgeClient.isRelayConnectedOrConnecting()) {
-                        val now = System.currentTimeMillis()
-                        val last = lastRelayLanRetryMs.get()
-                        if (now - last >= 10_000L && lastRelayLanRetryMs.compareAndSet(last, now)) {
-                            Log.d(TAG, "Relay active: trying LAN reconnect from relay path")
-                            requestLanReconnectFromRelay(context)
-                        } else {
-                            Log.d(TAG, "Auto-reconnect paused: relay connected/connecting")
-                        }
+                        startLanFirstRelayProbe(context, immediate = false, source = "auto_reconnect_collect", resetBackoff = false)
                         return@collect
                     }
 
@@ -826,8 +908,18 @@ object WebSocketUtil {
      * prefers LAN via sendMessage().
      */
     fun requestLanReconnectFromRelay(context: Context) {
+        requestLanReconnectFromRelay(context, source = "default")
+    }
+
+    fun requestLanReconnectFromRelay(context: Context, source: String) {
         if (isConnected.get() || isConnecting.get()) return
-        Log.i(TAG, "Attempting LAN reconnect while relay is active")
+        val now = System.currentTimeMillis()
+        val last = lastRelayLanRetryMs.get()
+        if (now - last < 5_000L && source.startsWith("periodic:")) {
+            return
+        }
+        lastRelayLanRetryMs.set(now)
+        Log.i(TAG, "Attempting LAN reconnect while relay is active (source=$source)")
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -846,7 +938,7 @@ object WebSocketUtil {
                 if (targetConnection != null) {
                     // Discover fresh IPs via UDP burst first, then attempt connect
                     UDPDiscoveryManager.burstBroadcast(context)
-                    delay(1500) // Allow time for discovery responses
+                    delay(2000) // Allow time for discovery responses
 
                     // Check discovered devices for the target
                     val discovered = UDPDiscoveryManager.discoveredDevices.value

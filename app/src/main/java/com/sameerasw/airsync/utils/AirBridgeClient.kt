@@ -237,6 +237,7 @@ object AirBridgeClient {
         isManuallyDisconnected.set(true)
         reconnectJob?.cancel()
         reconnectJob = null
+        WebSocketUtil.stopLanFirstRelayProbe("relay_manual_disconnect")
         statusQueryJob?.cancel()
         statusQueryJob = null
         reconnectAttempt = 0
@@ -409,6 +410,7 @@ object AirBridgeClient {
                 Log.d(TAG, "Relay closing: $code $reason")
                 ws.close(1000, null)
                 setState(State.DISCONNECTED, "Socket closing code=$code")
+                WebSocketUtil.stopLanFirstRelayProbe("relay_onClosing")
                 statusQueryJob?.cancel()
                 statusQueryJob = null
                 lastStatusBothConnected = false
@@ -424,6 +426,7 @@ object AirBridgeClient {
                 val msg = if (t is java.io.EOFException) "Server closed connection (EOF)" else (t.message ?: "Unknown error ($t)")
                 Log.e(TAG, "Relay connection failed: $msg")
                 setState(State.FAILED, "Socket failure: $msg")
+                WebSocketUtil.stopLanFirstRelayProbe("relay_onFailure")
                 statusQueryJob?.cancel()
                 statusQueryJob = null
                 lastStatusBothConnected = false
@@ -456,6 +459,16 @@ object AirBridgeClient {
                     // icon/actions without waiting for stale local session cleanup.
                     val transport = if (WebSocketUtil.isConnected()) "wifi" else "relay"
                     WebSocketUtil.notifyPeerTransportChanged(transport, force = true)
+                    appContext?.let { ctx ->
+                        if (!WebSocketUtil.isConnected()) {
+                            WebSocketUtil.startLanFirstRelayProbe(
+                                context = ctx,
+                                immediate = true,
+                                source = "relay_started",
+                                resetBackoff = true
+                            )
+                        }
+                    }
 
                     // Trigger initial sync via relay now that the tunnel is active
                     appContext?.let { ctx ->
