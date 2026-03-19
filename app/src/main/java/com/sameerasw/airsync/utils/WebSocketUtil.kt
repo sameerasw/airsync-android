@@ -898,6 +898,17 @@ object WebSocketUtil {
     fun requestAutoReconnect(context: Context) {
         // Only if not already connected or connecting
         if (isConnected.get() || isConnecting.get()) return
+        if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+            // Important for app cold-start/reopen after process kill:
+            // there may be no immediate network callback/discovery emission,
+            // so start LAN-first probe right away while relay is up.
+            startLanFirstRelayProbe(
+                context = context,
+                immediate = true,
+                source = "requestAutoReconnect_relay_bootstrap",
+                resetBackoff = true
+            )
+        }
         tryStartAutoReconnect(context)
     }
 

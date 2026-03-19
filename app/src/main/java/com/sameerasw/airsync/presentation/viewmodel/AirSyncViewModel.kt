@@ -380,6 +380,17 @@ class AirSyncViewModel(
             )
             lastUnifiedConnected = currentlyConnected
 
+            // If app was restarted and relay is already active, immediately bootstrap
+            // LAN-first probing instead of waiting for a future network callback.
+            if (relayConnected && !lastWebSocketConnected) {
+                WebSocketUtil.startLanFirstRelayProbe(
+                    context = context,
+                    immediate = true,
+                    source = "viewmodel_initialize_state",
+                    resetBackoff = true
+                )
+            }
+
             updateRatingPromptDisplay()
 
             // If we have PC name from QR code and not already connected, store it temporarily for the dialog
