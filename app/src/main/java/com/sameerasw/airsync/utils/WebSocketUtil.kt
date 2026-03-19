@@ -15,10 +15,16 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
+import org.json.JSONArray
 import org.json.JSONObject
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
+import java.util.UUID
 
 /**
  * Singleton utility for managing the WebSocket connection to the AirSync Mac server.
@@ -53,12 +59,27 @@ object WebSocketUtil {
     private val lastAdvertisedTransport = java.util.concurrent.atomic.AtomicReference<String?>(null)
     private var relayLanProbeJob: Job? = null
     private val relayLanProbeStartedAtMs = AtomicLong(0L)
+    private val consecutiveLanProbeFailures = AtomicInteger(0)
+    private val lanProbeCooldownUntilMs = AtomicLong(0L)
+    private val lastLanProbeDiscoveryBurstMs = AtomicLong(0L)
+    private val transportGeneration = AtomicLong(0L)
+    private val activeTransportGeneration = AtomicLong(0L)
+    private val activeTransportGenerationStartedAtMs = AtomicLong(0L)
+    private val validatedTransportGeneration = AtomicLong(0L)
+    private val pendingTransportCheckGeneration = AtomicLong(0L)
+    private val pendingTransportCheckToken = AtomicReference<String?>(null)
+    private var transportCheckTimeoutJob: Job? = null
 
     private const val RELAY_LAN_PROBE_FAST_WINDOW_MS = 120_000L
     private const val RELAY_LAN_PROBE_MEDIUM_WINDOW_MS = 10 * 60_000L
     private const val RELAY_LAN_PROBE_FAST_INTERVAL_MS = 15_000L
     private const val RELAY_LAN_PROBE_MEDIUM_INTERVAL_MS = 30_000L
     private const val RELAY_LAN_PROBE_SLOW_INTERVAL_MS = 60_000L
+    private const val RELAY_LAN_PROBE_MAX_CONSECUTIVE_FAILURES = 8
+    private const val RELAY_LAN_PROBE_COOLDOWN_MS = 5 * 60_000L
+    private const val RELAY_LAN_PROBE_DISCOVERY_MIN_INTERVAL_MS = 30_000L
+    private const val TRANSPORT_CHECK_TIMEOUT_MS = 6_000L
+    private const val TRANSPORT_GENERATION_TTL_MS = 120_000L
 
     // Callback for connection status changes
     private var onConnectionStatusChanged: ((Boolean) -> Unit)? = null
@@ -117,6 +138,12 @@ object WebSocketUtil {
     ) {
         appContext = context.applicationContext
 
+        if (!isLanNegotiationAllowed(context)) {
+            stopLanFirstRelayProbe("no_lan_network")
+            Log.d(TAG, "Skipping LAN-first probe: active network is not LAN/Wi-Fi")
+            return
+        }
+
         if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
             stopLanFirstRelayProbe("relay_not_active")
             return
@@ -126,6 +153,7 @@ object WebSocketUtil {
         if (relayLanProbeJob?.isActive == true) {
             if (resetBackoff) {
                 relayLanProbeStartedAtMs.set(now)
+                resetLanProbeFailureState("reset_by:$source")
                 Log.d(TAG, "LAN-first probe backoff reset (source=$source)")
             }
             Log.d(TAG, "LAN-first probe already running (source=$source resetBackoff=$resetBackoff)")
@@ -138,6 +166,9 @@ object WebSocketUtil {
         }
 
         relayLanProbeStartedAtMs.set(now)
+        if (resetBackoff) {
+            resetLanProbeFailureState("reset_by:$source")
+        }
         relayLanProbeJob = CoroutineScope(Dispatchers.IO).launch {
             Log.i(TAG, "Starting LAN-first probe loop (source=$source resetBackoff=$resetBackoff)")
             if (immediate) {
@@ -147,6 +178,14 @@ object WebSocketUtil {
             while (isActive) {
                 val elapsed = (System.currentTimeMillis() - relayLanProbeStartedAtMs.get()).coerceAtLeast(0L)
                 val intervalMs = computeAdaptiveLanProbeInterval(elapsed)
+                val nowLoop = System.currentTimeMillis()
+                val cooldownUntil = lanProbeCooldownUntilMs.get()
+                if (cooldownUntil > nowLoop) {
+                    val remaining = cooldownUntil - nowLoop
+                    Log.d(TAG, "LAN-first probe in cooldown, remaining=${remaining}ms")
+                    delay(minOf(remaining, intervalMs))
+                    continue
+                }
                 delay(intervalMs)
                 if (isConnected.get()) {
                     Log.d(TAG, "Stopping LAN-first probe: LAN is connected")
@@ -683,6 +722,7 @@ object WebSocketUtil {
         SyncManager.stopPeriodicSync()
         lastAdvertisedTransport.set(null)
         stopLanFirstRelayProbe("manual_disconnect")
+        resetLanProbeFailureState("manual_disconnect")
 
         webSocket?.close(1000, "Manual disconnection")
         webSocket = null
@@ -745,6 +785,7 @@ object WebSocketUtil {
         handshakeCompleted.set(false)
         handshakeTimeoutJob?.cancel()
         stopLanFirstRelayProbe("cleanup")
+        resetLanProbeFailureState("cleanup")
         appContext = null
     }
 
@@ -902,6 +943,7 @@ object WebSocketUtil {
             // Important for app cold-start/reopen after process kill:
             // there may be no immediate network callback/discovery emission,
             // so start LAN-first probe right away while relay is up.
+            sendTransportOffer(context, reason = "requestAutoReconnect_relay_bootstrap")
             startLanFirstRelayProbe(
                 context = context,
                 immediate = true,
@@ -923,8 +965,16 @@ object WebSocketUtil {
     }
 
     fun requestLanReconnectFromRelay(context: Context, source: String) {
-        if (isConnected.get() || isConnecting.get()) return
+        if (!isLanNegotiationAllowed(context)) {
+            Log.d(TAG, "Skipping LAN reconnect from relay: no LAN network (source=$source)")
+            return
+        }
         val now = System.currentTimeMillis()
+        val cooldownUntil = lanProbeCooldownUntilMs.get()
+        if (cooldownUntil > now) {
+            return
+        }
+        if (isConnected.get() || isConnecting.get()) return
         val last = lastRelayLanRetryMs.get()
         if (now - last < 5_000L && source.startsWith("periodic:")) {
             return
@@ -947,8 +997,15 @@ object WebSocketUtil {
                 val targetConnection = all.firstOrNull { it.deviceName == last.name }
 
                 if (targetConnection != null) {
-                    // Discover fresh IPs via UDP burst first, then attempt connect
-                    UDPDiscoveryManager.burstBroadcast(context)
+                    // Discover fresh IPs via UDP burst first, but throttle to avoid battery drain.
+                    val burstNow = System.currentTimeMillis()
+                    val lastBurst = lastLanProbeDiscoveryBurstMs.get()
+                    val shouldBurst = source.startsWith("start:") ||
+                        source.startsWith("immediate:") ||
+                        burstNow - lastBurst >= RELAY_LAN_PROBE_DISCOVERY_MIN_INTERVAL_MS
+                    if (shouldBurst && lastLanProbeDiscoveryBurstMs.compareAndSet(lastBurst, burstNow)) {
+                        UDPDiscoveryManager.burstBroadcast(context)
+                    }
                     delay(2000) // Allow time for discovery responses
 
                     // Check discovered devices for the target
@@ -970,6 +1027,7 @@ object WebSocketUtil {
                         onConnectionStatus = { connected ->
                             if (connected) {
                                 Log.i(TAG, "LAN reconnect succeeded — relay stays warm as backup")
+                                resetLanProbeFailureState("lan_reconnect_success")
                                 CoroutineScope(Dispatchers.IO).launch {
                                     try {
                                         ds.updateNetworkDeviceLastConnected(
@@ -980,17 +1038,297 @@ object WebSocketUtil {
                                 }
                             } else {
                                 Log.d(TAG, "LAN reconnect from relay failed — staying on relay")
+                                markLanProbeFailure("lan_reconnect_failed:$source")
                             }
                         }
                     )
                 } else {
                     Log.d(TAG, "No target connection found for LAN reconnect from relay")
+                    markLanProbeFailure("missing_target_connection:$source")
                     // Fall back to generic auto-reconnect which monitors discovery
                     tryStartAutoReconnect(context)
                 }
             } catch (e: Exception) {
+                markLanProbeFailure("request_exception:$source")
                 Log.e(TAG, "Error in requestLanReconnectFromRelay: ${e.message}")
             }
+        }
+    }
+
+    private fun resetLanProbeFailureState(reason: String) {
+        consecutiveLanProbeFailures.set(0)
+        lanProbeCooldownUntilMs.set(0L)
+        Log.d(TAG, "LAN-first probe failure state reset ($reason)")
+    }
+
+    private fun markLanProbeFailure(reason: String) {
+        val fails = consecutiveLanProbeFailures.incrementAndGet()
+        Log.d(TAG, "LAN-first probe failure #$fails ($reason)")
+        if (fails >= RELAY_LAN_PROBE_MAX_CONSECUTIVE_FAILURES) {
+            val until = System.currentTimeMillis() + RELAY_LAN_PROBE_COOLDOWN_MS
+            lanProbeCooldownUntilMs.set(until)
+            consecutiveLanProbeFailures.set(0)
+            Log.w(TAG, "LAN-first probe entering cooldown until=$until after repeated failures")
+        }
+    }
+
+    fun reportLanNegotiationFailure(reason: String) {
+        markLanProbeFailure("negotiation:$reason")
+    }
+
+    fun reportLanNegotiationSuccess(reason: String) {
+        resetLanProbeFailureState("negotiation:$reason")
+    }
+
+    fun nextTransportGeneration(): Long {
+        val next = transportGeneration.incrementAndGet()
+        beginTransportRound(next, "local_next_generation")
+        return next
+    }
+
+    private fun beginTransportRound(generation: Long, reason: String) {
+        if (generation <= 0L) return
+        activeTransportGeneration.set(generation)
+        activeTransportGenerationStartedAtMs.set(System.currentTimeMillis())
+        validatedTransportGeneration.set(0L)
+        pendingTransportCheckGeneration.set(0L)
+        pendingTransportCheckToken.set(null)
+        transportCheckTimeoutJob?.cancel()
+        transportCheckTimeoutJob = null
+        Log.d(TAG, "transport_sync: phase=round_begin generation=$generation reason=$reason")
+    }
+
+    fun acceptIncomingTransportGeneration(generation: Long, reason: String): Boolean {
+        if (generation <= 0L) return false
+        val current = activeTransportGeneration.get()
+        if (current == 0L) {
+            beginTransportRound(generation, "incoming_init:$reason")
+            return true
+        }
+        if (generation == current) return true
+
+        val age = System.currentTimeMillis() - activeTransportGenerationStartedAtMs.get()
+        if (age > TRANSPORT_GENERATION_TTL_MS && generation > current) {
+            beginTransportRound(generation, "incoming_rollover:$reason")
+            return true
+        }
+
+        Log.w(TAG, "transport_sync: phase=drop_stale_generation incoming=$generation active=$current reason=$reason")
+        return false
+    }
+
+    fun isTransportGenerationActive(generation: Long): Boolean {
+        if (generation <= 0L) return false
+        val current = activeTransportGeneration.get()
+        if (generation != current) return false
+        val age = System.currentTimeMillis() - activeTransportGenerationStartedAtMs.get()
+        return age <= TRANSPORT_GENERATION_TTL_MS
+    }
+
+    fun markTransportGenerationValidated(generation: Long, reason: String) {
+        if (!isTransportGenerationActive(generation)) return
+        validatedTransportGeneration.set(generation)
+        Log.d(TAG, "transport_sync: phase=round_validated generation=$generation reason=$reason")
+    }
+
+    fun isTransportGenerationValidated(generation: Long): Boolean {
+        return generation > 0L && validatedTransportGeneration.get() == generation
+    }
+
+    fun getActiveTransportGeneration(): Long {
+        return activeTransportGeneration.get()
+    }
+
+    fun sendTransportOffer(context: Context, reason: String, generation: Long = nextTransportGeneration()): Boolean {
+        if (!isLanNegotiationAllowed(context)) {
+            Log.d(TAG, "transport_sync: phase=offer_drop source=android reason=no_lan_network trigger=$reason")
+            return false
+        }
+        beginTransportRound(generation, "send_offer:$reason")
+        val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: ""
+        val candidates = JSONArray().apply {
+            if (localIp.isNotBlank()) {
+                put(JSONObject().apply {
+                    put("ip", localIp)
+                    put("port", 0)
+                    put("type", "host")
+                })
+            }
+        }
+        val payload = JSONObject().apply {
+            put("type", "transportOffer")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("generation", generation)
+                put("candidates", candidates)
+                put("ts", System.currentTimeMillis())
+                put("reason", reason)
+            })
+        }.toString()
+
+        Log.d(TAG, "transport_sync: phase=offer source=android generation=$generation reason=$reason")
+        return sendMessage(payload)
+    }
+
+    fun sendTransportAnswer(generation: Long, reason: String, context: Context? = appContext): Boolean {
+        if (context == null || !isLanNegotiationAllowed(context)) {
+            Log.d(TAG, "transport_sync: phase=answer_drop source=android generation=$generation reason=no_lan_network")
+            return false
+        }
+        if (!isTransportGenerationActive(generation)) {
+            Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=inactive_generation")
+            return false
+        }
+        val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: ""
+        val candidates = JSONArray().apply {
+            if (localIp.isNotBlank()) {
+                put(JSONObject().apply {
+                    put("ip", localIp)
+                    put("port", 0)
+                    put("type", "host")
+                })
+            }
+        }
+        val payload = JSONObject().apply {
+            put("type", "transportAnswer")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("generation", generation)
+                put("candidates", candidates)
+                put("ts", System.currentTimeMillis())
+                put("reason", reason)
+            })
+        }.toString()
+        Log.d(TAG, "transport_sync: phase=answer source=android generation=$generation reason=$reason")
+        return sendMessage(payload)
+    }
+
+    fun sendTransportCheck(generation: Long, reason: String): Boolean {
+        if (!isTransportGenerationActive(generation)) {
+            Log.w(TAG, "transport_sync: phase=check_drop generation=$generation reason=inactive_generation")
+            return false
+        }
+        val token = UUID.randomUUID().toString()
+        pendingTransportCheckGeneration.set(generation)
+        pendingTransportCheckToken.set(token)
+        transportCheckTimeoutJob?.cancel()
+        transportCheckTimeoutJob = CoroutineScope(Dispatchers.IO).launch {
+            delay(TRANSPORT_CHECK_TIMEOUT_MS)
+            val pendingToken = pendingTransportCheckToken.get()
+            if (pendingToken == token) {
+                Log.w(TAG, "transport_sync: phase=check_timeout generation=$generation token=$token")
+                reportLanNegotiationFailure("check_timeout")
+                sendTransportNominate("relay", generation, "check_timeout")
+            }
+        }
+
+        val payload = JSONObject().apply {
+            put("type", "transportCheck")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("generation", generation)
+                put("token", token)
+                put("ts", System.currentTimeMillis())
+                put("reason", reason)
+            })
+        }.toString()
+        Log.d(TAG, "transport_sync: phase=check source=android generation=$generation token=$token")
+        return sendMessage(payload)
+    }
+
+    fun sendTransportCheckAck(generation: Long, token: String): Boolean {
+        if (!isTransportGenerationActive(generation)) {
+            Log.w(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=inactive_generation")
+            return false
+        }
+        val payload = JSONObject().apply {
+            put("type", "transportCheckAck")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("generation", generation)
+                put("token", token)
+                put("ts", System.currentTimeMillis())
+            })
+        }.toString()
+        Log.d(TAG, "transport_sync: phase=check_ack source=android generation=$generation token=$token")
+        return sendMessage(payload)
+    }
+
+    fun onTransportCheckAck(generation: Long, token: String) {
+        if (!isTransportGenerationActive(generation)) {
+            Log.d(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=inactive_generation")
+            return
+        }
+        val pendingGeneration = pendingTransportCheckGeneration.get()
+        val pendingToken = pendingTransportCheckToken.get()
+        if (pendingGeneration != generation || pendingToken != token) {
+            Log.d(TAG, "transport_sync: phase=check_ack_stale generation=$generation token=$token")
+            return
+        }
+        transportCheckTimeoutJob?.cancel()
+        transportCheckTimeoutJob = null
+        pendingTransportCheckToken.set(null)
+        pendingTransportCheckGeneration.set(0L)
+        reportLanNegotiationSuccess("check_ack")
+        if (!isConnected()) {
+            Log.w(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=lan_not_connected")
+            return
+        }
+        markTransportGenerationValidated(generation, "check_ack")
+        notifyPeerTransportChanged("wifi", force = true)
+        sendTransportNominate("lan", generation, "check_ack")
+        Log.i(TAG, "transport_sync: phase=nominate_lan source=android generation=$generation reason=check_ack")
+    }
+
+    fun sendTransportNominate(path: String, generation: Long, reason: String): Boolean {
+        if (!isTransportGenerationActive(generation)) {
+            Log.w(TAG, "transport_sync: phase=nominate_drop generation=$generation reason=inactive_generation")
+            return false
+        }
+        if (path == "lan" && !isTransportGenerationValidated(generation)) {
+            Log.w(TAG, "transport_sync: phase=nominate_drop generation=$generation reason=not_validated")
+            return false
+        }
+        val payload = JSONObject().apply {
+            put("type", "transportNominate")
+            put("data", JSONObject().apply {
+                put("source", "android")
+                put("generation", generation)
+                put("path", path)
+                put("ts", System.currentTimeMillis())
+                put("reason", reason)
+            })
+        }.toString()
+        Log.d(TAG, "transport_sync: phase=nominate source=android generation=$generation path=$path reason=$reason")
+        return sendMessage(payload)
+    }
+
+    private fun isPrivateLanIp(ip: String): Boolean {
+        if (ip.startsWith("192.168.") || ip.startsWith("10.")) return true
+        if (ip.startsWith("172.")) {
+            val parts = ip.split(".")
+            if (parts.size >= 2) {
+                val secondOctet = parts[1].toIntOrNull()
+                if (secondOctet != null && secondOctet in 16..31) {
+                    return true
+                }
+            }
+        }
+        return false
+    }
+
+    fun isLanNegotiationAllowed(context: Context): Boolean {
+        return try {
+            val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val network = cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(network) ?: return false
+            val isLanTransport = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+            if (!isLanTransport) return false
+            val ip = DeviceInfoUtil.getWifiIpAddress(context) ?: return false
+            isPrivateLanIp(ip)
+        } catch (_: Exception) {
+            false
         }
     }
 

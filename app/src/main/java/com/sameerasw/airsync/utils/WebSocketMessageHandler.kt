@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import org.json.JSONObject
 
 /**
@@ -22,6 +23,20 @@ import org.json.JSONObject
  */
 object WebSocketMessageHandler {
     private const val TAG = "WebSocketMessageHandler"
+    private const val TRANSPORT_CANDIDATE_TTL_MS = 120_000L
+
+    private data class CandidateExtractionResult(
+        val ipsCsv: String,
+        val port: Int,
+        val total: Int,
+        val emptyIp: Int,
+        val nonPrivateIp: Int,
+        val invalidPort: Int
+    ) {
+        fun invalidReason(): String {
+            return "accepted_ips=${ipsCsv.split(",").filter { it.isNotBlank() }.size} total=$total empty_ip=$emptyIp non_private_ip=$nonPrivateIp invalid_port=$invalidPort port=$port"
+        }
+    }
 
     // Track if we're currently receiving playing media from Mac to prevent feedback loop
     private var isReceivingPlayingMedia = false
@@ -85,6 +100,11 @@ object WebSocketMessageHandler {
                 "status" -> handleMacDeviceStatus(context, data)
                 "macWake" -> handleMacWake(context, data)
                 "peerTransport" -> handlePeerTransport(data)
+                "transportOffer" -> handleTransportOffer(context, data)
+                "transportAnswer" -> handleTransportAnswer(context, data)
+                "transportCheck" -> handleTransportCheck(data)
+                "transportCheckAck" -> handleTransportCheckAck(data)
+                "transportNominate" -> handleTransportNominate(data)
                 "macInfo" -> handleMacInfo(context, data)
                 "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "browseLs" -> handleBrowseLs(context, data)
@@ -461,6 +481,225 @@ object WebSocketMessageHandler {
             Log.d(TAG, "Peer transport update received: source=$source transport=$transport")
         } catch (e: Exception) {
             Log.e(TAG, "Error handling peerTransport: ${e.message}")
+        }
+    }
+
+    private fun isTransportMessageFresh(data: JSONObject?): Boolean {
+        val ts = data?.optLong("ts", 0L) ?: 0L
+        if (ts <= 0L) return false
+        val delta = abs(System.currentTimeMillis() - ts)
+        return delta <= TRANSPORT_CANDIDATE_TTL_MS
+    }
+
+    private fun isPrivateOrAllowedLocalIp(ip: String): Boolean {
+        if (ip == "127.0.0.1" || ip == "localhost") return true
+        if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("100.")) return true
+        if (!ip.startsWith("172.")) return false
+        val parts = ip.split(".")
+        if (parts.size < 2) return false
+        val second = parts[1].toIntOrNull() ?: return false
+        return second in 16..31
+    }
+
+    private fun extractSanitizedCandidates(data: JSONObject?): CandidateExtractionResult {
+        val candidates = data?.optJSONArray("candidates")
+        val ips = mutableListOf<String>()
+        var port = -1
+        var total = 0
+        var emptyIp = 0
+        var nonPrivateIp = 0
+        var invalidPort = 0
+        if (candidates != null) {
+            for (i in 0 until candidates.length()) {
+                total++
+                val c = candidates.optJSONObject(i) ?: continue
+                val ip = c.optString("ip", "").trim()
+                val p = c.optInt("port", -1)
+                if (ip.isBlank()) {
+                    emptyIp++
+                    continue
+                }
+                if (!isPrivateOrAllowedLocalIp(ip)) {
+                    nonPrivateIp++
+                    continue
+                }
+                ips.add(ip)
+                if (p in 1..65535 && port <= 0) {
+                    port = p
+                } else if (p !in 1..65535 && p != -1) {
+                    invalidPort++
+                }
+            }
+        }
+        val fallbackPort = data?.optInt("port", -1) ?: -1
+        if (port <= 0 && fallbackPort in 1..65535) {
+            port = fallbackPort
+        }
+        return CandidateExtractionResult(
+            ipsCsv = ips.distinct().joinToString(","),
+            port = port,
+            total = total,
+            emptyIp = emptyIp,
+            nonPrivateIp = nonPrivateIp,
+            invalidPort = invalidPort
+        )
+    }
+
+    private fun handleTransportOffer(context: Context, data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val source = data?.optString("source", "peer") ?: "peer"
+            Log.d(TAG, "transport_sync: phase=offer_rx source=$source generation=$generation")
+
+            if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
+                Log.d(TAG, "transport_sync: phase=offer_drop generation=$generation reason=no_lan_network")
+                return
+            }
+
+            if (!isTransportMessageFresh(data)) {
+                Log.w(TAG, "transport_sync: phase=offer_drop generation=$generation reason=stale_ts")
+                return
+            }
+            if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "offer_rx")) {
+                return
+            }
+
+            // Always answer so the remote peer can proceed with nomination logic.
+            WebSocketUtil.sendTransportAnswer(generation, reason = "offer_rx", context = context)
+
+            // Android is the LAN dialer in this architecture; only react to Mac offers.
+            if (source != "mac") return
+            if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) return
+
+            val candidateResult = extractSanitizedCandidates(data)
+            val ipsCsv = candidateResult.ipsCsv
+            val port = candidateResult.port
+            CoroutineScope(Dispatchers.IO).launch {
+                val ds = DataStoreManager.getInstance(context)
+                val key = ds.getLastConnectedDevice().first()?.symmetricKey
+                if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
+                    Log.w(TAG, "transport_sync: phase=offer_drop generation=$generation reason=invalid_candidates details=${candidateResult.invalidReason()}")
+                    WebSocketUtil.reportLanNegotiationFailure("offer_missing_candidates_or_key")
+                    return@launch
+                }
+
+                WebSocketUtil.connect(
+                    context = context,
+                    ipAddress = ipsCsv,
+                    port = port,
+                    symmetricKey = key,
+                    manualAttempt = false,
+                    onConnectionStatus = { connected ->
+                        if (connected) {
+                            WebSocketUtil.sendTransportCheck(generation, "offer_connect_ok")
+                        } else {
+                            WebSocketUtil.reportLanNegotiationFailure("offer_connect_failed")
+                        }
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportOffer: ${e.message}")
+            WebSocketUtil.reportLanNegotiationFailure("offer_exception")
+        }
+    }
+
+    private fun handleTransportAnswer(context: Context, data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val source = data?.optString("source", "peer") ?: "peer"
+            Log.d(TAG, "transport_sync: phase=answer_rx source=$source generation=$generation")
+
+            if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
+                Log.d(TAG, "transport_sync: phase=answer_drop generation=$generation reason=no_lan_network")
+                return
+            }
+
+            if (!isTransportMessageFresh(data)) {
+                Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=stale_ts")
+                return
+            }
+            if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "answer_rx")) {
+                return
+            }
+
+            // If LAN is already up, no need to dial again.
+            if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) return
+
+            // Reuse answer candidates as immediate dial hints (Happy Eyeballs LAN-first).
+            val candidateResult = extractSanitizedCandidates(data)
+            val ipsCsv = candidateResult.ipsCsv
+            val port = candidateResult.port
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val ds = DataStoreManager.getInstance(context)
+                val key = ds.getLastConnectedDevice().first()?.symmetricKey
+                if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
+                    Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=invalid_candidates details=${candidateResult.invalidReason()}")
+                    return@launch
+                }
+
+                WebSocketUtil.connect(
+                    context = context,
+                    ipAddress = ipsCsv,
+                    port = port,
+                    symmetricKey = key,
+                    manualAttempt = false,
+                    onConnectionStatus = { connected ->
+                        if (connected) {
+                            WebSocketUtil.sendTransportCheck(generation, "answer_connect_ok")
+                        } else {
+                            WebSocketUtil.reportLanNegotiationFailure("answer_connect_failed")
+                        }
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportAnswer: ${e.message}")
+        }
+    }
+
+    private fun handleTransportCheck(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val token = data?.optString("token", "") ?: ""
+            if (token.isBlank() || !WebSocketUtil.isTransportGenerationActive(generation)) return
+            WebSocketUtil.sendTransportCheckAck(generation, token)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportCheck: ${e.message}")
+        }
+    }
+
+    private fun handleTransportCheckAck(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val token = data?.optString("token", "") ?: ""
+            if (token.isBlank() || !WebSocketUtil.isTransportGenerationActive(generation)) return
+            WebSocketUtil.onTransportCheckAck(generation, token)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportCheckAck: ${e.message}")
+        }
+    }
+
+    private fun handleTransportNominate(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val path = data?.optString("path", "relay") ?: "relay"
+            val source = data?.optString("source", "peer") ?: "peer"
+            Log.d(TAG, "transport_sync: phase=nominate_rx source=$source generation=$generation path=$path")
+            if (!WebSocketUtil.isTransportGenerationActive(generation)) {
+                Log.w(TAG, "transport_sync: phase=nominate_drop source=$source generation=$generation reason=inactive_generation")
+                return
+            }
+            if (path == "lan") {
+                if (!WebSocketUtil.isConnected() || !WebSocketUtil.isTransportGenerationValidated(generation)) {
+                    Log.w(TAG, "transport_sync: phase=nominate_drop source=$source generation=$generation reason=lan_not_validated")
+                    return
+                }
+                WebSocketUtil.reportLanNegotiationSuccess("peer_nominate_lan")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportNominate: ${e.message}")
         }
     }
 

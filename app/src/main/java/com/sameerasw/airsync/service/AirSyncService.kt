@@ -108,6 +108,10 @@ class AirSyncService : Service() {
             startForeground(NOTIFICATION_ID, buildNotification()) // Update notification if needed
         }
         if (!WebSocketUtil.isConnected() && AirBridgeClient.isRelayConnectedOrConnecting()) {
+            WebSocketUtil.sendTransportOffer(
+                context = applicationContext,
+                reason = "app_foreground"
+            )
             WebSocketUtil.startLanFirstRelayProbe(
                 context = applicationContext,
                 immediate = true,
@@ -169,6 +173,10 @@ class AirSyncService : Service() {
                         WebSocketUtil.requestAutoReconnect(applicationContext)
                         // If relay is already active, also force a direct LAN retry immediately.
                         if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                            WebSocketUtil.sendTransportOffer(
+                                context = applicationContext,
+                                reason = "network_onAvailable_scanning"
+                            )
                             WebSocketUtil.startLanFirstRelayProbe(
                                 context = applicationContext,
                                 immediate = true,
@@ -182,6 +190,10 @@ class AirSyncService : Service() {
                     if (!isScanning && !WebSocketUtil.isConnected() && AirBridgeClient.isRelayActive()) {
                         Log.i(TAG, "WiFi available while relay is active — attempting LAN reconnect")
                         UDPDiscoveryManager.burstBroadcast(applicationContext)
+                        WebSocketUtil.sendTransportOffer(
+                            context = applicationContext,
+                            reason = "network_onAvailable_sync"
+                        )
                         WebSocketUtil.startLanFirstRelayProbe(
                             context = applicationContext,
                             immediate = true,

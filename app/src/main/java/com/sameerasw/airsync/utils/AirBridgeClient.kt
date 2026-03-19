@@ -461,6 +461,12 @@ object AirBridgeClient {
                     WebSocketUtil.notifyPeerTransportChanged(transport, force = true)
                     appContext?.let { ctx ->
                         if (!WebSocketUtil.isConnected()) {
+                            val generation = WebSocketUtil.nextTransportGeneration()
+                            WebSocketUtil.sendTransportOffer(
+                                context = ctx,
+                                reason = "relay_started",
+                                generation = generation
+                            )
                             WebSocketUtil.startLanFirstRelayProbe(
                                 context = ctx,
                                 immediate = true,
