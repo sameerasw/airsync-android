@@ -167,27 +167,19 @@ fun ConnectionStatusCard(
                                     tint = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                                 Text(
-                                    text = "via AirBridge relay",
+                                    text = "AirBridge",
                                     style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
                         }
 
-                        // Peer health badge when connected via relay
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (peerReallyActive) Color(0xFF4CAF50).copy(alpha = 0.16f) else Color(
-                                0xFFFF9800
-                            ).copy(alpha = 0.16f)
-                        ) {
-                            Text(
-                                text = if (peerReallyActive) "Peer online" else "Peer offline",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (peerReallyActive) Color(0xFF4CAF50) else Color(0xFFFF9800)
-                            )
-                        }
+                        // Peer health dot
+                        Text(
+                            text = "●",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = if (peerReallyActive) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                        )
                     } else {
                         val ips =
                             uiState.ipAddress.split(",").map { it.trim() }.filter { it.isNotEmpty() }
