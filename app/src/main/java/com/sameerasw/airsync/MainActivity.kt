@@ -75,6 +75,17 @@ object AdbDiscoveryHolder {
         }
     }
 
+    fun restartDiscovery(context: android.content.Context) {
+        Log.d("AdbDiscoveryHolder", "Restarting ADB discovery")
+        discovery?.stopDiscovery()
+        discovery = null
+        initialize(context)
+    }
+
+    fun isDiscoveryActive(): Boolean {
+        return discovery != null
+    }
+
     fun getDiscoveredServices(): List<AdbMdnsDiscovery.AdbServiceInfo> {
         return discovery?.getDiscoveredServices() ?: emptyList()
     }

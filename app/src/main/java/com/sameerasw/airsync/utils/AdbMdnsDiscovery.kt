@@ -30,6 +30,14 @@ class AdbMdnsDiscovery(context: Context) {
 
             override fun onServiceFound(serviceInfo: NsdServiceInfo) {
                 Log.d(TAG, "Service found: ${serviceInfo.serviceName}")
+                
+                synchronized(discoveredServices) {
+                    if (discoveredServices.any { it.serviceName == serviceInfo.serviceName }) {
+                        Log.d(TAG, "Service ${serviceInfo.serviceName} already discovered, skipping resolve")
+                        return
+                    }
+                }
+
                 // Resolve the service to get host and port information
                 nsdManager.resolveService(serviceInfo, object : NsdManager.ResolveListener {
                     override fun onResolveFailed(serviceInfo: NsdServiceInfo, errorCode: Int) {
@@ -49,13 +57,17 @@ class AdbMdnsDiscovery(context: Context) {
                         )
 
                         // Store the discovered service
-                        discoveredServices.add(
-                            AdbServiceInfo(
-                                serviceName = resolvedInfo.serviceName,
-                                hostAddress = hostAddress,
-                                port = port
-                            )
-                        )
+                        synchronized(discoveredServices) {
+                            if (discoveredServices.none { it.serviceName == resolvedInfo.serviceName }) {
+                                discoveredServices.add(
+                                    AdbServiceInfo(
+                                        serviceName = resolvedInfo.serviceName,
+                                        hostAddress = hostAddress,
+                                        port = port
+                                    )
+                                )
+                            }
+                        }
                     }
                 })
             }

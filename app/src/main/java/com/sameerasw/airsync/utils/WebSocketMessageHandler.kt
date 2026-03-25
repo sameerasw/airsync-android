@@ -853,8 +853,14 @@ object WebSocketMessageHandler {
     }
 
     private fun handleRefreshAdbPorts(context: Context) {
-        Log.d(TAG, "Request to refresh ADB ports received")
-        SyncManager.sendDeviceInfoNow(context)
+        Log.d(TAG, "Request to refresh ADB ports received. Restarting discovery...")
+        com.sameerasw.airsync.AdbDiscoveryHolder.restartDiscovery(context)
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            delay(2500)
+            Log.d(TAG, "Sending refreshed device info with ADB ports after delay")
+            SyncManager.sendDeviceInfoNow(context)
+        }
     }
 
     private fun isVersionOutdated(current: String, min: String): Boolean {
