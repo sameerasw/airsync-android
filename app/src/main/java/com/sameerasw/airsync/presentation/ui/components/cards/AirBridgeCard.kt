@@ -134,6 +134,7 @@ fun AirBridgeCard(context: Context) {
                                     when (connectionState) {
                                         AirBridgeClient.State.DISCONNECTED -> Color.Gray
                                         AirBridgeClient.State.CONNECTING -> Color(0xFFFFA000)
+                                        AirBridgeClient.State.CHALLENGE_RECEIVED -> Color(0xFFFFA000)
                                         AirBridgeClient.State.REGISTERING -> Color(0xFFFFA000)
                                         AirBridgeClient.State.WAITING_FOR_PEER -> Color(0xFFFFD600)
                                         AirBridgeClient.State.RELAY_ACTIVE -> Color(0xFF4CAF50)
@@ -146,6 +147,7 @@ fun AirBridgeCard(context: Context) {
                             when (connectionState) {
                                 AirBridgeClient.State.DISCONNECTED -> "Disconnected"
                                 AirBridgeClient.State.CONNECTING -> "Connecting..."
+                                AirBridgeClient.State.CHALLENGE_RECEIVED -> "Authenticating..."
                                 AirBridgeClient.State.REGISTERING -> "Registering..."
                                 AirBridgeClient.State.WAITING_FOR_PEER -> "Waiting for Mac..."
                                 AirBridgeClient.State.RELAY_ACTIVE -> "Relay Active"

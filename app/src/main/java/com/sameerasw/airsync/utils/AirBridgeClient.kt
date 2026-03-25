@@ -21,11 +21,17 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
+import javax.crypto.Mac
 import javax.crypto.SecretKey
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * Singleton that manages the WebSocket connection to the AirBridge relay server.
  * Runs alongside the local WebSocket connection as a fallback for remote communication.
+ *
+ * Uses HMAC-SHA256 challenge-response authentication:
+ * 1. Server sends a challenge with a random nonce
+ * 2. Client responds with register containing HMAC(K, nonce|pairingId|role) where K = SHA256(secret_raw)
  */
 object AirBridgeClient {
     private const val TAG = "AirBridgeClient"
@@ -34,6 +40,7 @@ object AirBridgeClient {
     enum class State {
         DISCONNECTED,
         CONNECTING,
+        CHALLENGE_RECEIVED,  // Received nonce, computing HMAC
         REGISTERING,
         WAITING_FOR_PEER,
         RELAY_ACTIVE,
@@ -124,7 +131,7 @@ object AirBridgeClient {
                 }
                 val relayUrl = ds.getAirBridgeRelayUrl().first()
                 val pairingId = ds.getAirBridgePairingId().first()
-                val secret = ds.getAirBridgeSecret().first()
+                val secretRaw = ds.getAirBridgeSecret().first()
 
                 // Validate config values before connecting to prevent futile attempts and log spam.
                 if (relayUrl.isBlank()) {
@@ -134,7 +141,7 @@ object AirBridgeClient {
                 }
 
                 // Pairing ID and secret are required for registration, so treat missing values as failed state to prompt user action.
-                if (pairingId.isBlank() || secret.isBlank()) {
+                if (pairingId.isBlank() || secretRaw.isBlank()) {
                     Log.w(TAG, "Pairing ID or secret is empty, skipping connection")
                     setState(State.FAILED, "Missing pairing credentials")
                     return@launch
@@ -154,7 +161,8 @@ object AirBridgeClient {
                     Log.d(TAG, "Symmetric key resolved for relay transport")
                 }
 
-                connectInternal(relayUrl, pairingId, hashSecret(secret))
+                // Pass raw secret — HMAC computation happens after receiving challenge
+                connectInternal(relayUrl, pairingId, secretRaw)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to read AirBridge config: ${e.message}")
                 setState(State.FAILED, "Failed reading persisted config")
@@ -210,6 +218,7 @@ object AirBridgeClient {
                     State.RELAY_ACTIVE,
                     State.WAITING_FOR_PEER,
                     State.REGISTERING,
+                    State.CHALLENGE_RECEIVED,
                     State.CONNECTING -> {
                         // Already connected/connecting
                         return@launch
@@ -306,12 +315,6 @@ object AirBridgeClient {
     fun isRelayActive(): Boolean = _connectionState.value == State.RELAY_ACTIVE
 
     /**
-     * Returns true if the relay reports that both Mac and Android are currently attached
-     * to the same pairing session (based on the latest status_reply snapshot).
-     */
-    fun isPeerReallyActive(): Boolean = isRelayActive() && lastStatusBothConnected
-
-    /**
      * Returns true if relay transport is already usable or being established.
      * Useful to suppress noisy LAN reconnect loops while relay failover is in progress.
      */
@@ -320,6 +323,7 @@ object AirBridgeClient {
             State.RELAY_ACTIVE,
             State.WAITING_FOR_PEER,
             State.REGISTERING,
+            State.CHALLENGE_RECEIVED,
             State.CONNECTING -> true
             else -> false
         }
@@ -332,10 +336,38 @@ object AirBridgeClient {
         onMessageReceived = handler
     }
 
+    // MARK: - HMAC Computation
+
+    /**
+     * Computes the HMAC-SHA256 signature and kInit for challenge-response auth.
+     *
+     * @param secretRaw The plain-text secret from the QR code
+     * @param nonce The server-provided nonce from the challenge message
+     * @param pairingId The pairing ID
+     * @return Pair of (sig, kInit) both hex-encoded
+     */
+    private fun computeHmac(secretRaw: String, nonce: String, pairingId: String): Pair<String, String> {
+        // K = SHA256(secret_raw) as raw bytes
+        val kBytes = MessageDigest.getInstance("SHA-256").digest(secretRaw.toByteArray(Charsets.UTF_8))
+
+        // kInit = hex(K) — sent only for session bootstrap
+        val kInit = kBytes.joinToString("") { "%02x".format(it) }
+
+        // message = nonce|pairingId|role
+        val role = "android"
+        val message = "$nonce|$pairingId|$role"
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(kBytes, "HmacSHA256"))
+        val sig = mac.doFinal(message.toByteArray(Charsets.UTF_8)).joinToString("") { "%02x".format(it) }
+
+        return Pair(sig, kInit)
+    }
+
     /**
      * Internal function to establish WebSocket connection and handle relay protocol.
+     * Uses HMAC challenge-response: waits for challenge, then sends register with HMAC sig.
      */
-    private fun connectInternal(relayUrl: String, pairingId: String, secret: String) {
+    private fun connectInternal(relayUrl: String, pairingId: String, secretRaw: String) {
         // Allocate a fresh generation so callbacks from older sockets are ignored.
         val generation = activeConnectionGeneration.incrementAndGet()
 
@@ -365,63 +397,42 @@ object AirBridgeClient {
         val listener = object : WebSocketListener() {
             fun isStale(): Boolean = generation != activeConnectionGeneration.get()
 
-            // On open, send the registration message with the pairing ID and secret hash.
-            override fun onOpen(ws: WebSocket, response: Response) {
+            // On open, wait for the server's challenge (do NOT send register immediately)
+            override fun onOpen(webSocket: WebSocket, response: Response) {
                 if (isStale()) {
                     try {
-                        ws.close(1000, "Stale relay socket")
+                        webSocket.close(1000, "Stale relay socket")
                     } catch (_: Exception) {}
                     return
                 }
-                Log.d(TAG, "WebSocket opened to relay")
-                webSocket = ws
-                setState(State.REGISTERING, "Socket open, sending register")
+                Log.d(TAG, "WebSocket opened to relay, waiting for challenge...")
+                this@AirBridgeClient.webSocket = webSocket
+                setState(State.CONNECTING, "Socket open, waiting for challenge")
                 reconnectAttempt = 0
-
-                // Send registration
-                val regMsg = JSONObject().apply {
-                    put("action", "register")
-                    put("role", "android")
-                    put("pairingId", pairingId)
-                    put("secret", secret)
-                    put("localIp", DeviceInfoUtil.getWifiIpAddress(appContext!!) ?: "unknown")
-                    put("port", 0) // Android doesn't run a server it's the client
-                }
-
-                if (ws.send(regMsg.toString())) {
-                    Log.d(TAG, "Registration sent for pairingId: $pairingId")
-                    setState(State.WAITING_FOR_PEER, "Registration accepted, waiting peer")
-                    // Reset status cache on fresh registration
-                    lastStatusBothConnected = false
-                    _peerReallyActive.value = false
-                } else {
-                    Log.e(TAG, "Failed to send registration")
-                    setState(State.FAILED, "Registration send failed")
-                }
             }
 
-            override fun onMessage(ws: WebSocket, text: String) {
+            override fun onMessage(webSocket: WebSocket, text: String) {
                 if (isStale()) return
-                handleTextMessage(text)
+                handleTextMessage(text, webSocket, pairingId, secretRaw)
             }
 
-            override fun onClosing(ws: WebSocket, code: Int, reason: String) {
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 if (isStale()) return
                 Log.d(TAG, "Relay closing: $code $reason")
-                ws.close(1000, null)
+                webSocket.close(1000, null)
                 setState(State.DISCONNECTED, "Socket closing code=$code")
                 WebSocketUtil.stopLanFirstRelayProbe("relay_onClosing")
                 statusQueryJob?.cancel()
                 statusQueryJob = null
                 lastStatusBothConnected = false
                 _peerReallyActive.value = false
-                if (webSocket == ws) {
-                    webSocket = null
+                if (this@AirBridgeClient.webSocket == webSocket) {
+                    this@AirBridgeClient.webSocket = null
                 }
-                scheduleReconnect(relayUrl, pairingId, secret, generation)
+                scheduleReconnect(relayUrl, pairingId, secretRaw, generation)
             }
 
-            override fun onFailure(ws: WebSocket, t: Throwable, response: Response?) {
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 if (isStale()) return
                 val msg = if (t is java.io.EOFException) "Server closed connection (EOF)" else (t.message ?: "Unknown error ($t)")
                 Log.e(TAG, "Relay connection failed: $msg")
@@ -431,23 +442,61 @@ object AirBridgeClient {
                 statusQueryJob = null
                 lastStatusBothConnected = false
                 _peerReallyActive.value = false
-                if (webSocket == ws) {
-                    webSocket = null
+                if (this@AirBridgeClient.webSocket == webSocket) {
+                    this@AirBridgeClient.webSocket = null
                 }
-                scheduleReconnect(relayUrl, pairingId, secret, generation)
+                scheduleReconnect(relayUrl, pairingId, secretRaw, generation)
             }
         }
 
         client!!.newWebSocket(request, listener)
     }
 
-    private fun handleTextMessage(text: String) {
+    private fun handleTextMessage(text: String, ws: WebSocket, pairingId: String, secretRaw: String) {
         // First, try to parse as an AirBridge control message
         try {
             val json = JSONObject(text)
             val action = json.optString("action", "")
 
             when (action) {
+                "challenge" -> {
+                    // Server sent challenge — compute HMAC and respond with register
+                    val nonce = json.optString("nonce", "")
+                    if (nonce.isBlank()) {
+                        Log.e(TAG, "Challenge received but nonce is empty")
+                        setState(State.FAILED, "Invalid challenge from server")
+                        return
+                    }
+
+                    Log.d(TAG, "Challenge received, computing HMAC...")
+                    setState(State.CHALLENGE_RECEIVED, "Computing HMAC signature")
+
+                    val (sig, kInit) = computeHmac(secretRaw, nonce, pairingId)
+
+                    // Send register with HMAC signature
+                    val regMsg = JSONObject().apply {
+                        put("action", "register")
+                        put("role", "android")
+                        put("pairingId", pairingId)
+                        put("sig", sig)
+                        put("kInit", kInit)
+                        put("localIp", DeviceInfoUtil.getWifiIpAddress(appContext!!) ?: "unknown")
+                        put("port", 0) // Android doesn't run a server, it's the client
+                    }
+
+                    setState(State.REGISTERING, "Sending register with HMAC")
+                    if (ws.send(regMsg.toString())) {
+                        Log.d(TAG, "Registration sent (HMAC auth) for pairingId: $pairingId")
+                        setState(State.WAITING_FOR_PEER, "Registration accepted, waiting peer")
+                        // Reset status cache on fresh registration
+                        lastStatusBothConnected = false
+                        _peerReallyActive.value = false
+                    } else {
+                        Log.e(TAG, "Failed to send registration")
+                        setState(State.FAILED, "Registration send failed")
+                    }
+                    return
+                }
                 "relay_started" -> {
                     Log.i(TAG, "Relay tunnel established!")
                     setState(State.RELAY_ACTIVE, "Server confirmed relay tunnel")
@@ -461,11 +510,11 @@ object AirBridgeClient {
                     WebSocketUtil.notifyPeerTransportChanged(transport, force = true)
                     appContext?.let { ctx ->
                         if (!WebSocketUtil.isConnected()) {
-                            val generation = WebSocketUtil.nextTransportGeneration()
+                            val transportGeneration = WebSocketUtil.nextTransportGeneration()
                             WebSocketUtil.sendTransportOffer(
                                 context = ctx,
                                 reason = "relay_started",
-                                generation = generation
+                                generation = transportGeneration
                             )
                             WebSocketUtil.startLanFirstRelayProbe(
                                 context = ctx,
@@ -537,12 +586,12 @@ object AirBridgeClient {
         }
 
         appContext?.let { ctx ->
-            onMessageReceived?.invoke(ctx, processedMessage!!)
+            onMessageReceived?.invoke(ctx, processedMessage)
         }
     }
 
     // Schedules a reconnect attempt with exponential backoff. Resets the backoff if the connection is successful. Does nothing if the disconnect was manual.
-    private fun scheduleReconnect(relayUrl: String, pairingId: String, secret: String, sourceGeneration: Long) {
+    private fun scheduleReconnect(relayUrl: String, pairingId: String, secretRaw: String, sourceGeneration: Long) {
         if (isManuallyDisconnected.get()) return
         if (sourceGeneration != activeConnectionGeneration.get()) return
 
@@ -559,7 +608,7 @@ object AirBridgeClient {
         reconnectJob = CoroutineScope(Dispatchers.IO).launch {
             delay(delayMs)
             if (!isManuallyDisconnected.get() && sourceGeneration == activeConnectionGeneration.get()) {
-                connectInternal(relayUrl, pairingId, secret)
+                connectInternal(relayUrl, pairingId, secretRaw)
             }
         }
     }
@@ -585,16 +634,6 @@ object AirBridgeClient {
         } catch (e: Exception) {
             Log.d(TAG, "query_status send failed: ${e.message}")
         }
-    }
-
-    /**
-     * SHA-256 hashes the raw secret so the plaintext never leaves the device.
-     * The relay server only ever sees (and stores) this hash.
-     */
-    private fun hashSecret(raw: String): String {
-        val digest = MessageDigest.getInstance("SHA-256")
-        val hash = digest.digest(raw.toByteArray(Charsets.UTF_8))
-        return hash.joinToString("") { "%02x".format(it) }
     }
 
     /**
