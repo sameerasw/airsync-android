@@ -1,6 +1,5 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.content.Intent
 import android.util.Log
@@ -131,13 +130,13 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONObject
+import java.net.URLDecoder
 
 @OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
     ExperimentalMaterial3ExpressiveApi::class
 )
-@SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @Composable
 fun AirSyncMainScreen(
     modifier: Modifier = Modifier,
@@ -446,7 +445,7 @@ fun AirSyncMainScreen(
                         }
                     }
 
-                    // Parse query parameters (legacy '?' and modern '&' separators)
+                    // Parse query parameters
                     var pcName: String? = null
                     var isPlus = false
                     var symmetricKey: String? = null
@@ -456,7 +455,7 @@ fun AirSyncMainScreen(
 
                     val queryPart = uri.toString().substringAfter('?', "")
                     if (queryPart.isNotEmpty()) {
-                        val paramMap = queryPart.split("[?&]".toRegex())
+                        val paramMap = queryPart.split('?')
                             .mapNotNull { raw ->
                                 if (raw.isBlank()) return@mapNotNull null
                                 val parts = raw.split('=', limit = 2)
@@ -601,22 +600,21 @@ fun AirSyncMainScreen(
     // Hide FAB on scroll down, show on scroll up for the active tab
     LaunchedEffect(pagerState.currentPage) {
         val state = if (pagerState.currentPage == 0) connectScrollState else settingsScrollState
-        var last = state.value
+        val last = state.value
         snapshotFlow { state.value }.collect { value ->
             val delta = value - last
             if (delta > 2) fabVisible = false
             else if (delta < -2) fabVisible = true
-            last = value
         }
     }
 
     // Expand FAB on first launch and whenever variant changes (connect <-> disconnect), then collapse after 5s
-    // LaunchedEffect(uiState.isConnected) {
-    //     fabExpanded = true
-    //     // Give users a hint for a short period, then collapse to icon-only
-    //     delay(5000)
-    //     fabExpanded = false
-    // }
+    LaunchedEffect(uiState.isConnected) {
+        fabExpanded = true
+        // Give users a hint for a short period, then collapse to icon-only
+        delay(5000)
+        fabExpanded = false
+    }
 
     // Start/stop clipboard sync based on connection status and settings
     LaunchedEffect(uiState.isConnected, uiState.isClipboardSyncEnabled) {
@@ -1235,41 +1233,35 @@ fun AirSyncMainScreen(
                             )
                         }
 
-                        AnimatedVisibility(
-                            visible = fabVisible,
-                            enter = fadeIn() + expandHorizontally(),
-                            exit = fadeOut() + shrinkHorizontally(),
-                        ) {
-                            AirSyncFloatingToolbar(
-                                modifier = Modifier.zIndex(1f),
-                                currentPage = pagerState.currentPage,
-                                tabs = tabs,
-                                onTabSelected = { index ->
-                                    scope.launch {
-                                        val distance = kotlin.math.abs(index - pagerState.currentPage)
-                                        if (distance == 1) {
-                                            pagerState.animateScrollToPage(index)
-                                        } else {
-                                            pagerState.scrollToPage(index)
+                        AirSyncFloatingToolbar(
+                            modifier = Modifier.zIndex(1f),
+                            currentPage = pagerState.currentPage,
+                            tabs = tabs,
+                            onTabSelected = { index ->
+                                scope.launch {
+                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                    if (distance == 1) {
+                                        pagerState.animateScrollToPage(index)
+                                    } else {
+                                        pagerState.scrollToPage(index)
+                                    }
+                                }
+                            },
+                            floatingActionButton = {
+                                MainFAB(
+                                    currentTab = tabs.getOrNull(pagerState.currentPage),
+                                    isConnected = uiState.isConnected,
+                                    onAction = { action ->
+                                        when (action) {
+                                            "keyboard" -> showKeyboard = !showKeyboard
+                                            "clear_history" -> viewModel.clearClipboardHistory()
+                                            "disconnect" -> disconnect()
+                                            "scan" -> launchScanner(context)
                                         }
                                     }
-                                },
-                                floatingActionButton = {
-                                    MainFAB(
-                                        currentTab = tabs.getOrNull(pagerState.currentPage),
-                                        isConnected = uiState.isConnected,
-                                        onAction = { action ->
-                                            when (action) {
-                                                "keyboard" -> showKeyboard = !showKeyboard
-                                                "clear_history" -> viewModel.clearClipboardHistory()
-                                                "disconnect" -> disconnect()
-                                                "scan" -> launchScanner(context)
-                                            }
-                                        }
-                                    )
-                                }
-                            )
-                        }
+                                )
+                            }
+                        )
                     }
                 } else {
                     // Portrait: Stacked
@@ -1300,41 +1292,35 @@ fun AirSyncMainScreen(
                             )
                         }
 
-                        AnimatedVisibility(
-                            visible = fabVisible,
-                            enter = fadeIn() + expandVertically(expandFrom = Alignment.Bottom),
-                            exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Bottom),
-                        ) {
-                            AirSyncFloatingToolbar(
-                                modifier = Modifier.zIndex(1f),
-                                currentPage = pagerState.currentPage,
-                                tabs = tabs,
-                                onTabSelected = { index ->
-                                    scope.launch {
-                                        val distance = kotlin.math.abs(index - pagerState.currentPage)
-                                        if (distance == 1) {
-                                            pagerState.animateScrollToPage(index)
-                                        } else {
-                                            pagerState.scrollToPage(index)
+                        AirSyncFloatingToolbar(
+                            modifier = Modifier.zIndex(1f),
+                            currentPage = pagerState.currentPage,
+                            tabs = tabs,
+                            onTabSelected = { index ->
+                                scope.launch {
+                                    val distance = kotlin.math.abs(index - pagerState.currentPage)
+                                    if (distance == 1) {
+                                        pagerState.animateScrollToPage(index)
+                                    } else {
+                                        pagerState.scrollToPage(index)
+                                    }
+                                }
+                            },
+                            floatingActionButton = {
+                                MainFAB(
+                                    currentTab = tabs.getOrNull(pagerState.currentPage),
+                                    isConnected = uiState.isConnected,
+                                    onAction = { action ->
+                                        when (action) {
+                                            "keyboard" -> showKeyboard = !showKeyboard
+                                            "clear_history" -> viewModel.clearClipboardHistory()
+                                            "disconnect" -> disconnect()
+                                            "scan" -> launchScanner(context)
                                         }
                                     }
-                                },
-                                floatingActionButton = {
-                                    MainFAB(
-                                        currentTab = tabs.getOrNull(pagerState.currentPage),
-                                        isConnected = uiState.isConnected,
-                                        onAction = { action ->
-                                            when (action) {
-                                                "keyboard" -> showKeyboard = !showKeyboard
-                                                "clear_history" -> viewModel.clearClipboardHistory()
-                                                "disconnect" -> disconnect()
-                                                "scan" -> launchScanner(context)
-                                            }
-                                        }
-                                    )
-                                }
-                            )
-                        }
+                                )
+                            }
+                        )
                     }
                 }
             }
