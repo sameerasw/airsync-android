@@ -96,11 +96,6 @@ object WebSocketUtil {
         val previous = lastAdvertisedTransport.get()
         if (!force && previous == transport) return true
 
-        Log.d(
-            TAG,
-            "transport_sync: direction=android->mac source=android transport_old=${previous ?: "null"} transport_new=$transport force=$force relayActive=${AirBridgeClient.isRelayConnectedOrConnecting()} lanConnected=${isConnected.get()}"
-        )
-
         val payload = JSONObject().apply {
             put("type", "peerTransport")
             put("data", JSONObject().apply {
@@ -140,7 +135,6 @@ object WebSocketUtil {
 
         if (!isLanNegotiationAllowed(context)) {
             stopLanFirstRelayProbe("no_lan_network")
-            Log.d(TAG, "Skipping LAN-first probe: active network is not LAN/Wi-Fi")
             return
         }
 
@@ -154,9 +148,7 @@ object WebSocketUtil {
             if (resetBackoff) {
                 relayLanProbeStartedAtMs.set(now)
                 resetLanProbeFailureState("reset_by:$source")
-                Log.d(TAG, "LAN-first probe backoff reset (source=$source)")
             }
-            Log.d(TAG, "LAN-first probe already running (source=$source resetBackoff=$resetBackoff)")
             if (immediate) {
                 CoroutineScope(Dispatchers.IO).launch {
                     requestLanReconnectFromRelay(context, source = "immediate:$source")
@@ -170,7 +162,6 @@ object WebSocketUtil {
             resetLanProbeFailureState("reset_by:$source")
         }
         relayLanProbeJob = CoroutineScope(Dispatchers.IO).launch {
-            Log.i(TAG, "Starting LAN-first probe loop (source=$source resetBackoff=$resetBackoff)")
             if (immediate) {
                 requestLanReconnectFromRelay(context, source = "start:$source")
             }
@@ -182,17 +173,14 @@ object WebSocketUtil {
                 val cooldownUntil = lanProbeCooldownUntilMs.get()
                 if (cooldownUntil > nowLoop) {
                     val remaining = cooldownUntil - nowLoop
-                    Log.d(TAG, "LAN-first probe in cooldown, remaining=${remaining}ms")
                     delay(minOf(remaining, intervalMs))
                     continue
                 }
                 delay(intervalMs)
                 if (isConnected.get()) {
-                    Log.d(TAG, "Stopping LAN-first probe: LAN is connected")
                     break
                 }
                 if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
-                    Log.d(TAG, "Stopping LAN-first probe: relay not connected/connecting")
                     break
                 }
                 requestLanReconnectFromRelay(context, source = "periodic:$source")
@@ -208,11 +196,10 @@ object WebSocketUtil {
         }
     }
 
-    fun stopLanFirstRelayProbe(reason: String = "unspecified") {
+    fun stopLanFirstRelayProbe(_reason: String = "unspecified") {
         relayLanProbeJob?.cancel()
         relayLanProbeJob = null
         relayLanProbeStartedAtMs.set(0L)
-        Log.d(TAG, "Stopped LAN-first probe loop (reason=$reason)")
     }
 
 
@@ -503,7 +490,6 @@ object WebSocketUtil {
                                         // Keep relay warm in background (if enabled) for instant failover.
                                         AirBridgeClient.ensureConnected(context, immediate = false)
                                         notifyPeerTransportChanged("wifi", force = true)
-                                        Log.i(TAG, "LAN handshake completed on $ip:$port, relay kept warm")
                                         try {
                                             AirSyncWidgetProvider.updateAllWidgets(context)
                                         } catch (_: Exception) {
@@ -561,8 +547,6 @@ object WebSocketUtil {
                                     Log.w(TAG, "LAN socket closing, requested immediate relay fallback")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
-                                    } else {
-                                        Log.d(TAG, "Skipping LAN auto-reconnect: relay already connected/connecting")
                                     }
                                     try {
                                         AirSyncWidgetProvider.updateAllWidgets(context)
@@ -623,11 +607,9 @@ object WebSocketUtil {
                                     if (AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         startLanFirstRelayProbe(context, immediate = true, source = "lan_onFailure", resetBackoff = true)
                                     }
-                                    Log.w(TAG, "LAN failure, requested immediate relay fallback: ${t.message}")
+                                    Log.w(TAG, "LAN failure, requested immediate relay fallback")
                                     if (!AirBridgeClient.isRelayConnectedOrConnecting()) {
                                         tryStartAutoReconnect(context)
-                                    } else {
-                                        Log.d(TAG, "Skipping LAN auto-reconnect: relay already connected/connecting")
                                     }
                                     try {
                                         AirSyncWidgetProvider.updateAllWidgets(context)
@@ -697,7 +679,6 @@ object WebSocketUtil {
             webSocket!!.send(messageToSend)
         } else if (AirBridgeClient.isRelayActive()) {
             // Fallback: route through AirBridge relay if local connection is down
-            Log.d(TAG, "TX via RELAY")
             AirBridgeClient.sendMessage(message)
         } else {
             Log.w(TAG, "Drop TX: no LAN/relay available")
@@ -885,11 +866,6 @@ object WebSocketUtil {
                     // Match by name within the discovery list
                     val discoveryMatch = discoveredList.find { it.name == last.name }
                     if (discoveryMatch != null) {
-                        Log.d(
-                            TAG,
-                            "Discovery found target device: ${discoveryMatch.name} with IPs: ${discoveryMatch.ips}"
-                        )
-
                         val all = ds.getAllNetworkDeviceConnections().first()
                         val targetConnection = all.firstOrNull { it.deviceName == last.name }
 
@@ -897,10 +873,6 @@ object WebSocketUtil {
                             val ips = discoveryMatch.ips.joinToString(",")
                             val port = targetConnection.port.toIntOrNull() ?: 6996
 
-                            Log.d(
-                                TAG,
-                                "Smart Auto-reconnect attempting parallel connections to $ips:$port"
-                            )
                             connect(
                                 context = context,
                                 ipAddress = ips,
@@ -927,7 +899,6 @@ object WebSocketUtil {
                 }
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) {
-                    Log.d(TAG, "Discovery auto-reconnect cancelled")
                 } else {
                     Log.e(TAG, "Error in discovery auto-reconnect: ${e.message}")
                 }
@@ -966,7 +937,6 @@ object WebSocketUtil {
 
     fun requestLanReconnectFromRelay(context: Context, source: String) {
         if (!isLanNegotiationAllowed(context)) {
-            Log.d(TAG, "Skipping LAN reconnect from relay: no LAN network (source=$source)")
             return
         }
         val now = System.currentTimeMillis()
@@ -980,7 +950,6 @@ object WebSocketUtil {
             return
         }
         lastRelayLanRetryMs.set(now)
-        Log.i(TAG, "Attempting LAN reconnect while relay is active (source=$source)")
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -988,7 +957,6 @@ object WebSocketUtil {
                 val manual = ds.getUserManuallyDisconnected().first()
                 val autoEnabled = ds.getAutoReconnectEnabled().first()
                 if (manual || !autoEnabled) {
-                    Log.d(TAG, "LAN reconnect from relay skipped: manual=$manual autoEnabled=$autoEnabled")
                     return@launch
                 }
 
@@ -1017,7 +985,6 @@ object WebSocketUtil {
                         ?: last.ipAddress
                     val port = targetConnection.port.toIntOrNull() ?: 6996
 
-                    Log.i(TAG, "LAN reconnect from relay: trying $ips:$port")
                     connect(
                         context = context,
                         ipAddress = ips,
@@ -1026,7 +993,6 @@ object WebSocketUtil {
                         manualAttempt = false,
                         onConnectionStatus = { connected ->
                             if (connected) {
-                                Log.i(TAG, "LAN reconnect succeeded — relay stays warm as backup")
                                 resetLanProbeFailureState("lan_reconnect_success")
                                 CoroutineScope(Dispatchers.IO).launch {
                                     try {
@@ -1037,20 +1003,18 @@ object WebSocketUtil {
                                     } catch (_: Exception) {}
                                 }
                             } else {
-                                Log.d(TAG, "LAN reconnect from relay failed — staying on relay")
                                 markLanProbeFailure("lan_reconnect_failed:$source")
                             }
                         }
                     )
                 } else {
-                    Log.d(TAG, "No target connection found for LAN reconnect from relay")
                     markLanProbeFailure("missing_target_connection:$source")
                     // Fall back to generic auto-reconnect which monitors discovery
                     tryStartAutoReconnect(context)
                 }
             } catch (e: Exception) {
                 markLanProbeFailure("request_exception:$source")
-                Log.e(TAG, "Error in requestLanReconnectFromRelay: ${e.message}")
+                Log.e(TAG, "Error in requestLanReconnectFromRelay")
             }
         }
     }
@@ -1058,17 +1022,15 @@ object WebSocketUtil {
     private fun resetLanProbeFailureState(reason: String) {
         consecutiveLanProbeFailures.set(0)
         lanProbeCooldownUntilMs.set(0L)
-        Log.d(TAG, "LAN-first probe failure state reset ($reason)")
     }
 
     private fun markLanProbeFailure(reason: String) {
         val fails = consecutiveLanProbeFailures.incrementAndGet()
-        Log.d(TAG, "LAN-first probe failure #$fails ($reason)")
         if (fails >= RELAY_LAN_PROBE_MAX_CONSECUTIVE_FAILURES) {
             val until = System.currentTimeMillis() + RELAY_LAN_PROBE_COOLDOWN_MS
             lanProbeCooldownUntilMs.set(until)
             consecutiveLanProbeFailures.set(0)
-            Log.w(TAG, "LAN-first probe entering cooldown until=$until after repeated failures")
+            Log.w(TAG, "LAN-first probe entering cooldown after repeated failures")
         }
     }
 
@@ -1095,7 +1057,6 @@ object WebSocketUtil {
         pendingTransportCheckToken.set(null)
         transportCheckTimeoutJob?.cancel()
         transportCheckTimeoutJob = null
-        Log.d(TAG, "transport_sync: phase=round_begin generation=$generation reason=$reason")
     }
 
     fun acceptIncomingTransportGeneration(generation: Long, reason: String): Boolean {
@@ -1113,7 +1074,7 @@ object WebSocketUtil {
             return true
         }
 
-        Log.w(TAG, "transport_sync: phase=drop_stale_generation incoming=$generation active=$current reason=$reason")
+        Log.w(TAG, "Dropping stale transport generation update")
         return false
     }
 
@@ -1128,7 +1089,6 @@ object WebSocketUtil {
     fun markTransportGenerationValidated(generation: Long, reason: String) {
         if (!isTransportGenerationActive(generation)) return
         validatedTransportGeneration.set(generation)
-        Log.d(TAG, "transport_sync: phase=round_validated generation=$generation reason=$reason")
     }
 
     fun isTransportGenerationValidated(generation: Long): Boolean {
@@ -1141,7 +1101,6 @@ object WebSocketUtil {
 
     fun sendTransportOffer(context: Context, reason: String, generation: Long = nextTransportGeneration()): Boolean {
         if (!isLanNegotiationAllowed(context)) {
-            Log.d(TAG, "transport_sync: phase=offer_drop source=android reason=no_lan_network trigger=$reason")
             return false
         }
         beginTransportRound(generation, "send_offer:$reason")
@@ -1166,17 +1125,15 @@ object WebSocketUtil {
             })
         }.toString()
 
-        Log.d(TAG, "transport_sync: phase=offer source=android generation=$generation reason=$reason")
         return sendMessage(payload)
     }
 
     fun sendTransportAnswer(generation: Long, reason: String, context: Context? = appContext): Boolean {
         if (context == null || !isLanNegotiationAllowed(context)) {
-            Log.d(TAG, "transport_sync: phase=answer_drop source=android generation=$generation reason=no_lan_network")
             return false
         }
         if (!isTransportGenerationActive(generation)) {
-            Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=inactive_generation")
+            Log.w(TAG, "Dropping transport answer for inactive generation")
             return false
         }
         val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: ""
@@ -1199,13 +1156,12 @@ object WebSocketUtil {
                 put("reason", reason)
             })
         }.toString()
-        Log.d(TAG, "transport_sync: phase=answer source=android generation=$generation reason=$reason")
         return sendMessage(payload)
     }
 
     fun sendTransportCheck(generation: Long, reason: String): Boolean {
         if (!isTransportGenerationActive(generation)) {
-            Log.w(TAG, "transport_sync: phase=check_drop generation=$generation reason=inactive_generation")
+            Log.w(TAG, "Dropping transport check for inactive generation")
             return false
         }
         val token = UUID.randomUUID().toString()
@@ -1216,7 +1172,7 @@ object WebSocketUtil {
             delay(TRANSPORT_CHECK_TIMEOUT_MS)
             val pendingToken = pendingTransportCheckToken.get()
             if (pendingToken == token) {
-                Log.w(TAG, "transport_sync: phase=check_timeout generation=$generation token=$token")
+                Log.w(TAG, "Transport check timed out")
                 reportLanNegotiationFailure("check_timeout")
                 sendTransportNominate("relay", generation, "check_timeout")
             }
@@ -1232,13 +1188,12 @@ object WebSocketUtil {
                 put("reason", reason)
             })
         }.toString()
-        Log.d(TAG, "transport_sync: phase=check source=android generation=$generation token=$token")
         return sendMessage(payload)
     }
 
     fun sendTransportCheckAck(generation: Long, token: String): Boolean {
         if (!isTransportGenerationActive(generation)) {
-            Log.w(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=inactive_generation")
+            Log.w(TAG, "Dropping transport check-ack for inactive generation")
             return false
         }
         val payload = JSONObject().apply {
@@ -1250,19 +1205,16 @@ object WebSocketUtil {
                 put("ts", System.currentTimeMillis())
             })
         }.toString()
-        Log.d(TAG, "transport_sync: phase=check_ack source=android generation=$generation token=$token")
         return sendMessage(payload)
     }
 
     fun onTransportCheckAck(generation: Long, token: String) {
         if (!isTransportGenerationActive(generation)) {
-            Log.d(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=inactive_generation")
             return
         }
         val pendingGeneration = pendingTransportCheckGeneration.get()
         val pendingToken = pendingTransportCheckToken.get()
         if (pendingGeneration != generation || pendingToken != token) {
-            Log.d(TAG, "transport_sync: phase=check_ack_stale generation=$generation token=$token")
             return
         }
         transportCheckTimeoutJob?.cancel()
@@ -1271,22 +1223,21 @@ object WebSocketUtil {
         pendingTransportCheckGeneration.set(0L)
         reportLanNegotiationSuccess("check_ack")
         if (!isConnected()) {
-            Log.w(TAG, "transport_sync: phase=check_ack_drop generation=$generation reason=lan_not_connected")
+            Log.w(TAG, "Dropping transport check-ack because LAN is not connected")
             return
         }
         markTransportGenerationValidated(generation, "check_ack")
         notifyPeerTransportChanged("wifi", force = true)
         sendTransportNominate("lan", generation, "check_ack")
-        Log.i(TAG, "transport_sync: phase=nominate_lan source=android generation=$generation reason=check_ack")
     }
 
     fun sendTransportNominate(path: String, generation: Long, reason: String): Boolean {
         if (!isTransportGenerationActive(generation)) {
-            Log.w(TAG, "transport_sync: phase=nominate_drop generation=$generation reason=inactive_generation")
+            Log.w(TAG, "Dropping transport nominate for inactive generation")
             return false
         }
         if (path == "lan" && !isTransportGenerationValidated(generation)) {
-            Log.w(TAG, "transport_sync: phase=nominate_drop generation=$generation reason=not_validated")
+            Log.w(TAG, "Dropping LAN nominate because generation is not validated")
             return false
         }
         val payload = JSONObject().apply {
@@ -1299,7 +1250,6 @@ object WebSocketUtil {
                 put("reason", reason)
             })
         }.toString()
-        Log.d(TAG, "transport_sync: phase=nominate source=android generation=$generation path=$path reason=$reason")
         return sendMessage(payload)
     }
 

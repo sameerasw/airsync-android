@@ -87,13 +87,7 @@ object AirBridgeClient {
     private var onMessageReceived: ((Context, String) -> Unit)? = null
 
     // Updates the connection state and logs the transition reason.
-    private fun setState(newState: State, reason: String) {
-        val oldState = _connectionState.value
-        if (oldState != newState) {
-            Log.i(TAG, "State: $oldState -> $newState | $reason")
-        } else {
-            Log.d(TAG, "State unchanged: $newState | $reason")
-        }
+    private fun setState(newState: State, _reason: String) {
         _connectionState.value = newState
         if (newState != State.RELAY_ACTIVE) {
             _peerReallyActive.value = false
@@ -157,14 +151,12 @@ object AirBridgeClient {
                     Log.e(TAG, "SECURITY: No symmetric key resolved — refusing relay connection to prevent plaintext transport")
                     setState(State.FAILED, "No encryption key available")
                     return@launch
-                } else {
-                    Log.d(TAG, "Symmetric key resolved for relay transport")
                 }
 
                 // Pass raw secret — HMAC computation happens after receiving challenge
                 connectInternal(relayUrl, pairingId, secretRaw)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to read AirBridge config: ${e.message}")
+                Log.e(TAG, "Failed to read AirBridge config")
                 setState(State.FAILED, "Failed reading persisted config")
             } finally {
                 connectInProgress.set(false)
@@ -177,9 +169,6 @@ object AirBridgeClient {
      */
     fun updateSymmetricKey(base64Key: String?) {
         symmetricKey = base64Key?.let { CryptoUtil.decodeKey(it) }
-        if (symmetricKey != null) {
-            Log.d(TAG, "Relay symmetric key updated from active session")
-        }
     }
 
     // Resolves the symmetric key for relay encryption/decryption.
@@ -210,7 +199,6 @@ object AirBridgeClient {
                 val ds = DataStoreManager.getInstance(context)
                 val enabled = ds.getAirBridgeEnabled().first()
                 if (!enabled) {
-                    Log.d(TAG, "ensureConnected skipped: AirBridge disabled")
                     return@launch
                 }
                 // If already connected or in the process of connecting, do nothing. Otherwise, attempt to connect.
@@ -228,13 +216,12 @@ object AirBridgeClient {
                             reconnectJob?.cancel()
                             reconnectJob = null
                             reconnectAttempt = 0
-                            Log.i(TAG, "ensureConnected: forcing immediate reconnect")
                         }
                         connect(context)
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "ensureConnected failed: ${e.message}")
+                Log.e(TAG, "ensureConnected failed")
             }
         }
     }
@@ -264,7 +251,6 @@ object AirBridgeClient {
         client = null
 
         setState(State.DISCONNECTED, "Manual disconnect")
-        Log.d(TAG, "Disconnected manually")
     }
 
     /**
@@ -294,17 +280,10 @@ object AirBridgeClient {
             return false
         }
 
-        val type = try {
-            JSONObject(message).optString("type", "unknown")
-        } catch (_: Exception) {
-            "non_json"
-        }
-
         return try {
-            Log.d(TAG, "Relay TX type=$type bytes=${messageToSend.length}")
             ws.send(messageToSend)
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to send relay message: ${e.message}")
+            Log.e(TAG, "Failed to send relay message")
             false
         }
     }
@@ -376,8 +355,6 @@ object AirBridgeClient {
 
         // Normalize the relay URL to ensure it has the correct scheme and path. This also enforces ws:// for private hosts and wss:// for public hosts to prevent user misconfiguration that could lead to plaintext transport over the internet.
         val normalizedUrl = normalizeRelayUrl(relayUrl)
-        Log.d(TAG, "Connecting to relay: $normalizedUrl")
-
         // Lazily initialize OkHttpClient with timeouts suitable for a long-lived relay connection.
         if (client == null) {
             client = OkHttpClient.Builder()
@@ -405,7 +382,6 @@ object AirBridgeClient {
                     } catch (_: Exception) {}
                     return
                 }
-                Log.d(TAG, "WebSocket opened to relay, waiting for challenge...")
                 this@AirBridgeClient.webSocket = webSocket
                 setState(State.CONNECTING, "Socket open, waiting for challenge")
                 reconnectAttempt = 0
@@ -418,7 +394,6 @@ object AirBridgeClient {
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
                 if (isStale()) return
-                Log.d(TAG, "Relay closing: $code $reason")
                 webSocket.close(1000, null)
                 setState(State.DISCONNECTED, "Socket closing code=$code")
                 WebSocketUtil.stopLanFirstRelayProbe("relay_onClosing")
@@ -435,7 +410,7 @@ object AirBridgeClient {
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 if (isStale()) return
                 val msg = if (t is java.io.EOFException) "Server closed connection (EOF)" else (t.message ?: "Unknown error ($t)")
-                Log.e(TAG, "Relay connection failed: $msg")
+                Log.e(TAG, "Relay connection failed")
                 setState(State.FAILED, "Socket failure: $msg")
                 WebSocketUtil.stopLanFirstRelayProbe("relay_onFailure")
                 statusQueryJob?.cancel()
@@ -468,7 +443,6 @@ object AirBridgeClient {
                         return
                     }
 
-                    Log.d(TAG, "Challenge received, computing HMAC...")
                     setState(State.CHALLENGE_RECEIVED, "Computing HMAC signature")
 
                     val (sig, kInit) = computeHmac(secretRaw, nonce, pairingId)
@@ -486,7 +460,6 @@ object AirBridgeClient {
 
                     setState(State.REGISTERING, "Sending register with HMAC")
                     if (ws.send(regMsg.toString())) {
-                        Log.d(TAG, "Registration sent (HMAC auth) for pairingId: $pairingId")
                         setState(State.WAITING_FOR_PEER, "Registration accepted, waiting peer")
                         // Reset status cache on fresh registration
                         lastStatusBothConnected = false
@@ -498,7 +471,6 @@ object AirBridgeClient {
                     return
                 }
                 "relay_started" -> {
-                    Log.i(TAG, "Relay tunnel established!")
                     setState(State.RELAY_ACTIVE, "Server confirmed relay tunnel")
                     reconnectJob?.cancel()
                     reconnectJob = null
@@ -532,7 +504,7 @@ object AirBridgeClient {
                                 delay(1000) // Stabilize connection before sending data
                                 SyncManager.performInitialSync(ctx)
                             } catch (e: Exception) {
-                                Log.e(TAG, "Failed to perform initial sync via relay: ${e.message}")
+                                Log.e(TAG, "Failed to perform initial sync via relay")
                             }
                         }
                     }
@@ -545,17 +517,15 @@ object AirBridgeClient {
                     val androidActive = json.optBoolean("androidActive", false)
                     lastStatusBothConnected = both && macActive && androidActive
                     _peerReallyActive.value = isRelayActive() && lastStatusBothConnected
-                    Log.d(TAG, "Relay status_reply: macActive=$macActive androidActive=$androidActive bothConnected=$both")
                     return
                 }
                 "mac_info" -> {
                     // Server echoing Mac's info — we can ignore this at the relay level
                     // but let the message handler process it for device discovery
-                    Log.d(TAG, "Received mac_info from relay")
                 }
                 "error" -> {
                     val msg = json.optString("message", "Unknown error")
-                    Log.e(TAG, "Relay server error: $msg")
+                    Log.e(TAG, "Relay server error")
                     setState(State.FAILED, "Server error action: $msg")
                     return
                 }
@@ -601,7 +571,6 @@ object AirBridgeClient {
         )
         reconnectAttempt++
 
-        Log.d(TAG, "Reconnecting in ${delayMs}ms (attempt $reconnectAttempt)")
         setState(State.CONNECTING, "Backoff reconnect scheduled in ${delayMs}ms")
 
         reconnectJob?.cancel()
@@ -632,7 +601,6 @@ object AirBridgeClient {
         try {
             ws.send(msg)
         } catch (e: Exception) {
-            Log.d(TAG, "query_status send failed: ${e.message}")
         }
     }
 
@@ -656,7 +624,7 @@ object AirBridgeClient {
         // If user explicitly provided ws://, only allow it for private/localhost hosts.
         // Upgrade to wss:// for public hosts to prevent cleartext transport over the internet.
         if (url.startsWith("ws://") && !url.startsWith("wss://") && !isPrivate) {
-            Log.w(TAG, "SECURITY: Upgrading ws:// to wss:// for public host: $host")
+            Log.w(TAG, "SECURITY: Upgrading ws:// to wss:// for public host")
             url = "wss://" + url.removePrefix("ws://")
         }
 

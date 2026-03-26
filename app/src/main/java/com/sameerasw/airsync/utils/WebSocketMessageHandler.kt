@@ -431,9 +431,6 @@ object WebSocketMessageHandler {
             val port = data?.optInt("port", -1) ?: -1
             val adapter = data?.optString("adapter", "auto") ?: "auto"
 
-            Log.d(TAG, "transport_sync: direction=mac->android type=macWake ips=$ips port=$port adapter=$adapter")
-            Log.d(TAG, "Received macWake via relay – attempting immediate LAN and enabling LAN-first probe")
-
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val ds = DataStoreManager.getInstance(context)
@@ -442,7 +439,6 @@ object WebSocketMessageHandler {
 
                     if (!WebSocketUtil.isConnected() && !WebSocketUtil.isConnecting()) {
                         if (ips.isNotBlank() && port > 0 && key != null) {
-                            Log.d(TAG, "macWake: immediate LAN attempt to $ips:$port")
                             WebSocketUtil.connect(
                                 context = context,
                                 ipAddress = ips,
@@ -476,9 +472,7 @@ object WebSocketMessageHandler {
 
     private fun handlePeerTransport(data: JSONObject?) {
         try {
-            val transport = data?.optString("transport", "unknown") ?: "unknown"
-            val source = data?.optString("source", "peer") ?: "peer"
-            Log.d(TAG, "Peer transport update received: source=$source transport=$transport")
+            if (data == null) return
         } catch (e: Exception) {
             Log.e(TAG, "Error handling peerTransport: ${e.message}")
         }
@@ -549,15 +543,12 @@ object WebSocketMessageHandler {
         try {
             val generation = data?.optLong("generation", 0L) ?: 0L
             val source = data?.optString("source", "peer") ?: "peer"
-            Log.d(TAG, "transport_sync: phase=offer_rx source=$source generation=$generation")
-
             if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
-                Log.d(TAG, "transport_sync: phase=offer_drop generation=$generation reason=no_lan_network")
                 return
             }
 
             if (!isTransportMessageFresh(data)) {
-                Log.w(TAG, "transport_sync: phase=offer_drop generation=$generation reason=stale_ts")
+                Log.w(TAG, "Dropped stale transport offer")
                 return
             }
             if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "offer_rx")) {
@@ -578,7 +569,7 @@ object WebSocketMessageHandler {
                 val ds = DataStoreManager.getInstance(context)
                 val key = ds.getLastConnectedDevice().first()?.symmetricKey
                 if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
-                    Log.w(TAG, "transport_sync: phase=offer_drop generation=$generation reason=invalid_candidates details=${candidateResult.invalidReason()}")
+                    Log.w(TAG, "Dropped transport offer with invalid candidates")
                     WebSocketUtil.reportLanNegotiationFailure("offer_missing_candidates_or_key")
                     return@launch
                 }
@@ -607,16 +598,12 @@ object WebSocketMessageHandler {
     private fun handleTransportAnswer(context: Context, data: JSONObject?) {
         try {
             val generation = data?.optLong("generation", 0L) ?: 0L
-            val source = data?.optString("source", "peer") ?: "peer"
-            Log.d(TAG, "transport_sync: phase=answer_rx source=$source generation=$generation")
-
             if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
-                Log.d(TAG, "transport_sync: phase=answer_drop generation=$generation reason=no_lan_network")
                 return
             }
 
             if (!isTransportMessageFresh(data)) {
-                Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=stale_ts")
+                Log.w(TAG, "Dropped stale transport answer")
                 return
             }
             if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "answer_rx")) {
@@ -635,7 +622,7 @@ object WebSocketMessageHandler {
                 val ds = DataStoreManager.getInstance(context)
                 val key = ds.getLastConnectedDevice().first()?.symmetricKey
                 if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
-                    Log.w(TAG, "transport_sync: phase=answer_drop generation=$generation reason=invalid_candidates details=${candidateResult.invalidReason()}")
+                    Log.w(TAG, "Dropped transport answer with invalid candidates")
                     return@launch
                 }
 
@@ -685,15 +672,13 @@ object WebSocketMessageHandler {
         try {
             val generation = data?.optLong("generation", 0L) ?: 0L
             val path = data?.optString("path", "relay") ?: "relay"
-            val source = data?.optString("source", "peer") ?: "peer"
-            Log.d(TAG, "transport_sync: phase=nominate_rx source=$source generation=$generation path=$path")
             if (!WebSocketUtil.isTransportGenerationActive(generation)) {
-                Log.w(TAG, "transport_sync: phase=nominate_drop source=$source generation=$generation reason=inactive_generation")
+                Log.w(TAG, "Dropped transport nominate for inactive generation")
                 return
             }
             if (path == "lan") {
                 if (!WebSocketUtil.isConnected() || !WebSocketUtil.isTransportGenerationValidated(generation)) {
-                    Log.w(TAG, "transport_sync: phase=nominate_drop source=$source generation=$generation reason=lan_not_validated")
+                    Log.w(TAG, "Dropped LAN nominate before validation")
                     return
                 }
                 WebSocketUtil.reportLanNegotiationSuccess("peer_nominate_lan")
