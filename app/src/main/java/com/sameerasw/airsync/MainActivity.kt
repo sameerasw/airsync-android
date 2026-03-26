@@ -65,6 +65,7 @@ import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import java.net.URLDecoder
 
 object AdbDiscoveryHolder {
     private var discovery: AdbMdnsDiscovery? = null
