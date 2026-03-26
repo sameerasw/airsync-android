@@ -427,6 +427,7 @@ object WebSocketUtil {
                             }
 
                             override fun onMessage(webSocket: WebSocket, text: String) {
+                                Log.d(TAG, "RAW WebSocket message received: ${text}...")
                                 val decryptedMessage = currentSymmetricKey?.let { key ->
                                     CryptoUtil.decryptMessage(text, key)
                                 } ?: text
@@ -672,6 +673,7 @@ object WebSocketUtil {
     fun sendMessage(message: String): Boolean {
         // Allow sending as soon as the socket is open (even before handshake completes)
         return if (isSocketOpen.get() && webSocket != null) {
+            Log.d(TAG, "Sending message: $message")
             val messageToSend = currentSymmetricKey?.let { key ->
                 CryptoUtil.encryptMessage(message, key)
             } ?: message
@@ -866,6 +868,11 @@ object WebSocketUtil {
                     // Match by name within the discovery list
                     val discoveryMatch = discoveredList.find { it.name == last.name }
                     if (discoveryMatch != null) {
+                        Log.d(
+                            TAG,
+                            "Discovery found target device: ${discoveryMatch.name} with IPs: ${discoveryMatch.ips}"
+                        )
+
                         val all = ds.getAllNetworkDeviceConnections().first()
                         val targetConnection = all.firstOrNull { it.deviceName == last.name }
 
@@ -873,6 +880,10 @@ object WebSocketUtil {
                             val ips = discoveryMatch.ips.joinToString(",")
                             val port = targetConnection.port.toIntOrNull() ?: 6996
 
+                            Log.d(
+                                TAG,
+                                "Smart Auto-reconnect attempting parallel connections to $ips:$port"
+                            )
                             connect(
                                 context = context,
                                 ipAddress = ips,
