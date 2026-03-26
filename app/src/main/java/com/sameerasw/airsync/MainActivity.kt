@@ -613,9 +613,7 @@ class MainActivity : ComponentActivity() {
         val queryPart = urlString.substringAfter('?', "")
         if (queryPart.isEmpty()) return emptyMap()
 
-        // Backward-compatible parsing:
-        // old QR used "?" as separator, newer QR may use "&".
-        return queryPart.split("[?&]".toRegex())
+        return queryPart.split('?')
             .mapNotNull { raw ->
                 if (raw.isBlank()) return@mapNotNull null
                 val parts = raw.split('=', limit = 2)
