@@ -87,7 +87,7 @@ fun AirBridgeCard(context: Context) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("AirBridge Relay", style = MaterialTheme.typography.titleMedium)
+                    Text("AirBridge Relay (Beta)", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "Connect via relay server when not on the same network",
                         modifier = Modifier.padding(top = 4.dp),
