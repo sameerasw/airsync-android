@@ -719,20 +719,15 @@ fun AirSyncMainScreen(
             HorizontalPager(
                 modifier = modifier
                     .fillMaxSize()
-                    .then(
-                        if (uiState.isBlurEnabled) {
-                            Modifier
-                                .progressiveBlur(
-                                    blurRadius = 40f,
-                                    height = statusBarHeightPx * 1.15f,
-                                    direction = BlurDirection.TOP
-                                )
-                                .progressiveBlur(
-                                    blurRadius = 40f,
-                                    height = bottomBlurHeightPx,
-                                    direction = BlurDirection.BOTTOM
-                                )
-                        } else Modifier
+                    .progressiveBlur(
+                        blurRadius = if (uiState.isBlurEnabled) 40f else 0f,
+                        height = statusBarHeightPx * 1.15f,
+                        direction = BlurDirection.TOP
+                    )
+                    .progressiveBlur(
+                        blurRadius = if (uiState.isBlurEnabled) 40f else 0f,
+                        height = bottomBlurHeightPx,
+                        direction = BlurDirection.BOTTOM
                     ),
                 state = pagerState
             ) { page ->
