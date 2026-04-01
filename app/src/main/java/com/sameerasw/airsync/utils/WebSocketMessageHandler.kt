@@ -429,7 +429,6 @@ object WebSocketMessageHandler {
         try {
             val ips = data?.optString("ips", "") ?: ""
             val port = data?.optInt("port", -1) ?: -1
-            val adapter = data?.optString("adapter", "auto") ?: "auto"
 
             CoroutineScope(Dispatchers.IO).launch {
                 try {
@@ -487,12 +486,19 @@ object WebSocketMessageHandler {
 
     private fun isPrivateOrAllowedLocalIp(ip: String): Boolean {
         if (ip == "127.0.0.1" || ip == "localhost") return true
-        if (ip.startsWith("10.") || ip.startsWith("192.168.") || ip.startsWith("100.")) return true
-        if (!ip.startsWith("172.")) return false
         val parts = ip.split(".")
-        if (parts.size < 2) return false
+        if (parts.size != 4) return false
+        val first = parts[0].toIntOrNull() ?: return false
         val second = parts[1].toIntOrNull() ?: return false
-        return second in 16..31
+        // 10.0.0.0/8
+        if (first == 10) return true
+        // 192.168.0.0/16
+        if (first == 192 && second == 168) return true
+        // 172.16.0.0/12
+        if (first == 172 && second in 16..31) return true
+        // 100.64.0.0/10 (CGNAT — Tailscale, ZeroTier)
+        if (first == 100 && second in 64..127) return true
+        return false
     }
 
     private fun extractSanitizedCandidates(data: JSONObject?): CandidateExtractionResult {

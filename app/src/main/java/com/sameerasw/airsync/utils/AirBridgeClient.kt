@@ -168,7 +168,15 @@ object AirBridgeClient {
      * Allows LAN flow to explicitly refresh the relay key, so transport switching is seamless.
      */
     fun updateSymmetricKey(base64Key: String?) {
-        symmetricKey = base64Key?.let { CryptoUtil.decodeKey(it) }
+        if (base64Key == null) {
+            symmetricKey = null
+            return
+        }
+        try {
+            symmetricKey = CryptoUtil.decodeKey(base64Key)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to decode symmetric key; keeping previous key", e)
+        }
     }
 
     // Resolves the symmetric key for relay encryption/decryption.
@@ -544,15 +552,8 @@ object AirBridgeClient {
         }
 
         if (processedMessage == null) {
-            // Decryption failed or no key available.
-            // Check if the raw message looks like valid JSON (plaintext fallback).
-            if (text.trim().startsWith("{")) {
-                Log.w(TAG, "Decryption failed (or no key), falling back to plaintext processing")
-                processedMessage = text
-            } else {
-                Log.e(TAG, "SECURITY: Decryption failed and message is not JSON. Dropping.")
-                return
-            }
+            Log.e(TAG, "SECURITY: Decryption failed or no key available. Dropping relay message.")
+            return
         }
 
         appContext?.let { ctx ->
