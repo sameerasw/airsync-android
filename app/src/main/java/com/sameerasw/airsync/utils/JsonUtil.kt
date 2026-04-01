@@ -144,10 +144,19 @@ object JsonUtil {
         volume: Int,
         isMuted: Boolean,
         albumArt: String?,
-        likeStatus: String
+        likeStatus: String,
+        // Seekbar fields — omitted from JSON when unknown (-1) for backwards compat
+        durationMs: Long = -1L,
+        positionMs: Long = -1L,
+        isBuffering: Boolean = false,
+        positionTimestampMs: Long = -1L
     ): String {
         val albumArtJson = if (albumArt != null) ",\"albumArt\":\"$albumArt\"" else ""
-        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson,"likeStatus":"$likeStatus"}}}"""
+        val durationJson = if (durationMs >= 0) ",\"duration\":$durationMs" else ""
+        val positionJson = if (positionMs >= 0) ",\"position\":$positionMs" else ""
+        val bufferingJson = if (isBuffering) ",\"isBuffering\":true" else ""
+        val timestampJson = if (positionTimestampMs >= 0) ",\"positionTimestamp\":$positionTimestampMs" else ""
+        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"${escape(title)}","artist":"${escape(artist)}","volume":$volume,"isMuted":$isMuted$albumArtJson,"likeStatus":"$likeStatus"$durationJson$positionJson$bufferingJson$timestampJson}}}"""
     }
 
     /**

@@ -23,12 +23,18 @@ object SyncManager {
     private var lastAudioInfo: AudioInfo? = null
     private var lastBatteryInfo: BatteryInfo? = null
     private var lastVolume: Int = -1
+    private var lastSyncTimeMs: Long = 0   // wall-clock ms of the last successful status send
     private val isSyncing = AtomicBoolean(false)
 
     // Track skip suppression mechanism
     @Volatile
     private var skipCommandTimestamp: Long = 0
     private const val SKIP_SUPPRESSION_DURATION = 1000L // 1 second suppression after skip command
+
+    // Track seek suppression mechanism
+    @Volatile
+    private var seekCommandTimestamp: Long = 0
+    private const val SEEK_SUPPRESSION_DURATION = 2500L // 2.5 second suppression after seek command
 
     fun startPeriodicSync(context: Context) {
         if (isSyncing.get()) {
@@ -69,6 +75,7 @@ object SyncManager {
         lastAudioInfo = null
         lastBatteryInfo = null
         lastVolume = -1
+        lastSyncTimeMs = 0
     }
 
     fun checkAndSyncDeviceStatus(context: Context, forceSync: Boolean = false) {
@@ -82,17 +89,35 @@ object SyncManager {
 
                 var shouldSync = forceSync
 
-                // Check if audio-related info changed
+                // Check if audio-related info changed.
                 lastAudioInfo?.let { last ->
                     if (last.isPlaying != currentAudio.isPlaying ||
                         last.title != currentAudio.title ||
                         last.artist != currentAudio.artist ||
                         last.volume != currentAudio.volume ||
                         last.isMuted != currentAudio.isMuted ||
-                        last.likeStatus != currentAudio.likeStatus
+                        last.likeStatus != currentAudio.likeStatus ||
+                        last.durationMs != currentAudio.durationMs ||
+                        last.isBuffering != currentAudio.isBuffering
                     ) {
                         shouldSync = true
                         Log.d(TAG, "Audio info changed, syncing device status")
+                    }
+
+                    // Position-jump detection: if positionMs is more than 8 seconds away from
+                    // what we'd expect based on normal playback since the last sync, the user
+                    // seeked on Android — trigger an immediate sync so the Mac can update.
+                    // Guard: lastSyncTimeMs == 0 means we haven't done a successful sync yet
+                    // (can happen if performInitialSync failed). Skip detection to avoid a
+                    // huge elapsedMs causing a spurious forced sync.
+                    if (!shouldSync && currentAudio.isPlaying && last.positionMs >= 0 && currentAudio.positionMs >= 0 && lastSyncTimeMs > 0) {
+                        val elapsedMs = System.currentTimeMillis() - lastSyncTimeMs
+                        val expectedPositionMs = last.positionMs + elapsedMs
+                        val positionDelta = kotlin.math.abs(currentAudio.positionMs - expectedPositionMs)
+                        if (positionDelta > 8_000L) {
+                            shouldSync = true
+                            Log.d(TAG, "Position jump detected (delta=${positionDelta}ms), syncing")
+                        }
                     }
                 } ?: run {
                     shouldSync = true // First time
@@ -115,10 +140,10 @@ object SyncManager {
                     val success = WebSocketUtil.sendMessage(statusJson)
 
                     if (success) {
-                        // Log.d(TAG, "Device status synced successfully")
                         lastAudioInfo = currentAudio
                         lastBatteryInfo = currentBattery
                         lastVolume = currentAudio.volume
+                        lastSyncTimeMs = System.currentTimeMillis()
                     } else {
                         Log.w(TAG, "Failed to sync device status")
                     }
@@ -247,9 +272,11 @@ object SyncManager {
                 val statusJson = DeviceInfoUtil.generateDeviceStatusJson(context)
                 if (WebSocketUtil.sendMessage(statusJson)) {
                     Log.d(TAG, "Device status sent")
-                    // Update cache
+                    // Update cache — also set lastSyncTimeMs so the position-jump detector
+                    // has a valid baseline and doesn't trigger a spurious sync on the next check.
                     lastAudioInfo = DeviceInfoUtil.getAudioInfo(context, includeNowPlaying)
                     lastBatteryInfo = DeviceInfoUtil.getBatteryInfo(context)
+                    lastSyncTimeMs = System.currentTimeMillis()
                 } else {
                     Log.e(TAG, "Failed to send device status")
                 }
@@ -583,17 +610,34 @@ object SyncManager {
     }
 
     /**
-     * Check if media updates should be suppressed due to recent skip command
+     * Call this before executing a seek command to suppress the stale onPlaybackStateChanged
+     * callback that Android fires immediately after seekTo() with the old position.
+     */
+    fun suppressMediaUpdatesForSeek() {
+        seekCommandTimestamp = System.currentTimeMillis()
+        Log.d(TAG, "Media update suppression activated for seek")
+    }
+
+    /**
+     * Check if media updates should be suppressed due to recent skip or seek command
      */
     private fun shouldSuppressMediaUpdate(): Boolean {
         val timeSinceSkip = System.currentTimeMillis() - skipCommandTimestamp
-        return timeSinceSkip < SKIP_SUPPRESSION_DURATION
+        val timeSinceSeek = System.currentTimeMillis() - seekCommandTimestamp
+        return timeSinceSkip < SKIP_SUPPRESSION_DURATION || timeSinceSeek < SEEK_SUPPRESSION_DURATION
     }
 
-    fun onMediaStateChanged(context: Context) {
-        // Check if we should suppress this update due to recent skip command
+    fun onMediaStateChanged(context: Context, isPlayingChanged: Boolean = false) {
         if (shouldSuppressMediaUpdate()) {
-            Log.d(TAG, "Media state change suppressed due to recent skip command")
+            // Always let play/pause state changes through, even during seek/skip suppression.
+            // This ensures "pause immediately after Mac seek" works correctly — the Mac will
+            // stop its local timer without waiting for the suppression window to expire.
+            if (isPlayingChanged) {
+                Log.d(TAG, "isPlaying changed during suppression — bypassing to sync")
+                checkAndSyncDeviceStatus(context)
+            } else {
+                Log.d(TAG, "Media state change suppressed due to recent seek/skip command")
+            }
             return
         }
 

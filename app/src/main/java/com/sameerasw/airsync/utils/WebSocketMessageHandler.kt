@@ -263,6 +263,20 @@ object WebSocketMessageHandler {
                     success = MediaControlUtil.stop(context)
                     message = if (success) "Playback stopped" else "Failed to stop playback"
                 }
+
+                "seekTo" -> {
+                    val positionMs = data.optLong("positionMs", -1L)
+                    if (positionMs >= 0) {
+                        // Suppress the stale onPlaybackStateChanged callback Android fires
+                        // immediately after seekTo() — this prevents sending the old position
+                        // back to the Mac and causing the jump-back UI bug.
+                        SyncManager.suppressMediaUpdatesForSeek()
+                        success = MediaControlUtil.seekTo(context, positionMs)
+                        message = if (success) "Seeked to $positionMs ms" else "Failed to seek"
+                    } else {
+                        message = "Invalid seek position"
+                    }
+                }
                 // New: toggle like controls
                 "toggleLike" -> {
                     success = MediaControlUtil.toggleLike(context)
