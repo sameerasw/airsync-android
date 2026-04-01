@@ -173,7 +173,7 @@ object ClipboardSyncManager {
                     true
                 }
                 // Only for Plus and while connected
-                val isConnected = WebSocketUtil.isConnected()
+                val isConnected = WebSocketUtil.isConnectedOrRelayActive()
                 val last = try {
                     dataStoreManager.getLastConnectedDevice().first()
                 } catch (_: Exception) {

@@ -19,7 +19,6 @@ import com.sameerasw.airsync.domain.model.MediaInfo
 import com.sameerasw.airsync.utils.JsonUtil
 import com.sameerasw.airsync.utils.NotificationDismissalUtil
 import com.sameerasw.airsync.utils.SyncManager
-import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -517,7 +516,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 }
 
                 // Build and send update
-                if (WebSocketUtil.isConnected() || AirBridgeClient.isRelayActive()) {
+                if (WebSocketUtil.isConnectedOrRelayActive()) {
                     val update = JsonUtil.toSingleLine(
                         JsonUtil.createNotificationUpdateJson(
                             id,
@@ -656,7 +655,7 @@ class MediaNotificationListener : NotificationListenerService() {
 
                     Log.d(TAG, "Preparing to send notification: $notificationJson")
 
-                    if (WebSocketUtil.isConnected() || AirBridgeClient.isRelayActive()) {
+                    if (WebSocketUtil.isConnectedOrRelayActive()) {
                         Log.d(TAG, "Sending notification via WebSocket")
                         val success = WebSocketUtil.sendMessage(notificationJson)
                         if (success) {

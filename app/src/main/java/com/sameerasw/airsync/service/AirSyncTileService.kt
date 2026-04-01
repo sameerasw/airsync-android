@@ -10,6 +10,7 @@ import android.util.Log
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -86,7 +87,7 @@ class AirSyncTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
-            val isConnected = WebSocketUtil.isConnected()
+            val isConnected = WebSocketUtil.isConnectedOrRelayActive()
             val isAuto = WebSocketUtil.isAutoReconnecting()
 
             if (isAuto && !isConnected) {
@@ -174,7 +175,7 @@ class AirSyncTileService : TileService() {
 
     private suspend fun updateTileState() {
         try {
-            val isConnected = WebSocketUtil.isConnected()
+            val isConnected = WebSocketUtil.isConnectedOrRelayActive()
             val isAuto = WebSocketUtil.isAutoReconnecting()
             val isConnecting = WebSocketUtil.isConnecting()
             val lastDevice = dataStoreManager.getLastConnectedDevice().first()

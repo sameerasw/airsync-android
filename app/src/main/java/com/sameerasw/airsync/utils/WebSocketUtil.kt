@@ -782,6 +782,14 @@ object WebSocketUtil {
         return isConnecting.get()
     }
 
+    /**
+     * Returns true if any transport (LAN or AirBridge relay) is available for messaging.
+     * Use this instead of [isConnected] when you want to send data regardless of transport.
+     */
+    fun isConnectedOrRelayActive(): Boolean {
+        return isConnected.get() || AirBridgeClient.isRelayActive()
+    }
+
     private val lastSyncTimeCache = java.util.concurrent.atomic.AtomicLong(0L)
 
     private fun updateLastSyncTime(context: Context) {
