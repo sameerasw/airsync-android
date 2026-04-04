@@ -35,6 +35,7 @@ interface AirSyncRepository {
         deviceName: String,
         ourIp: String,
         clientIp: String,
+        candidateIps: List<String> = emptyList(),
         port: String,
         isPlus: Boolean,
         symmetricKey: String?,

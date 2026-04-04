@@ -10,6 +10,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.data.repository.AirSyncRepositoryImpl
+import com.sameerasw.airsync.domain.model.ConnectionTransport
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.DeviceInfo
 import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
@@ -94,11 +95,13 @@ class AirSyncViewModel(
     // Connection status listener for WebSocket updates
     private val connectionStatusListener: (Boolean) -> Unit = { isConnected ->
         viewModelScope.launch {
+            val activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null
             _uiState.value = _uiState.value.copy(
                 isConnected = isConnected,
                 isConnecting = false,
                 response = if (isConnected) "Connected successfully!" else "Disconnected",
-                activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null,
+                activeIp = activeIp,
+                connectionTransport = ConnectionTransport.fromIp(activeIp),
                 macDeviceStatus = if (isConnected) _uiState.value.macDeviceStatus else null
             )
 
@@ -243,19 +246,13 @@ class AirSyncViewModel(
     }
 
     fun initializeState(
-        context: Context,
-        initialIp: String? = null,
-        initialPort: String? = null,
-        showConnectionDialog: Boolean = false,
-        pcName: String? = null,
-        isPlus: Boolean = false,
-        symmetricKey: String? = null
+        context: Context
     ) {
         appContext = context.applicationContext
         viewModelScope.launch {
             // Load saved values
-            val savedIp = initialIp ?: repository.getIpAddress().first()
-            val savedPort = initialPort ?: repository.getPort().first()
+            val savedIp = repository.getIpAddress().first()
+            val savedPort = repository.getPort().first()
             val savedDeviceName = repository.getDeviceName().first()
             val lastConnected = repository.getLastConnectedDevice().first()
             val isNotificationSyncEnabled = repository.getNotificationSyncEnabled().first()
@@ -311,13 +308,12 @@ class AirSyncViewModel(
 
             // Check current WebSocket connection status
             val currentlyConnected = WebSocketUtil.isConnected()
+            val activeIp = if (currentlyConnected) WebSocketUtil.currentIpAddress else null
 
             _uiState.value = _uiState.value.copy(
                 ipAddress = savedIp,
                 port = savedPort,
                 deviceNameInput = deviceName,
-                // Only show dialog if not already connected and showConnectionDialog is true
-                isDialogVisible = showConnectionDialog && !currentlyConnected,
                 missingPermissions = missingPermissions,
                 isNotificationEnabled = isNotificationEnabled,
                 lastConnectedDevice = deviceToShow,
@@ -326,7 +322,9 @@ class AirSyncViewModel(
                 isClipboardSyncEnabled = isClipboardSyncEnabled,
                 isAutoReconnectEnabled = isAutoReconnectEnabled,
                 isConnected = currentlyConnected,
-                symmetricKey = symmetricKey ?: lastConnectedSymmetricKey,
+                activeIp = activeIp,
+                connectionTransport = ConnectionTransport.fromIp(activeIp),
+                symmetricKey = lastConnectedSymmetricKey,
                 isContinueBrowsingEnabled = isContinueBrowsingEnabled,
                 isSendNowPlayingEnabled = isSendNowPlayingEnabled,
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
@@ -344,21 +342,6 @@ class AirSyncViewModel(
             )
 
             updateRatingPromptDisplay()
-
-            // If we have PC name from QR code and not already connected, store it temporarily for the dialog
-            if (pcName != null && showConnectionDialog && !currentlyConnected) {
-                _uiState.value = _uiState.value.copy(
-                    lastConnectedDevice = ConnectedDevice(
-                        name = pcName,
-                        ipAddress = savedIp,
-                        port = savedPort,
-                        lastConnected = System.currentTimeMillis(),
-                        isPlus = isPlus,
-                        symmetricKey = symmetricKey
-                    )
-                )
-            }
-
 
             // Start observing device changes for real-time updates
             startObservingDeviceChanges(context)
@@ -399,6 +382,41 @@ class AirSyncViewModel(
 
     fun updateManualIsPlus(isPlus: Boolean) {
         _uiState.value = _uiState.value.copy(manualIsPlus = isPlus)
+    }
+
+    fun applyConnectionLaunch(
+        initialIp: String?,
+        initialPort: String?,
+        pcName: String?,
+        isPlus: Boolean,
+        symmetricKey: String?
+    ) {
+        val ip = initialIp?.trim().orEmpty()
+        val port = initialPort?.trim().orEmpty()
+        if (ip.isEmpty() || port.isEmpty()) return
+
+        val currentConnection = WebSocketUtil.isConnected()
+        val deviceName = pcName ?: _uiState.value.lastConnectedDevice?.name ?: "My Mac"
+        val launchedDevice = ConnectedDevice(
+            name = deviceName,
+            ipAddress = ip,
+            port = port,
+            lastConnected = System.currentTimeMillis(),
+            isPlus = isPlus,
+            symmetricKey = symmetricKey
+        )
+
+        _uiState.value = _uiState.value.copy(
+            ipAddress = ip,
+            port = port,
+            manualPcName = deviceName,
+            manualIsPlus = isPlus,
+            symmetricKey = symmetricKey,
+            lastConnectedDevice = launchedDevice,
+            isDialogVisible = !currentConnection,
+            showAuthFailureDialog = false,
+            authFailureMessage = ""
+        )
     }
 
     fun prepareForManualConnection() {
@@ -451,9 +469,12 @@ class AirSyncViewModel(
     }
 
     fun setConnectionStatus(isConnected: Boolean, isConnecting: Boolean = false) {
+        val activeIp = if (isConnected) WebSocketUtil.currentIpAddress else null
         _uiState.value = _uiState.value.copy(
             isConnected = isConnected,
             isConnecting = isConnecting,
+            activeIp = activeIp,
+            connectionTransport = ConnectionTransport.fromIp(activeIp),
             connectingDeviceId = if (!isConnecting) null else _uiState.value.connectingDeviceId
         )
     }
@@ -479,14 +500,21 @@ class AirSyncViewModel(
         viewModelScope.launch {
             val deviceName = pcName ?: "My Mac"
             val ourIp = _deviceInfo.value.localIp
-            val clientIp = _uiState.value.ipAddress
+            val currentConnectedIp = WebSocketUtil.currentIpAddress?.trim().orEmpty()
+            val candidateIps = NetworkDeviceConnection.rankIps(
+                _uiState.value.ipAddress.split(",") + currentConnectedIp
+            )
+            val clientIp = currentConnectedIp.ifBlank { candidateIps.firstOrNull().orEmpty() }
             val port = _uiState.value.port
+
+            if (clientIp.isBlank()) return@launch
 
             // Save using network-aware storage
             repository.saveNetworkDeviceConnection(
                 deviceName,
                 ourIp,
                 clientIp,
+                candidateIps,
                 port,
                 isPlus,
                 symmetricKey
@@ -533,7 +561,18 @@ class AirSyncViewModel(
             .filter { it.getClientIpForNetwork(ourIp) != null }
             .maxByOrNull { it.lastConnected }
 
-        return networkDevice?.toConnectedDevice(ourIp)
+        if (networkDevice != null) {
+            return networkDevice.toConnectedDevice(ourIp)
+        }
+
+        val last = _uiState.value.lastConnectedDevice ?: return null
+        val fallback = _networkDevices.value
+            .filter { it.deviceName == last.name }
+            .maxByOrNull { it.lastConnected }
+            ?: return null
+
+        val fallbackIp = fallback.getOrderedReconnectCandidates(ourIp).firstOrNull() ?: return null
+        return last.copy(ipAddress = fallbackIp, port = fallback.port, symmetricKey = fallback.symmetricKey)
     }
 
     fun setNotificationSyncEnabled(enabled: Boolean) {

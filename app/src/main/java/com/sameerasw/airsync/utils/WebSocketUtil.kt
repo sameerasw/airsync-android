@@ -2,6 +2,8 @@ package com.sameerasw.airsync.utils
 
 import android.content.Context
 import android.util.Log
+import com.sameerasw.airsync.domain.model.ConnectedDevice
+import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
 import com.sameerasw.airsync.widget.AirSyncWidgetProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -639,12 +641,34 @@ object WebSocketUtil {
         cancelAutoReconnect()
     }
 
+    private fun buildLanFirstReconnectCandidates(
+        last: ConnectedDevice,
+        targetConnection: NetworkDeviceConnection?,
+        ourIp: String,
+        discoveredList: List<DiscoveredDevice>
+    ): Pair<List<String>, String> {
+        val discoveryMatch = discoveredList.find { it.name == last.name }
+        val savedCandidates = targetConnection?.getOrderedReconnectCandidates(ourIp).orEmpty()
+        val lastKnownCandidates = NetworkDeviceConnection.rankIps(last.ipAddress.split(","))
+
+        val combined = when {
+            discoveryMatch != null -> {
+                discoveryMatch.getOrderedIps() + savedCandidates + lastKnownCandidates
+            }
+
+            else -> savedCandidates + lastKnownCandidates
+        }
+
+        val source = if (discoveryMatch != null) "discovery+saved" else "saved"
+        return NetworkDeviceConnection.rankIps(combined) to source
+    }
+
     /**
      * Internal logic to attempt auto-reconnection to the last known device.
-     * Uses discovery-triggered strategy.
+     * Prefers LAN discovery, then falls back to saved LAN candidates when discovery is filtered.
      */
     private fun tryStartAutoReconnect(context: Context) {
-        if (autoReconnectActive.get()) return // already running
+        if (autoReconnectActive.get()) return
         autoReconnectActive.set(true)
         autoReconnectStartTime = System.currentTimeMillis()
 
@@ -653,63 +677,73 @@ object WebSocketUtil {
             try {
                 val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
 
-                // Monitor discovered devices
-                UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
-                    if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
+                while (autoReconnectActive.get()) {
+                    if (isConnected.get() || isConnecting.get()) {
+                        delay(2_000)
+                        continue
+                    }
 
                     val manual = ds.getUserManuallyDisconnected().first()
                     val autoEnabled = ds.getAutoReconnectEnabled().first()
                     if (manual || !autoEnabled) {
                         cancelAutoReconnect()
-                        return@collect
+                        break
                     }
 
-                    val last = ds.getLastConnectedDevice().first() ?: return@collect
-                    DeviceInfoUtil.getWifiIpAddress(context)
-                        ?: return@collect
+                    val last = ds.getLastConnectedDevice().first()
+                    val ourIp = DeviceInfoUtil.getWifiIpAddress(context)
+                    if (last == null || ourIp.isNullOrBlank()) {
+                        delay(5_000)
+                        continue
+                    }
 
-                    // Match by name within the discovery list
-                    val discoveryMatch = discoveredList.find { it.name == last.name }
-                    if (discoveryMatch != null) {
-                        Log.d(
-                            TAG,
-                            "Discovery found target device: ${discoveryMatch.name} with IPs: ${discoveryMatch.ips}"
-                        )
+                    val all = ds.getAllNetworkDeviceConnections().first()
+                    val targetConnection = all.firstOrNull { it.deviceName == last.name }
+                    val (candidates, source) = buildLanFirstReconnectCandidates(
+                        last = last,
+                        targetConnection = targetConnection,
+                        ourIp = ourIp,
+                        discoveredList = UDPDiscoveryManager.discoveredDevices.value
+                    )
 
-                        val all = ds.getAllNetworkDeviceConnections().first()
-                        val targetConnection = all.firstOrNull { it.deviceName == last.name }
+                    if (candidates.isEmpty()) {
+                        Log.d(TAG, "Auto-reconnect has no LAN candidates for ${last.name}")
+                        delay(8_000)
+                        continue
+                    }
 
-                        if (targetConnection != null) {
-                            val ips = discoveryMatch.ips.joinToString(",")
-                            val port = targetConnection.port.toIntOrNull() ?: 6996
+                    val port = targetConnection?.port?.toIntOrNull() ?: last.port.toIntOrNull() ?: 6996
+                    val symmetricKey = targetConnection?.symmetricKey ?: last.symmetricKey
+                    val ips = candidates.joinToString(",")
+                    autoReconnectAttempts += 1
 
-                            Log.d(
-                                TAG,
-                                "Smart Auto-reconnect attempting parallel connections to $ips:$port"
-                            )
-                            connect(
-                                context = context,
-                                ipAddress = ips,
-                                port = port,
-                                symmetricKey = targetConnection.symmetricKey,
-                                manualAttempt = false,
-                                onConnectionStatus = { connected ->
-                                    if (connected) {
-                                        CoroutineScope(Dispatchers.IO).launch {
-                                            try {
-                                                ds.updateNetworkDeviceLastConnected(
-                                                    targetConnection.deviceName,
-                                                    System.currentTimeMillis()
-                                                )
-                                            } catch (_: Exception) {
-                                            }
-                                            cancelAutoReconnect()
-                                        }
+                    Log.d(
+                        TAG,
+                        "LAN-first auto-reconnect attempt #$autoReconnectAttempts via $source to $ips:$port"
+                    )
+
+                    connect(
+                        context = context,
+                        ipAddress = ips,
+                        port = port,
+                        symmetricKey = symmetricKey,
+                        manualAttempt = false,
+                        onConnectionStatus = { connected ->
+                            if (connected) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    targetConnection?.let {
+                                        ds.updateNetworkDeviceLastConnected(
+                                            it.deviceName,
+                                            System.currentTimeMillis()
+                                        )
                                     }
+                                    cancelAutoReconnect()
                                 }
-                            )
+                            }
                         }
-                    }
+                    )
+
+                    delay(8_000)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Error in discovery auto-reconnect: ${e.message}")

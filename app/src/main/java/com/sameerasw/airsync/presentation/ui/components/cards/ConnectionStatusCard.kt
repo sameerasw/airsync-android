@@ -39,6 +39,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.domain.model.ConnectionTransport
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.presentation.ui.components.RotatingAppIcon
@@ -142,6 +143,32 @@ fun ConnectionStatusCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    val transport = uiState.connectionTransport
+                    val transportColor = when (transport) {
+                        ConnectionTransport.LOCAL -> MaterialTheme.colorScheme.primary
+                        ConnectionTransport.EXTENDED -> MaterialTheme.colorScheme.tertiary
+                        ConnectionTransport.UNKNOWN -> MaterialTheme.colorScheme.surfaceVariant
+                    }
+
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = transportColor
+                    ) {
+                        Text(
+                            text = when (transport) {
+                                ConnectionTransport.LOCAL -> "LAN"
+                                ConnectionTransport.EXTENDED -> "Internet"
+                                ConnectionTransport.UNKNOWN -> "Unknown"
+                            },
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = when (transport) {
+                                ConnectionTransport.UNKNOWN -> MaterialTheme.colorScheme.onSurfaceVariant
+                                else -> MaterialTheme.colorScheme.onPrimary
+                            }
+                        )
+                    }
+
                     val ips =
                         uiState.ipAddress.split(",").map { it.trim() }.filter { it.isNotEmpty() }
                     ips.forEach { ip ->
