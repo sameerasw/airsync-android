@@ -144,6 +144,7 @@ fun AirSyncMainScreen(
     pcName: String? = null,
     isPlus: Boolean = false,
     symmetricKey: String? = null,
+    requestNonce: Long = 0L,
     onNavigateToApps: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
@@ -164,7 +165,6 @@ fun AirSyncMainScreen(
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val connectScrollState = rememberScrollState()
     val settingsScrollState = rememberScrollState()
-    var hasProcessedQrDialog by remember { mutableStateOf(false) }
     var hasAppliedInitialTab by remember { mutableStateOf(false) }
     var isWelcomeDismissed by rememberSaveable { mutableStateOf(false) }
     var hasSeenWelcomeThisSession by rememberSaveable { mutableStateOf(false) }
@@ -328,6 +328,7 @@ fun AirSyncMainScreen(
                 val connected = result
                 viewModel.setConnectionStatus(isConnected = connected, isConnecting = false)
                 if (connected) {
+                    viewModel.setDialogVisible(false)
                     viewModel.setResponse("Connected successfully!")
                     val plusStatus = uiState.lastConnectedDevice?.isPlus ?: isPlus
                     viewModel.saveLastConnectedDevice(pcName, plusStatus, uiState.symmetricKey)
@@ -503,21 +504,25 @@ fun AirSyncMainScreen(
     }
 
     LaunchedEffect(Unit) {
-        viewModel.initializeState(
-            context,
-            initialIp,
-            initialPort,
-            showConnectionDialog && !hasProcessedQrDialog,
-            pcName,
-            isPlus,
-            symmetricKey
-        )
+        viewModel.initializeState(context)
 
         // Start network monitoring for dynamic Wi-Fi changes
         viewModel.startNetworkMonitoring(context)
 
         // Refresh permissions on app launch
         viewModel.refreshPermissions(context)
+    }
+
+    LaunchedEffect(requestNonce) {
+        if (requestNonce != 0L && showConnectionDialog) {
+            viewModel.applyConnectionLaunch(
+                initialIp = initialIp,
+                initialPort = initialPort,
+                pcName = pcName,
+                isPlus = isPlus,
+                symmetricKey = symmetricKey
+            )
+        }
     }
 
     // Refresh permissions when app resumes from pause
@@ -531,19 +536,6 @@ fun AirSyncMainScreen(
 
         onDispose {
             lifecycle.removeObserver(lifecycleObserver)
-        }
-    }
-
-    // Mark QR dialog as processed when it's shown or when already connected
-    LaunchedEffect(showConnectionDialog, uiState.isConnected) {
-        if (showConnectionDialog) {
-            if (uiState.isConnected) {
-                // If already connected, don't show dialog
-                hasProcessedQrDialog = true
-            } else if (uiState.isDialogVisible) {
-                // Dialog is being shown, mark as processed
-                hasProcessedQrDialog = true
-            }
         }
     }
 
@@ -918,7 +910,10 @@ fun AirSyncMainScreen(
                                                                 .fillMaxWidth()
                                                                 .clickable {
                                                                     HapticUtil.performClick(haptics)
-                                                                    viewModel.updateIpAddress(device.getBestIp())
+                                                                    viewModel.updateIpAddress(
+                                                                        device.getOrderedIps()
+                                                                            .joinToString(",")
+                                                                    )
                                                                     viewModel.updatePort(device.port.toString())
                                                                     viewModel.updateManualPcName(
                                                                         device.name

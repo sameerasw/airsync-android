@@ -58,6 +58,7 @@ object WakeupHandler {
                     deviceName = macName,
                     ourIp = ourIp,
                     clientIp = macIp,
+                    candidateIps = listOf(macIp),
                     port = macPort.toString(),
                     isPlus = true,
                     symmetricKey = encryptionKey,

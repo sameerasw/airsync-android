@@ -2,6 +2,7 @@ package com.sameerasw.airsync.utils
 
 import android.content.Context
 import android.util.Log
+import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -31,8 +32,10 @@ data class DiscoveredDevice(
     // check if it has a Tailscale IP
     fun hasTailscaleIp(): Boolean = ips.any { it.startsWith("100.") }
 
+    fun getOrderedIps(): List<String> = NetworkDeviceConnection.rankIps(ips)
+
     // Best IP for connection
-    fun getBestIp(): String = ips.find { !it.startsWith("100.") } ?: ips.firstOrNull() ?: ""
+    fun getBestIp(): String = getOrderedIps().firstOrNull() ?: ""
 }
 
 enum class DiscoveryMode {
@@ -482,7 +485,7 @@ object UDPDiscoveryManager {
         } catch (e: Exception) {
             Log.e(TAG, "Error getting network interfaces: ${e.message}")
         }
-        return ips
+        return NetworkDeviceConnection.rankIps(ips)
     }
 
     private fun startPruning() {

@@ -8,6 +8,7 @@ import android.widget.Toast
 import com.sameerasw.airsync.BuildConfig
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.data.repository.AirSyncRepositoryImpl
+import com.sameerasw.airsync.domain.model.NetworkDeviceConnection
 import com.sameerasw.airsync.service.MediaNotificationListener
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -581,12 +582,15 @@ object WebSocketMessageHandler {
                             val clientIp = last.ipAddress
                             val port = last.port
                             val symmetricKey = last.symmetricKey
+                            val candidateIps =
+                                NetworkDeviceConnection.rankIps(last.ipAddress.split(",") + clientIp)
 
                             if (clientIp.isNotBlank() && ourIp.isNotBlank()) {
                                 ds.saveNetworkDeviceConnection(
                                     deviceName = if (macName.isNotBlank()) macName else last.name,
                                     ourIp = ourIp,
                                     clientIp = clientIp,
+                                    candidateIps = candidateIps,
                                     port = port,
                                     isPlus = isPlus,
                                     symmetricKey = symmetricKey,
@@ -900,4 +904,3 @@ object WebSocketMessageHandler {
         }
     }
 }
-

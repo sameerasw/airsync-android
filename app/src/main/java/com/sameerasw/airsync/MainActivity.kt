@@ -80,9 +80,20 @@ object AdbDiscoveryHolder {
     }
 }
 
+private data class ConnectionLaunchPayload(
+    val ip: String? = null,
+    val port: String? = null,
+    val pcName: String? = null,
+    val isPlus: Boolean = false,
+    val symmetricKey: String? = null,
+    val showConnectionDialog: Boolean = false,
+    val requestNonce: Long = 0L
+)
+
 class MainActivity : ComponentActivity() {
     // Flag to keep splash screen visible during app initialization
     private var isAppReady = false
+    private var launchPayload by mutableStateOf(ConnectionLaunchPayload())
 
     // Permission launcher for Android 13+ notification permission
     private val notificationPermissionLauncher = registerForActivityResult(
@@ -340,33 +351,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        val data: android.net.Uri? = intent?.data
-        val ip = data?.host
-        val port = data?.port?.takeIf { it != -1 }?.toString()
-
-        // Parse QR code parameters
-        var pcName: String? = null
-        var isPlus = false
-        var symmetricKey: String? = null
-
-        data?.let { uri ->
-            val urlString = uri.toString()
-            val queryPart = urlString.substringAfter('?', "")
-            if (queryPart.isNotEmpty()) {
-                val params = queryPart.split('?')
-                val paramMap = params.associate {
-                    val parts = it.split('=', limit = 2)
-                    val key = parts.getOrNull(0) ?: ""
-                    val value = parts.getOrNull(1) ?: ""
-                    key to value
-                }
-                pcName = paramMap["name"]?.let { URLDecoder.decode(it, "UTF-8") }
-                isPlus = paramMap["plus"]?.toBooleanStrictOrNull() ?: false
-                symmetricKey = paramMap["key"]
-            }
-        }
-
-        val isFromQrScan = data != null
+        launchPayload = parseConnectionLaunch(intent)
 
         setContent {
             val viewModel: com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel =
@@ -396,12 +381,13 @@ class MainActivity : ComponentActivity() {
                     ) {
                         composable("main") {
                             AirSyncMainScreen(
-                                initialIp = ip,
-                                initialPort = port,
-                                showConnectionDialog = isFromQrScan,
-                                pcName = pcName,
-                                isPlus = isPlus,
-                                symmetricKey = symmetricKey
+                                initialIp = launchPayload.ip,
+                                initialPort = launchPayload.port,
+                                showConnectionDialog = launchPayload.showConnectionDialog,
+                                pcName = launchPayload.pcName,
+                                isPlus = launchPayload.isPlus,
+                                symmetricKey = launchPayload.symmetricKey,
+                                requestNonce = launchPayload.requestNonce
                             )
                         }
                     }
@@ -548,6 +534,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        setIntent(intent)
 
         // Handle Notes Role intent
         handleNotesRoleIntent(intent)
@@ -562,7 +549,13 @@ class MainActivity : ComponentActivity() {
                 }
                 startActivity(qrScannerIntent)
                 finish()
+                return
             }
+        }
+
+        val updatedLaunchPayload = parseConnectionLaunch(intent)
+        if (updatedLaunchPayload.showConnectionDialog) {
+            launchPayload = updatedLaunchPayload
         }
     }
 
@@ -646,5 +639,55 @@ class MainActivity : ComponentActivity() {
         }
 
         ContentCaptureManager.launchContentCapture(contentCaptureLauncher)
+    }
+
+    private fun parseConnectionLaunch(intent: Intent?): ConnectionLaunchPayload {
+        val uri = intent?.data ?: return ConnectionLaunchPayload()
+        if (uri.scheme != "airsync") return ConnectionLaunchPayload()
+
+        var ip = uri.host ?: ""
+        var port = uri.port.takeIf { it != -1 }?.toString() ?: ""
+
+        if (ip.isEmpty() || port.isEmpty()) {
+            val authority = uri.toString().substringAfter("://").substringBefore("?")
+            if (authority.contains(":")) {
+                ip = authority.substringBeforeLast(":")
+                port = authority.substringAfterLast(":")
+            } else {
+                ip = authority
+            }
+        }
+
+        if (ip.isEmpty() || port.isEmpty()) {
+            return ConnectionLaunchPayload()
+        }
+
+        var pcName: String? = null
+        var isPlus = false
+        var symmetricKey: String? = null
+
+        val queryPart = uri.toString().substringAfter('?', "")
+        if (queryPart.isNotEmpty()) {
+            val params = queryPart.split('?')
+            val paramMap = params.associate {
+                val parts = it.split('=', limit = 2)
+                val key = parts.getOrNull(0) ?: ""
+                val value = parts.getOrNull(1) ?: ""
+                key to value
+            }
+            pcName = paramMap["name"]?.let { URLDecoder.decode(it, "UTF-8") }
+            isPlus = paramMap["plus"]?.toBooleanStrictOrNull() ?: false
+            symmetricKey = paramMap["key"]
+        }
+
+        return ConnectionLaunchPayload(
+            ip = ip,
+            port = port,
+            pcName = pcName,
+            isPlus = isPlus,
+            symmetricKey = symmetricKey,
+            showConnectionDialog = true,
+            requestNonce = System.currentTimeMillis()
+        )
     }
 }

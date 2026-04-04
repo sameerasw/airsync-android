@@ -39,6 +39,7 @@ data class UiState(
     val defaultTab: String = "dynamic",
     val isEssentialsConnectionEnabled: Boolean = false,
     val activeIp: String? = null,
+    val connectionTransport: ConnectionTransport = ConnectionTransport.UNKNOWN,
     val connectingDeviceId: String? = null,
     val isDeviceDiscoveryEnabled: Boolean = true,
     val shouldShowRatingPrompt: Boolean = false,

@@ -15,6 +15,7 @@ import com.sameerasw.airsync.domain.model.NotificationApp
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import org.json.JSONArray
 import org.json.JSONObject
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "airsync_settings")
@@ -604,11 +605,38 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
+    private fun parseNetworkConnections(jsonString: String): Map<String, String> {
+        return try {
+            val json = JSONObject(jsonString)
+            buildMap {
+                json.keys().forEach { key ->
+                    put(key, json.getString(key))
+                }
+            }
+        } catch (_: Exception) {
+            emptyMap()
+        }
+    }
+
+    private fun parseStringList(jsonString: String): List<String> {
+        return try {
+            val json = JSONArray(jsonString)
+            List(json.length()) { index -> json.getString(index) }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    private fun stringifyStringList(values: Iterable<String>): String {
+        return JSONArray(NetworkDeviceConnection.rankIps(values)).toString()
+    }
+
     // Network-aware device connections
     suspend fun saveNetworkDeviceConnection(
         deviceName: String,
         ourIp: String,
         clientIp: String,
+        candidateIps: List<String> = emptyList(),
         port: String,
         isPlus: Boolean,
         symmetricKey: String?,
@@ -616,33 +644,22 @@ class DataStoreManager(private val context: Context) {
         deviceType: String? = null
     ) {
         context.dataStore.edit { preferences ->
-            // Load existing connections for this device
             val existingConnectionsJson =
                 preferences[stringPreferencesKey("${NETWORK_CONNECTIONS_PREFIX}${deviceName}")]
                     ?: "{}"
-            val existingConnections = try {
-                val json = JSONObject(existingConnectionsJson)
-                val map = mutableMapOf<String, String>()
-                json.keys().forEach { key ->
-                    map[key] = json.getString(key)
-                }
-                map
-            } catch (_: Exception) {
-                mutableMapOf()
-            }
+            val existingConnections = parseNetworkConnections(existingConnectionsJson).toMutableMap()
 
-            // Add/update the new connection
             existingConnections[ourIp] = clientIp
 
-            // Convert back to JSON
             val updatedJson = JSONObject(existingConnections).toString()
 
-            // Save device info
             preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_name")] =
                 deviceName
             preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_port")] = port
             preferences[booleanPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_plus")] =
                 isPlus
+            preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_candidate_ips")] =
+                stringifyStringList(existingConnections.values + candidateIps + listOf(clientIp))
             symmetricKey?.let {
                 preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")] =
                     it
@@ -673,6 +690,9 @@ class DataStoreManager(private val context: Context) {
                     ?: false
             val symmetricKey =
                 preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
+            val candidateIpsJson =
+                preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_candidate_ips")]
+                    ?: "[]"
             val model =
                 preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
             val deviceType =
@@ -685,20 +705,10 @@ class DataStoreManager(private val context: Context) {
                     ?: "{}"
 
             if (name != null && port != null) {
-                val connections = try {
-                    val json = JSONObject(connectionsJson)
-                    val map = mutableMapOf<String, String>()
-                    json.keys().forEach { key ->
-                        map[key] = json.getString(key)
-                    }
-                    map
-                } catch (_: Exception) {
-                    emptyMap()
-                }
-
                 NetworkDeviceConnection(
                     deviceName = name,
-                    networkConnections = connections,
+                    networkConnections = parseNetworkConnections(connectionsJson),
+                    candidateIps = parseStringList(candidateIpsJson),
                     port = port,
                     lastConnected = lastConnected,
                     isPlus = isPlus,
@@ -737,6 +747,9 @@ class DataStoreManager(private val context: Context) {
                         ?: false
                 val symmetricKey =
                     preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_symmetric_key")]
+                val candidateIpsJson =
+                    preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_candidate_ips")]
+                        ?: "[]"
                 val model =
                     preferences[stringPreferencesKey("${NETWORK_DEVICES_PREFIX}${deviceName}_model")]
                 val deviceType =
@@ -749,21 +762,11 @@ class DataStoreManager(private val context: Context) {
                         ?: "{}"
 
                 if (name != null && port != null) {
-                    val connections = try {
-                        val json = JSONObject(connectionsJson)
-                        val map = mutableMapOf<String, String>()
-                        json.keys().forEach { key ->
-                            map[key] = json.getString(key)
-                        }
-                        map
-                    } catch (_: Exception) {
-                        emptyMap()
-                    }
-
                     devices.add(
                         NetworkDeviceConnection(
                             deviceName = name,
-                            networkConnections = connections,
+                            networkConnections = parseNetworkConnections(connectionsJson),
+                            candidateIps = parseStringList(candidateIpsJson),
                             port = port,
                             lastConnected = lastConnected,
                             isPlus = isPlus,
