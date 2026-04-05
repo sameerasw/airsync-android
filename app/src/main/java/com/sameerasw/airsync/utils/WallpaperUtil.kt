@@ -14,8 +14,8 @@ import java.io.ByteArrayOutputStream
 
 object WallpaperUtil {
     private const val TAG = "WallpaperUtil"
-    private const val MAX_WALLPAPER_SIZE = 1920 // Maximum size
-    private const val JPEG_QUALITY = 85 // JPEG compression quality (0-100)
+    private const val MAX_WALLPAPER_SIZE = 800 // Maximum size
+    private const val JPEG_QUALITY = 60 // JPEG compression quality (0-100)
 
     /**
      * Gets the current wallpaper and converts it to base64 string

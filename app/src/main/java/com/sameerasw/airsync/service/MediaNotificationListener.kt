@@ -722,7 +722,7 @@ class MediaNotificationListener : NotificationListenerService() {
 
     private fun updateMediaInfo() {
         currentMediaInfo = getMediaInfo(this)
-        Log.d(TAG, "Updated media info: $currentMediaInfo")
+        Log.d(TAG, "Updated media info: title=${currentMediaInfo?.title}, artist=${currentMediaInfo?.artist}, isPlaying=${currentMediaInfo?.isPlaying}")
     }
 
     private fun isDuplicateNotification(packageName: String, body: String?): Boolean {
