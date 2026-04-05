@@ -38,6 +38,7 @@ class AirSyncViewModel(
 ) : ViewModel() {
 
     companion object {
+        private const val TAG = "AirSyncViewModel"
         fun create(context: Context): AirSyncViewModel {
             val dataStoreManager = DataStoreManager(context)
             val repository = AirSyncRepositoryImpl(dataStoreManager)
@@ -129,6 +130,13 @@ class AirSyncViewModel(
     }
 
     init {
+        // Clear manual disconnect flag on app startup so auto-reconnect works
+        viewModelScope.launch {
+            try {
+                repository.setUserManuallyDisconnected(false)
+            } catch (_: Exception) {}
+        }
+        
         // Register for WebSocket connection status updates
         WebSocketUtil.registerConnectionStatusListener(connectionStatusListener)
         try {
@@ -219,6 +227,9 @@ class AirSyncViewModel(
             appContext?.unregisterReceiver(powerSaveReceiver)
         } catch (_: IllegalArgumentException) {
             // Receiver was not registered
+        } catch (e: Exception) {
+            // Context may be invalid (Activity leaked)
+            Log.e(TAG, "Failed to unregister receiver: ${e.message}")
         }
     }
 
@@ -749,7 +760,7 @@ class AirSyncViewModel(
     fun startNetworkMonitoring(context: Context) {
         if (isNetworkMonitoringActive) return
         isNetworkMonitoringActive = true
-        previousNetworkIp = DeviceInfoUtil.getWifiIpAddress(context) ?: "Unknown"
+        previousNetworkIp = DeviceInfoUtil.getWifiIpAddress(context) ?: DeviceInfoUtil.getLocalIpAddress() ?: "Unknown"
 
         viewModelScope.launch {
             try {
@@ -780,7 +791,7 @@ class AirSyncViewModel(
                         if (currentIp == "No Wi-Fi" || currentIp == "Unknown") {
                             // No usable Wi‑Fi: ensure we stop any active connection and do not attempt reconnect
                             try {
-                                WebSocketUtil.disconnect(context)
+                                WebSocketUtil.disconnect(context, isManual = false)
                             } catch (_: Exception) {
                             }
                             // Stop service if needed
@@ -803,7 +814,7 @@ class AirSyncViewModel(
                             // If connected/connecting to old network, disconnect first to force a clean switch
                             if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) {
                                 try {
-                                    WebSocketUtil.disconnect(context)
+                                    WebSocketUtil.disconnect(context, isManual = false)
                                 } catch (_: Exception) {
                                 }
                             }
@@ -862,7 +873,7 @@ class AirSyncViewModel(
                             // No mapping for this network: disconnect if connected and, if allowed, start generic auto-reconnect
                             if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) {
                                 try {
-                                    WebSocketUtil.disconnect(context)
+                                    WebSocketUtil.disconnect(context, isManual = false)
                                 } catch (_: Exception) {
                                 }
                             }

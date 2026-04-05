@@ -14,6 +14,11 @@ import android.net.NetworkRequest
 import android.os.Build
 import android.os.IBinder
 import android.util.Log
+import java.io.BufferedReader
+import java.io.InputStreamReader
+import java.io.PrintWriter
+import java.net.ServerSocket
+import java.net.Socket
 import androidx.core.app.NotificationCompat
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
@@ -24,8 +29,12 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
 
 /**
  * Foreground service that maintains the airsync connection and handles discovery.
@@ -37,6 +46,9 @@ class AirSyncService : Service() {
     private val scope = CoroutineScope(Dispatchers.Main + Job())
     private var connectedDeviceName: String? = null
     private var isScanning = false
+
+    private var httpServerSocket: ServerSocket? = null
+    private var isHttpServerRunning = false
 
     // Network state tracking
     private var networkCallback: ConnectivityManager.NetworkCallback? = null
@@ -84,20 +96,34 @@ class AirSyncService : Service() {
 
         val dataStoreManager =
             com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
-        val isDiscoveryEnabled = runBlocking {
-            dataStoreManager.getDeviceDiscoveryEnabled().first()
+        
+        // Start with default of true to avoid blocking the thread during boot
+        UDPDiscoveryManager.start(this, true)
+        UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
+        UDPDiscoveryManager.burstBroadcast(this)
+        
+        // Update asynchronously
+        scope.launch {
+            try {
+                val isDiscoveryEnabled = dataStoreManager.getDeviceDiscoveryEnabled().first()
+                if (!isDiscoveryEnabled) {
+                    UDPDiscoveryManager.setDiscoveryEnabled(this@AirSyncService, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read discovery preference", e)
+            }
         }
 
-        // Default to PASSIVE mode to save battery
-        // But do a burst to check for devices immediately
-        UDPDiscoveryManager.start(this, isDiscoveryEnabled)
-        UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
-        UDPDiscoveryManager.burstBroadcast(this)
+        scope.launch {
+            delay(60_000L)
+            if (isScanning) {
+                Log.d(TAG, "Switching from ACTIVE to PASSIVE discovery after 60s")
+                UDPDiscoveryManager.setDiscoveryMode(applicationContext, DiscoveryMode.PASSIVE)
+            }
+        }
 
-        // Start WakeupService for HTTP wakeups
-        WakeupService.startService(this)
+        startHttpServer()
 
-        // Also trigger auto-reconnect logic to check if we already have a candidate
         WebSocketUtil.requestAutoReconnect(this)
     }
 
@@ -124,23 +150,33 @@ class AirSyncService : Service() {
 
         val dataStoreManager =
             com.sameerasw.airsync.data.local.DataStoreManager.getInstance(applicationContext)
-        val isDiscoveryEnabled = runBlocking {
-            dataStoreManager.getDeviceDiscoveryEnabled().first()
-        }
 
         // Keep discovery manager running for wake-ups even when connected
         // But stay in Passive mode mostly
-        UDPDiscoveryManager.start(this, isDiscoveryEnabled)
+        UDPDiscoveryManager.start(this, true) // Start with default true
         UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
+        
+        // Update asynchronously
+        scope.launch {
+            try {
+                val isDiscoveryEnabled = dataStoreManager.getDeviceDiscoveryEnabled().first()
+                if (!isDiscoveryEnabled) {
+                    UDPDiscoveryManager.setDiscoveryEnabled(this@AirSyncService, false)
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to read discovery preference", e)
+            }
+        }
 
-        WakeupService.startService(this)
+        startHttpServer()
     }
 
     private fun stopSync() {
         Log.d(TAG, "Stopping AirSync foreground service")
         com.sameerasw.airsync.utils.ShortcutUtil.refreshShortcuts(this, false)
         UDPDiscoveryManager.stop(this)
-        WakeupService.stopService(this)
+        // NOTE: HTTP server intentionally kept running so the Mac's /wakeup POST
+        // can still be received after a disconnect. It is stopped in onDestroy().
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
@@ -155,12 +191,30 @@ class AirSyncService : Service() {
 
             networkCallback = object : ConnectivityManager.NetworkCallback() {
                 override fun onAvailable(network: Network) {
-                    Log.d(TAG, "Network available, triggering burst broadcast")
-                    // When network becomes available, do a burst to announce ourselves
-                    if (isScanning) {
-                        UDPDiscoveryManager.burstBroadcast(applicationContext)
-                        WebSocketUtil.requestAutoReconnect(applicationContext)
+                    val networkStatus = com.sameerasw.airsync.utils.DeviceInfoUtil.getNetworkStatus(this@AirSyncService)
+                    val networkType = when {
+                        networkStatus.hasWifi -> "WiFi"
+                        networkStatus.hasVpn -> "VPN/Tailscale"
+                        else -> "Other/Cellular"
                     }
+                    Log.d(TAG, "Network available: $networkType, triggering discovery")
+                    // Burst broadcast to announce presence
+                    UDPDiscoveryManager.burstBroadcast(applicationContext)
+                    
+                    // Trigger auto-reconnect for any known peers
+                    WebSocketUtil.requestAutoReconnect(applicationContext)
+                }
+                
+                override fun onLost(network: Network) {
+                    Log.d(TAG, "Network lost, triggering peer exchange")
+                    // Trigger peer exchange to find peers via alternative routes
+                    com.sameerasw.airsync.utils.UDPDiscoveryManager.triggerPeerExchange(this@AirSyncService)
+                }
+                
+                override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+                    val hasWifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                    val hasVpn = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                    Log.d(TAG, "Network capabilities changed - WiFi: $hasWifi, VPN: $hasVpn")
                 }
             }
 
@@ -234,16 +288,168 @@ class AirSyncService : Service() {
             }
         }
 
+        stopHttpServer()
         com.sameerasw.airsync.utils.MacDeviceStatusManager.stopMonitoring()
         com.sameerasw.airsync.utils.MacDeviceStatusManager.cleanup(this)
         scope.coroutineContext.cancel()
         super.onDestroy()
     }
 
+    private fun startHttpServer() {
+        if (isHttpServerRunning) return
+        scope.launch(Dispatchers.IO) {
+            try {
+                isHttpServerRunning = true
+                httpServerSocket = ServerSocket(HTTP_SERVER_PORT)
+                Log.i(TAG, "Wake-up HTTP server started on port $HTTP_SERVER_PORT")
+
+                while (isHttpServerRunning && httpServerSocket?.isClosed == false) {
+                    try {
+                        val clientSocket = httpServerSocket?.accept()
+                        if (clientSocket != null) {
+                            launch(Dispatchers.IO) {
+                                handleHttpRequest(clientSocket)
+                            }
+                        }
+                    } catch (e: Exception) {
+                        if (isHttpServerRunning) {
+                            Log.e(TAG, "Error accepting HTTP connection", e)
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to start HTTP server", e)
+            }
+        }
+    }
+
+    private fun stopHttpServer() {
+        isHttpServerRunning = false
+        try {
+            httpServerSocket?.close()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error closing HTTP server socket", e)
+        }
+        httpServerSocket = null
+        Log.i(TAG, "Wake-up HTTP server stopped")
+    }
+
+    private suspend fun handleHttpRequest(clientSocket: Socket) {
+        withContext(Dispatchers.IO) {
+            try {
+                clientSocket.use { socket ->
+                    val input = BufferedReader(InputStreamReader(socket.getInputStream()))
+                    val output = PrintWriter(socket.getOutputStream(), true)
+
+                    val requestLine = input.readLine()
+                    if (requestLine == null) return@withContext
+
+                    val parts = requestLine.split(" ")
+                    if (parts.size < 3) return@withContext
+
+                    val method = parts[0]
+                    val path = parts[1]
+
+                    var contentLength = 0
+                    var line: String?
+                    while (input.readLine().also { line = it } != null) {
+                        if (line!!.isEmpty()) break
+                        if (line.lowercase().startsWith("content-length:")) {
+                            contentLength = line.substring(15).trim().toIntOrNull() ?: 0
+                        }
+                    }
+
+                    if (method == "POST" && path == WAKEUP_ENDPOINT) {
+                        val body = if (contentLength > 0) {
+                            val bodyChars = CharArray(contentLength)
+                            input.read(bodyChars, 0, contentLength)
+                            String(bodyChars)
+                        } else {
+                            ""
+                        }
+
+                        Log.d(TAG, "Received HTTP wake-up request: $body")
+
+                        try {
+                            val jsonRequest = JSONObject(body)
+
+                            val macIp: String
+                            val macPort: Int
+                            val macName: String
+
+                            if (jsonRequest.has("data")) {
+                                val data = jsonRequest.getJSONObject("data")
+                                macIp = data.optString("macIP", "")
+                                macPort = data.optInt("macPort", 6996)
+                                macName = data.optString("macName", "Mac")
+                            } else {
+                                macIp = jsonRequest.optString("macIp", "")
+                                macPort = jsonRequest.optInt("macPort", 6996)
+                                macName = jsonRequest.optString("macName", "Mac")
+                            }
+
+                            val response =
+                                """{"status": "success", "message": "Wake-up request received"}"""
+                            sendHttpResponse(output, 200, "OK", response)
+
+                            com.sameerasw.airsync.utils.WakeupHandler.processWakeupRequest(
+                                this@AirSyncService,
+                                macIp,
+                                macPort,
+                                macName
+                            )
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Error parsing wake-up request", e)
+                            val response = """{"status": "error", "message": "Invalid JSON"}"""
+                            sendHttpResponse(output, 400, "Bad Request", response)
+                        }
+                    } else if (method == "OPTIONS") {
+                        sendCorsResponse(output)
+                    } else {
+                        val response =
+                            """{"status": "error", "message": "Method not allowed or path not found"}"""
+                        sendHttpResponse(output, 405, "Method Not Allowed", response)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error handling HTTP request", e)
+            }
+        }
+    }
+
+    private fun sendHttpResponse(
+        output: PrintWriter,
+        statusCode: Int,
+        statusText: String,
+        body: String
+    ) {
+        output.println("HTTP/1.1 $statusCode $statusText")
+        output.println("Content-Type: application/json")
+        output.println("Access-Control-Allow-Origin: *")
+        output.println("Access-Control-Allow-Methods: POST, OPTIONS")
+        output.println("Access-Control-Allow-Headers: Content-Type")
+        output.println("Content-Length: ${body.length}")
+        output.println()
+        output.print(body)
+        output.flush()
+    }
+
+    private fun sendCorsResponse(output: PrintWriter) {
+        output.println("HTTP/1.1 200 OK")
+        output.println("Access-Control-Allow-Origin: *")
+        output.println("Access-Control-Allow-Methods: POST, OPTIONS")
+        output.println("Access-Control-Allow-Headers: Content-Type")
+        output.println("Content-Length: 0")
+        output.println()
+        output.flush()
+    }
+
     companion object {
         private const val TAG = "AirSyncService"
         private const val CHANNEL_ID = "airsync_connection_channel"
         private const val NOTIFICATION_ID = 4001
+        private const val HTTP_SERVER_PORT = 8888
+        private const val WAKEUP_ENDPOINT = "/wakeup"
 
         const val ACTION_START_SCANNING = "com.sameerasw.airsync.START_SCANNING"
         const val ACTION_START_SYNC = "com.sameerasw.airsync.START_SYNC"
