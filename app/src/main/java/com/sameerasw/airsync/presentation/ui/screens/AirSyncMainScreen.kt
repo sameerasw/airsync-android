@@ -156,7 +156,7 @@ fun AirSyncMainScreen(
             .getPackageInfo(context.packageName, 0)
             .versionName
     } catch (_: Exception) {
-        "2.0.0"
+        "3.0.0"
     }
     val viewModel: AirSyncViewModel = viewModel { AirSyncViewModel.create(context) }
     val uiState by viewModel.uiState.collectAsState()

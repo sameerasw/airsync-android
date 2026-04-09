@@ -25,10 +25,10 @@ data class DiscoveredDevice(
     val type: String, // "mac" or "android"
     val lastSeen: Long = System.currentTimeMillis()
 ) {
-    //check if it has a local IP (non-Tailscale)
+    // check if it has a local IP (non-Tailscale)
     fun hasLocalIp(): Boolean = ips.any { !it.startsWith("100.") }
 
-    //check if it has a Tailscale IP
+    // check if it has a Tailscale IP
     fun hasTailscaleIp(): Boolean = ips.any { it.startsWith("100.") }
 
     // Best IP for connection
@@ -415,7 +415,7 @@ object UDPDiscoveryManager {
                         val packet = DatagramPacket(
                             data,
                             data.size,
-                            InetAddress.getByName("255.55.255.255"),
+                            InetAddress.getByName("255.255.255.255"),
                             BROADCAST_PORT
                         )
                         DatagramSocket(0, InetAddress.getByName(bindIp)).use { sender ->

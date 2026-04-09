@@ -14,7 +14,7 @@
     <string name="disconnect">Disconnect</string>
     <string name="device_discovery">Device discovery</string>
     <string name="device_discovery_description">Allow other devices to find this phone in the background</string>
-    <string name="rating_prompt">Psst... You\'ve been syncing with your mac for a while now, Do you like the app? Rate and give your feedback. ♥</string>
+    <string name="rating_prompt">Psst... You\'ve been syncing with your Mac for a while now, Do you like the app? Rate and give your feedback. ♥</string>
     <string name="rate_now">Rate Now</string>
     <string name="maybe_later">Maybe Later</string>
     <string name="no_device_connected">No device connected</string>
@@ -60,10 +60,10 @@
     <string name="welcome_developer_attribution">by sameerasw.com</string>
     <string name="action_lets_begin">Let\'s Begin</string>
     <string name="acknowledgement_title">Permissions</string>
-    <string name="acknowledgement_desc">This app allows you to sync notifications, clipboard, and media controls with your Mac. To provide these features, AirSync requires certain permissions.\n\nYou have full control over which features are enabled and which permissions are granted. We do not collect or store any of your personal data.\n\nAirSync is open source and this app is completly free to use. Always ensure you download it from Play Store or GitHub.</string>
+    <string name="acknowledgement_desc">This app allows you to sync notifications, clipboard, and media controls with your Mac. To provide these features, AirSync requires certain permissions.\n\nYou have full control over which features are enabled and which permissions are granted. We do not collect or store any of your personal data.\n\nAirSync is open source and this app is completely free to use. Always ensure you download it from Play Store or GitHub.</string>
     <string name="acknowledgement_footer">If you need any help, feel free to check the guides or reach out to the developer.</string>
     <string name="action_i_understand">I Understand</string>
-    <string name="feature_intro_desc">From the scan button in app or by long pressing the connection quick settings tile, scan the QR code displayed on the app on MacOS.</string>
+    <string name="feature_intro_desc">From the scan button in app or by long pressing the connection quick settings tile, scan the QR code displayed on the app on macOS.</string>
     <string name="feature_intro_footer">You can always find help and guides in the app settings.</string>
     <string name="action_let_me_in">Let Me In Already</string>
     <string name="preferences_title">Preferences</string>

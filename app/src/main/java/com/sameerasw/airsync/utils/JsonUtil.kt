@@ -29,9 +29,6 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info with ADB ports
      */
-    /**
-     * Creates a single-line JSON string for device info with ADB ports
-     */
     fun createDeviceInfoJson(
         id: String,
         name: String,
@@ -47,9 +44,6 @@ object JsonUtil {
         return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
-    /**
-     * Creates a single-line JSON string for device info with wallpaper
-     */
     /**
      * Creates a single-line JSON string for device info with wallpaper
      */

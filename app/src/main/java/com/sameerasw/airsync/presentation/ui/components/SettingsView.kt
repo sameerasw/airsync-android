@@ -397,7 +397,7 @@ fun SettingsView(
                                 deviceInfo.name,
                                 deviceInfo.localIp,
                                 uiState.port.toIntOrNull() ?: 6996,
-                                versionName ?: "2.0.0",
+                                versionName ?: "3.0.0",
                                 adbPorts
                             )
                             onSendMessage(message)

@@ -164,7 +164,7 @@ object SyncManager {
                 val localIp = DeviceInfoUtil.getWifiIpAddress(context) ?: "Unknown"
                 val port = dataStoreManager.getPort().first().toIntOrNull() ?: 6996
                 val version = context.packageManager
-                    .getPackageInfo(context.packageName, 0).versionName ?: "2.0.0"
+                    .getPackageInfo(context.packageName, 0).versionName ?: "3.0.0"
 
                 // Get discovered ADB ports from the running mDNS discovery
                 val adbPorts = try {
@@ -247,7 +247,7 @@ object SyncManager {
                 val statusJson = DeviceInfoUtil.generateDeviceStatusJson(context)
                 if (WebSocketUtil.sendMessage(statusJson)) {
                     Log.d(TAG, "Device status sent")
-                    // Update  cache
+                    // Update cache
                     lastAudioInfo = DeviceInfoUtil.getAudioInfo(context, includeNowPlaying)
                     lastBatteryInfo = DeviceInfoUtil.getBatteryInfo(context)
                 } else {
