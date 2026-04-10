@@ -91,6 +91,7 @@ class ClipboardActionActivity : ComponentActivity() {
             AirSyncTheme(pitchBlackTheme = uiState.isPitchBlackThemeEnabled) {
                 ClipboardActionScreen(
                     hasWindowFocus = _windowFocus.value,
+                    isShareAction = intent?.action == android.content.Intent.ACTION_SEND,
                     onFinished = { finish() }
                 )
             }
@@ -104,7 +105,11 @@ class ClipboardActionActivity : ComponentActivity() {
 }
 
 @Composable
-fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
+fun ClipboardActionScreen(
+    hasWindowFocus: Boolean,
+    isShareAction: Boolean,
+    onFinished: () -> Unit
+) {
     val context = androidx.compose.ui.platform.LocalContext.current
     val dataStoreManager = remember { DataStoreManager.getInstance(context) }
     val connectedDevice by dataStoreManager.getLastConnectedDevice().collectAsState(initial = null)
@@ -115,26 +120,37 @@ fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
     ClipboardActionScreenContent(
         uiState = uiState,
         connectedDevice = connectedDevice,
+        isShareAction = isShareAction,
         onFinished = onFinished
     )
 
     LaunchedEffect(hasWindowFocus) {
         if (hasWindowFocus && !hasAttemptedSync) {
             hasAttemptedSync = true
-            // Small delay to ensure system considers us "interacted" if needed, 
-            // though focus should be enough.
             delay(100)
 
             try {
-                val clipboardText = ClipboardUtil.getClipboardText(context)
+                // If this is a share action, extract text from intent
+                val activity = context as? android.app.Activity
+                val intent = activity?.intent
+                val sharedText = if (isShareAction) {
+                    intent?.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                } else {
+                    null
+                }
 
-                if (!clipboardText.isNullOrEmpty()) {
-                    ClipboardSyncManager.syncTextToDesktop(clipboardText)
+                // Fallback to clipboard only if not a share action or shared text is empty
+                val textToSync = sharedText ?: ClipboardUtil.getClipboardText(context)
+
+                if (!textToSync.isNullOrEmpty()) {
+                    ClipboardSyncManager.syncTextToDesktop(textToSync)
                     uiState = ClipboardUiState.Success
-                    delay(1200) // Show success for 1.2s
+                    delay(1200)
                     onFinished()
                 } else {
-                    uiState = ClipboardUiState.Error("Clipboard empty")
+                    uiState = ClipboardUiState.Error(
+                        if (isShareAction) "Shared text empty" else "Clipboard empty"
+                    )
                     delay(1500)
                     onFinished()
                 }
@@ -152,6 +168,7 @@ fun ClipboardActionScreen(hasWindowFocus: Boolean, onFinished: () -> Unit) {
 fun ClipboardActionScreenContent(
     uiState: ClipboardUiState,
     connectedDevice: ConnectedDevice?,
+    isShareAction: Boolean,
     onFinished: () -> Unit
 ) {
     // Transparent background that dismisses on click
@@ -252,9 +269,15 @@ fun ClipboardActionScreenContent(
                         // Status Text
                         Text(
                             text = when (state) {
-                                is ClipboardUiState.Loading -> stringResource(R.string.sending)
-                                is ClipboardUiState.Success -> stringResource(R.string.clipboard_sent)
-                                is ClipboardUiState.Error -> stringResource(R.string.failed_to_send_clipboard)
+                                is ClipboardUiState.Loading -> {
+                                    if (isShareAction) "Sending shared text…" else stringResource(R.string.sending)
+                                }
+                                is ClipboardUiState.Success -> {
+                                    if (isShareAction) "Shared text sent" else stringResource(R.string.clipboard_sent)
+                                }
+                                is ClipboardUiState.Error -> {
+                                    if (isShareAction) "Failed to send shared text" else stringResource(R.string.failed_to_send_clipboard)
+                                }
                             },
                             style = MaterialTheme.typography.titleSmall,
                             color = if (state is ClipboardUiState.Error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
@@ -279,6 +302,7 @@ private fun ClipboardActionScreenPreviewLoading() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Loading,
             connectedDevice = null,
+            isShareAction = false,
             onFinished = {})
     }
 }
@@ -290,6 +314,7 @@ private fun ClipboardActionScreenPreviewSuccess() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Success,
             connectedDevice = null,
+            isShareAction = false,
             onFinished = {})
     }
 }
@@ -301,6 +326,7 @@ private fun ClipboardActionScreenPreviewError() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Error("Failed to sync"),
             connectedDevice = null,
+            isShareAction = false,
             onFinished = {})
     }
 }

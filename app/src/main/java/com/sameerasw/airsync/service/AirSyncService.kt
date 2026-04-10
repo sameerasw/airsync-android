@@ -58,6 +58,7 @@ class AirSyncService : Service() {
             ACTION_START_SYNC -> {
                 connectedDeviceName = intent.getStringExtra(EXTRA_DEVICE_NAME) ?: "Mac"
                 startSync()
+                com.sameerasw.airsync.utils.ShortcutUtil.updateShareShortcut(this, connectedDeviceName)
             }
 
             ACTION_STOP_SYNC -> stopSync()
@@ -139,6 +140,7 @@ class AirSyncService : Service() {
         Log.d(TAG, "Stopping AirSync foreground service")
         UDPDiscoveryManager.stop(this)
         WakeupService.stopService(this)
+        com.sameerasw.airsync.utils.ShortcutUtil.removeShareShortcut(this)
         stopForeground(STOP_FOREGROUND_REMOVE)
         stopSelf()
     }
