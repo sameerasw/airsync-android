@@ -64,6 +64,34 @@ object UDPDiscoveryManager {
     @Volatile
     private var isDiscoveryEnabled = true
 
+    private var multicastLock: android.net.wifi.WifiManager.MulticastLock? = null
+
+    private fun acquireMulticastLock(context: Context) {
+        try {
+            if (multicastLock == null) {
+                val wm = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as android.net.wifi.WifiManager
+                multicastLock = wm.createMulticastLock("AirSync:DiscoveryLock")
+            }
+            if (multicastLock?.isHeld == false) {
+                multicastLock?.acquire()
+                Log.d(TAG, "MulticastLock acquired")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to acquire MulticastLock: ${e.message}")
+        }
+    }
+
+    private fun releaseMulticastLock() {
+        try {
+            if (multicastLock?.isHeld == true) {
+                multicastLock?.release()
+                Log.d(TAG, "MulticastLock released")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release MulticastLock: ${e.message}")
+        }
+    }
+
     fun start(context: Context, discoveryEnabled: Boolean = true) {
         isDiscoveryEnabled = discoveryEnabled
         if (isRunning) {
@@ -77,6 +105,7 @@ object UDPDiscoveryManager {
             "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled, Mode: $currentMode)"
         )
 
+        acquireMulticastLock(context)
         startListening(context)
         updateBroadcastingState(context)
         startPruning()
@@ -108,15 +137,17 @@ object UDPDiscoveryManager {
         if (!isDiscoveryEnabled) {
             Log.d(TAG, "Discovery broadcasting disabled completely")
             _discoveredDevices.value = emptyList()
+            releaseMulticastLock()
             return
         }
 
         if (currentMode == DiscoveryMode.ACTIVE) {
+            acquireMulticastLock(context)
             startBroadcasting(context)
         } else {
             Log.d(TAG, "Switched to PASSIVE discovery (listening only)")
-            // In passive mode, we don't clear the list immediately, allowing some persistence
-            // but we rely on pruning to clean up stale devices
+            // In passive mode, we still need MulticastLock to hear others
+            acquireMulticastLock(context)
         }
     }
 
@@ -132,6 +163,7 @@ object UDPDiscoveryManager {
         pruningJob?.cancel()
         burstJob?.cancel()
 
+        releaseMulticastLock()
         try {
             socket?.close()
         } catch (e: Exception) {
