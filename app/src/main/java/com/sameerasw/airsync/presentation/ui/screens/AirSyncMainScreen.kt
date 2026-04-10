@@ -144,6 +144,7 @@ fun AirSyncMainScreen(
     pcName: String? = null,
     isPlus: Boolean = false,
     symmetricKey: String? = null,
+    initialPage: Int = 0,
     onNavigateToApps: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
@@ -217,7 +218,7 @@ fun AirSyncMainScreen(
         }
     }
     val pagerState =
-        rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
+        rememberPagerState(initialPage = initialPage, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
@@ -231,6 +232,11 @@ fun AirSyncMainScreen(
     // Initial tab navigation logic
     LaunchedEffect(Unit) {
         if (!hasAppliedInitialTab) {
+            if (initialPage != 0) {
+                hasAppliedInitialTab = true
+                return@LaunchedEffect
+            }
+
             // Wait up to 2 seconds for initial connection (e.g. auto-reconnect on start)
             withTimeoutOrNull(2000) {
                 snapshotFlow { uiState.isConnected }.filter { it }.first()
@@ -719,20 +725,15 @@ fun AirSyncMainScreen(
             HorizontalPager(
                 modifier = modifier
                     .fillMaxSize()
-                    .then(
-                        if (uiState.isBlurEnabled) {
-                            Modifier
-                                .progressiveBlur(
-                                    blurRadius = 40f,
-                                    height = statusBarHeightPx * 1.15f,
-                                    direction = BlurDirection.TOP
-                                )
-                                .progressiveBlur(
-                                    blurRadius = 40f,
-                                    height = bottomBlurHeightPx,
-                                    direction = BlurDirection.BOTTOM
-                                )
-                        } else Modifier
+                    .progressiveBlur(
+                        blurRadius = if (uiState.isBlurEnabled) 40f else 0f,
+                        height = statusBarHeightPx * 1.15f,
+                        direction = BlurDirection.TOP
+                    )
+                    .progressiveBlur(
+                        blurRadius = if (uiState.isBlurEnabled) 40f else 0f,
+                        height = bottomBlurHeightPx,
+                        direction = BlurDirection.BOTTOM
                     ),
                 state = pagerState
             ) { page ->

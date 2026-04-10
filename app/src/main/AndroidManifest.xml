@@ -83,10 +83,13 @@
                 <data android:scheme="airsync" />
             </intent-filter>
 
-            <!-- Long-press Quick Settings tile should open this activity -->
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE_PREFERENCES" />
             </intent-filter>
+            
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
         </activity>
 
 
@@ -94,10 +97,16 @@
         <activity
             android:name=".presentation.ui.activities.ClipboardActionActivity"
             android:theme="@style/Theme.AirSync.Transparent"
-            android:exported="false"
+            android:exported="true"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:taskAffinity="" />
+            android:taskAffinity="">
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+        </activity>
 
         <service
             android:name=".service.MediaNotificationListener"

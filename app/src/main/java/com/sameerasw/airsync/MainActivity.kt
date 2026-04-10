@@ -59,6 +59,7 @@ import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.KeyguardHelper
 import com.sameerasw.airsync.utils.NotesRoleManager
 import com.sameerasw.airsync.utils.PermissionUtil
+import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -73,6 +74,17 @@ object AdbDiscoveryHolder {
             discovery = AdbMdnsDiscovery(context.applicationContext)
             discovery?.startDiscovery()
         }
+    }
+
+    fun restartDiscovery(context: android.content.Context) {
+        Log.d("AdbDiscoveryHolder", "Restarting ADB discovery")
+        discovery?.stopDiscovery()
+        discovery = null
+        initialize(context)
+    }
+
+    fun isDiscoveryActive(): Boolean {
+        return discovery != null
     }
 
     fun getDiscoveredServices(): List<AdbMdnsDiscovery.AdbServiceInfo> {
@@ -395,13 +407,15 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.padding(innerPadding)
                     ) {
                         composable("main") {
+                            val initialPage = if (intent?.action == ShortcutUtil.DASH_ACTION_REMOTE) 1 else 0
                             AirSyncMainScreen(
                                 initialIp = ip,
                                 initialPort = port,
                                 showConnectionDialog = isFromQrScan,
                                 pcName = pcName,
                                 isPlus = isPlus,
-                                symmetricKey = symmetricKey
+                                symmetricKey = symmetricKey,
+                                initialPage = initialPage
                             )
                         }
                     }
@@ -548,6 +562,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent?) {
         super.onNewIntent(intent)
+        setIntent(intent)
 
         // Handle Notes Role intent
         handleNotesRoleIntent(intent)
