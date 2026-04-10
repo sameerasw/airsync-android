@@ -17,6 +17,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,9 +27,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.ContentPaste
 import androidx.compose.material.icons.rounded.Error
+import androidx.compose.material.icons.rounded.ReceiptLong
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LoadingIndicator
@@ -175,113 +177,91 @@ fun ClipboardActionScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.2f))
-
-            .navigationBarsPadding()
             .clickable(onClick = onFinished),
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.BottomCenter
     ) {
         Surface(
-            modifier = Modifier.padding(24.dp),
-            shape = RoundedCornerShape(28.dp),
-            color = MaterialTheme.colorScheme.surfaceContainer,
-            tonalElevation = 6.dp,
-            shadowElevation = 8.dp
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(bottom = 64.dp)
+                .padding(horizontal = 24.dp),
+            shape = RoundedCornerShape(percent = 50),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh,
+            tonalElevation = 8.dp,
+            shadowElevation = 12.dp
         ) {
-            Box(
+            Row(
                 modifier = Modifier
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(12.dp)
             ) {
+                // Device Icon
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_laptop_24),
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+
+                // Device Name
+                Text(
+                    text = connectedDevice?.name ?: stringResource(R.string.your_mac),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                // Divider or Space if needed, but spacing is enough
+                
+                // Status Icon / Loading Indicator
                 AnimatedContent(
                     targetState = uiState,
                     transitionSpec = { fadeIn().togetherWith(fadeOut()) },
-                    label = "ClipboardStateAnimation"
+                    label = "StatusAnimation"
                 ) { state ->
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
+                    Box(
+                        modifier = Modifier.size(28.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        // Device preview with overlay
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        ) {
-                            val previewRes = DevicePreviewResolver.getPreviewRes(connectedDevice)
-                            Image(
-                                painter = painterResource(id = previewRes),
-                                contentDescription = "Device Preview",
-                                modifier = Modifier.fillMaxWidth(0.9f),
-                                contentScale = ContentScale.Fit
-                            )
+                        when (state) {
+                            is ClipboardUiState.Loading -> {
+                                LoadingIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                            Box(
-                                modifier = Modifier
-                                    .size(56.dp)
-                                    .background(
-                                        MaterialTheme.colorScheme.surfaceContainerHigh,
-                                        shape = CircleShape
-                                    )
-                            ) {
-                                // Overlay icon/indicator
-                                when (state) {
-                                    is ClipboardUiState.Loading -> {
-                                        LoadingIndicator(
-                                            modifier = Modifier.size(56.dp),
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
+                            is ClipboardUiState.Success -> {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Rounded.CheckCircle,
+                                    contentDescription = "Success",
+                                    modifier = Modifier.size(28.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                            }
 
-                                    is ClipboardUiState.Success -> {
-                                        Icon(
-                                            imageVector = Icons.Rounded.CheckCircle,
-                                            contentDescription = "Success",
-                                            modifier = Modifier.size(56.dp),
-                                            tint = MaterialTheme.colorScheme.primary
-                                        )
-                                    }
-
-                                    is ClipboardUiState.Error -> {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Error,
-                                            contentDescription = "Error",
-                                            tint = MaterialTheme.colorScheme.error,
-                                            modifier = Modifier.size(56.dp)
-                                        )
-                                    }
-                                }
+                            is ClipboardUiState.Error -> {
+                                Icon(
+                                    imageVector = androidx.compose.material.icons.Icons.Rounded.Error,
+                                    contentDescription = "Error",
+                                    tint = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.size(28.dp)
+                                )
+                            }
+                            
+                            else -> {
+                                // Default/Idle icon
+                                Icon(
+                                    imageVector = if (isShareAction) 
+                                        androidx.compose.material.icons.Icons.Rounded.ReceiptLong 
+                                    else 
+                                        androidx.compose.material.icons.Icons.Rounded.ContentPaste,
+                                    contentDescription = "Sync",
+                                    modifier = Modifier.size(24.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
-
-                        Text(
-                            text = connectedDevice?.name ?: stringResource(R.string.your_mac),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier
-                                .background(
-                                    MaterialTheme.colorScheme.primary,
-                                    shape = RoundedCornerShape(32.dp)
-                                )
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Status Text
-                        Text(
-                            text = when (state) {
-                                is ClipboardUiState.Loading -> {
-                                    if (isShareAction) "Sending shared text…" else stringResource(R.string.sending)
-                                }
-                                is ClipboardUiState.Success -> {
-                                    if (isShareAction) "Shared text sent" else stringResource(R.string.clipboard_sent)
-                                }
-                                is ClipboardUiState.Error -> {
-                                    if (isShareAction) "Failed to send shared text" else stringResource(R.string.failed_to_send_clipboard)
-                                }
-                            },
-                            style = MaterialTheme.typography.titleSmall,
-                            color = if (state is ClipboardUiState.Error) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                        )
                     }
                 }
             }
