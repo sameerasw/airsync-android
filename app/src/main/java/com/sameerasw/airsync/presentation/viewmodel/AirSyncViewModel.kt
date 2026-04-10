@@ -22,6 +22,7 @@ import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.NetworkMonitor
 import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.ServiceManager
+import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.SyncManager
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
 import com.sameerasw.airsync.utils.WebSocketUtil
@@ -106,6 +107,11 @@ class AirSyncViewModel(
             if (isConnected) {
                 repository.setFirstMacConnectionTime(System.currentTimeMillis())
                 updateRatingPromptDisplay()
+            }
+
+            // Update dynamic shortcuts
+            appContext?.let { ctx ->
+                ShortcutUtil.refreshShortcuts(ctx, isConnected)
             }
 
             // Notify Smartspacer of connection status change
@@ -372,6 +378,9 @@ class AirSyncViewModel(
 
             // Start AirSync Service conditionally
             ServiceManager.updateServiceState(context)
+            
+            // Initial shortcut state
+            ShortcutUtil.refreshShortcuts(context, WebSocketUtil.isConnected())
             isNetworkMonitoringActive = true
         }
     }

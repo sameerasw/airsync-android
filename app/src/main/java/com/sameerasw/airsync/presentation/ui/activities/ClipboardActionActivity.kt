@@ -1,5 +1,6 @@
 package com.sameerasw.airsync.presentation.ui.activities
 
+import android.content.Intent
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
@@ -47,10 +48,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.domain.model.ConnectedDevice
@@ -59,6 +63,8 @@ import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.utils.ClipboardSyncManager
 import com.sameerasw.airsync.utils.ClipboardUtil
 import com.sameerasw.airsync.utils.DevicePreviewResolver
+import com.sameerasw.airsync.utils.ShortcutUtil
+import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.delay
 
 class ClipboardActionActivity : ComponentActivity() {
@@ -93,7 +99,7 @@ class ClipboardActionActivity : ComponentActivity() {
             AirSyncTheme(pitchBlackTheme = uiState.isPitchBlackThemeEnabled) {
                 ClipboardActionScreen(
                     hasWindowFocus = _windowFocus.value,
-                    isShareAction = intent?.action == android.content.Intent.ACTION_SEND,
+                    shortcutAction = intent?.action,
                     onFinished = { finish() }
                 )
             }
@@ -107,14 +113,15 @@ class ClipboardActionActivity : ComponentActivity() {
 }
 
 @Composable
-fun ClipboardActionScreen(
+private fun ClipboardActionScreen(
     hasWindowFocus: Boolean,
-    isShareAction: Boolean,
+    shortcutAction: String?,
     onFinished: () -> Unit
 ) {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val dataStoreManager = remember { DataStoreManager.getInstance(context) }
-    val connectedDevice by dataStoreManager.getLastConnectedDevice().collectAsState(initial = null)
+    val context = LocalContext.current
+    val viewModel: AirSyncViewModel = viewModel { AirSyncViewModel.create(context) }
+    val uiStateByViewModel by viewModel.uiState.collectAsState()
+    val connectedDevice = uiStateByViewModel.lastConnectedDevice
 
     var uiState by remember { mutableStateOf<ClipboardUiState>(ClipboardUiState.Loading) }
     var hasAttemptedSync by remember { mutableStateOf(false) }
@@ -122,7 +129,7 @@ fun ClipboardActionScreen(
     ClipboardActionScreenContent(
         uiState = uiState,
         connectedDevice = connectedDevice,
-        isShareAction = isShareAction,
+        shortcutAction = shortcutAction,
         onFinished = onFinished
     )
 
@@ -132,31 +139,78 @@ fun ClipboardActionScreen(
             delay(100)
 
             try {
-                // If this is a share action, extract text from intent
-                val activity = context as? android.app.Activity
-                val intent = activity?.intent
-                val sharedText = if (isShareAction) {
-                    intent?.getStringExtra(android.content.Intent.EXTRA_TEXT)
-                } else {
-                    null
-                }
+                when (shortcutAction) {
+                    ShortcutUtil.DASH_ACTION_LOCK -> {
+                        if (WebSocketUtil.isConnected()) {
+                            val json = org.json.JSONObject()
+                            json.put("type", "remoteControl")
+                            val data = org.json.JSONObject()
+                            data.put("action", "lock_screen")
+                            json.put("data", data)
+                            WebSocketUtil.sendMessage(json.toString())
+                            uiState = ClipboardUiState.Success
+                        } else {
+                            uiState = ClipboardUiState.Error("Not connected")
+                        }
+                        delay(1200)
+                        onFinished()
+                    }
 
-                // Fallback to clipboard only if not a share action or shared text is empty
-                val textToSync = sharedText ?: ClipboardUtil.getClipboardText(context)
+                    ShortcutUtil.DASH_ACTION_RECONNECT -> {
+                        val ds = DataStoreManager.getInstance(context)
+                        ds.setUserManuallyDisconnected(false)
+                        WebSocketUtil.requestAutoReconnect(context)
+                        uiState = ClipboardUiState.Success
+                        delay(1200)
+                        onFinished()
+                    }
 
-                if (!textToSync.isNullOrEmpty()) {
-                    ClipboardSyncManager.syncTextToDesktop(textToSync)
-                    uiState = ClipboardUiState.Success
-                    delay(1200)
-                    onFinished()
-                } else {
-                    uiState = ClipboardUiState.Error(
-                        if (isShareAction) "Shared text empty" else "Clipboard empty"
-                    )
-                    delay(1500)
-                    onFinished()
+                    ShortcutUtil.DASH_ACTION_DISCONNECT -> {
+                        val ds = DataStoreManager.getInstance(context)
+                        ds.setUserManuallyDisconnected(true)
+                        WebSocketUtil.disconnect(context)
+                        uiState = ClipboardUiState.Success
+                        delay(1200)
+                        onFinished()
+                    }
+
+                    ShortcutUtil.DASH_ACTION_REMOTE -> {
+                        val mainIntent = Intent(context, MainActivity::class.java).apply {
+                            this.action = ShortcutUtil.DASH_ACTION_REMOTE
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        }
+                        context.startActivity(mainIntent)
+                        onFinished()
+                    }
+
+                    else -> {
+                        // Default: Sync Clipboard or Shared Text
+                        val isShareAction = shortcutAction == android.content.Intent.ACTION_SEND
+                        val activity = context as? android.app.Activity
+                        val intent = activity?.intent
+                        val sharedText = if (isShareAction) {
+                            intent?.getStringExtra(android.content.Intent.EXTRA_TEXT)
+                        } else {
+                            null
+                        }
+
+                        val textToSync = sharedText ?: ClipboardUtil.getClipboardText(context)
+
+                        if (!textToSync.isNullOrEmpty()) {
+                            ClipboardSyncManager.syncTextToDesktop(textToSync)
+                            uiState = ClipboardUiState.Success
+                            delay(1200)
+                            onFinished()
+                        } else {
+                            uiState = ClipboardUiState.Error(
+                                if (isShareAction) "Shared text empty" else "Clipboard empty"
+                            )
+                            delay(1500)
+                            onFinished()
+                        }
+                    }
                 }
-            } catch (_: Exception) {
+            } catch (e: Exception) {
                 uiState = ClipboardUiState.Error("Failed")
                 delay(1500)
                 onFinished()
@@ -167,10 +221,10 @@ fun ClipboardActionScreen(
 
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-fun ClipboardActionScreenContent(
+private fun ClipboardActionScreenContent(
     uiState: ClipboardUiState,
     connectedDevice: ConnectedDevice?,
-    isShareAction: Boolean,
+    shortcutAction: String?,
     onFinished: () -> Unit
 ) {
     // Transparent background that dismisses on click
@@ -204,9 +258,16 @@ fun ClipboardActionScreenContent(
                     tint = MaterialTheme.colorScheme.primary
                 )
 
-                // Device Name
+                // Device Name / Action
+                val label = when (shortcutAction) {
+                    ShortcutUtil.DASH_ACTION_LOCK -> "Lock Mac"
+                    ShortcutUtil.DASH_ACTION_DISCONNECT -> "Disconnected"
+                    ShortcutUtil.DASH_ACTION_RECONNECT -> "Reconnect"
+                    ShortcutUtil.DASH_ACTION_REMOTE -> "Opening Remote..."
+                    else -> connectedDevice?.name ?: stringResource(R.string.your_mac)
+                }
                 Text(
-                    text = connectedDevice?.name ?: stringResource(R.string.your_mac),
+                    text = label,
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -251,11 +312,17 @@ fun ClipboardActionScreenContent(
                             
                             else -> {
                                 // Default/Idle icon
+                                val iconPainter = when (shortcutAction) {
+                                    ShortcutUtil.DASH_ACTION_LOCK -> painterResource(id = R.drawable.rounded_lock_24)
+                                    ShortcutUtil.DASH_ACTION_DISCONNECT -> painterResource(id = R.drawable.rounded_mimo_disconnect_24)
+                                    ShortcutUtil.DASH_ACTION_RECONNECT -> painterResource(id = R.drawable.rounded_devices_24)
+                                    ShortcutUtil.DASH_ACTION_REMOTE -> painterResource(id = R.drawable.rounded_compare_arrows_24)
+                                    ShortcutUtil.DASH_ACTION_CLIPBOARD -> painterResource(id = R.drawable.ic_clipboard_24)
+                                    android.content.Intent.ACTION_SEND -> painterResource(id = R.drawable.rounded_sync_desktop_24)
+                                    else -> painterResource(id = R.drawable.ic_clipboard_24)
+                                }
                                 Icon(
-                                    imageVector = if (isShareAction) 
-                                        androidx.compose.material.icons.Icons.Rounded.ReceiptLong 
-                                    else 
-                                        androidx.compose.material.icons.Icons.Rounded.ContentPaste,
+                                    painter = iconPainter,
                                     contentDescription = "Sync",
                                     modifier = Modifier.size(24.dp),
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant
@@ -282,7 +349,7 @@ private fun ClipboardActionScreenPreviewLoading() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Loading,
             connectedDevice = null,
-            isShareAction = false,
+            shortcutAction = null,
             onFinished = {})
     }
 }
@@ -294,7 +361,7 @@ private fun ClipboardActionScreenPreviewSuccess() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Success,
             connectedDevice = null,
-            isShareAction = false,
+            shortcutAction = null,
             onFinished = {})
     }
 }
@@ -306,7 +373,7 @@ private fun ClipboardActionScreenPreviewError() {
         ClipboardActionScreenContent(
             uiState = ClipboardUiState.Error("Failed to sync"),
             connectedDevice = null,
-            isShareAction = false,
+            shortcutAction = null,
             onFinished = {})
     }
 }

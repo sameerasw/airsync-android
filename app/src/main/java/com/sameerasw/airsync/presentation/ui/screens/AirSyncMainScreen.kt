@@ -144,6 +144,7 @@ fun AirSyncMainScreen(
     pcName: String? = null,
     isPlus: Boolean = false,
     symmetricKey: String? = null,
+    initialPage: Int = 0,
     onNavigateToApps: () -> Unit = {},
     onTitleChange: (String) -> Unit = {}
 ) {
@@ -217,7 +218,7 @@ fun AirSyncMainScreen(
         }
     }
     val pagerState =
-        rememberPagerState(initialPage = 0, pageCount = { if (uiState.isConnected) 4 else 2 })
+        rememberPagerState(initialPage = initialPage, pageCount = { if (uiState.isConnected) 4 else 2 })
     val navCallbackState = rememberUpdatedState(onNavigateToApps)
     LaunchedEffect(navCallbackState.value) {
     }
@@ -231,6 +232,11 @@ fun AirSyncMainScreen(
     // Initial tab navigation logic
     LaunchedEffect(Unit) {
         if (!hasAppliedInitialTab) {
+            if (initialPage != 0) {
+                hasAppliedInitialTab = true
+                return@LaunchedEffect
+            }
+
             // Wait up to 2 seconds for initial connection (e.g. auto-reconnect on start)
             withTimeoutOrNull(2000) {
                 snapshotFlow { uiState.isConnected }.filter { it }.first()
