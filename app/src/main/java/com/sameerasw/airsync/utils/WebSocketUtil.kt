@@ -371,9 +371,7 @@ object WebSocketUtil {
                                     handshakeTimeoutJob?.cancel()
                                     currentIpAddress = null
                                     try {
-                                        com.sameerasw.airsync.service.AirSyncService.startScanning(
-                                            context
-                                        )
+                                        ServiceManager.updateServiceState(context)
                                     } catch (_: Exception) {
                                     }
                                     try {
@@ -429,9 +427,7 @@ object WebSocketUtil {
                                     connectionAttemptJob?.cancel()
                                     currentIpAddress = null
                                     try {
-                                        com.sameerasw.airsync.service.AirSyncService.startScanning(
-                                            context
-                                        )
+                                        ServiceManager.updateServiceState(context)
                                     } catch (_: Exception) {
                                     }
                                     try {
@@ -559,9 +555,9 @@ object WebSocketUtil {
         // Transition back to scanning on disconnect
         ctx?.let { c ->
             try {
-                com.sameerasw.airsync.service.AirSyncService.startScanning(c)
+                ServiceManager.updateServiceState(c)
             } catch (e: Exception) {
-                Log.e(TAG, "Error starting scanning on disconnect: ${e.message}")
+                Log.e(TAG, "Error updating service state on disconnect: ${e.message}")
             }
         }
 
