@@ -96,6 +96,8 @@ class DataStoreManager(private val context: Context) {
         // Widget preferences
         private val WIDGET_TRANSPARENCY = androidx.datastore.preferences.core.floatPreferencesKey("widget_transparency")
 
+        private val REMOTE_FLIPPED = booleanPreferencesKey("remote_flipped")
+
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
 
@@ -601,6 +603,18 @@ class DataStoreManager(private val context: Context) {
     fun getWidgetTransparency(): Flow<Float> {
         return context.dataStore.data.map { preferences ->
             preferences[WIDGET_TRANSPARENCY] ?: 1f
+        }
+    }
+
+    suspend fun setRemoteFlipped(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[REMOTE_FLIPPED] = enabled
+        }
+    }
+
+    fun isRemoteFlipped(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[REMOTE_FLIPPED] ?: false
         }
     }
 
