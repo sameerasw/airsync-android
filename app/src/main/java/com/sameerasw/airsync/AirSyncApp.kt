@@ -9,9 +9,12 @@ import com.sameerasw.airsync.utils.WebSocketMessageHandler
 import io.sentry.android.core.SentryAndroid
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import com.sameerasw.airsync.utils.WebSocketUtil
+import android.util.Log
 
 class AirSyncApp : Application() {
     private var activityCount = 0
@@ -66,6 +69,11 @@ class AirSyncApp : Application() {
             val ds = DataStoreManager.getInstance(this@AirSyncApp)
             val enabled = ds.getAirBridgeEnabled().first()
             if (enabled) {
+                // Give LAN a 1-second head start if we appear to be on a private LAN.
+                if (WebSocketUtil.isLanNegotiationAllowed(this@AirSyncApp)) {
+                    Log.d("AirSyncApp", "Private LAN detected on startup, delaying Relay by 1000ms for fast-LAN.")
+                    delay(1000)
+                }
                 AirBridgeClient.connect(this@AirSyncApp)
             }
         }

@@ -856,6 +856,45 @@ object WebSocketUtil {
             try {
                 val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
 
+                // Fast path: attempt immediate connection to last known LAN IP
+                if (!isConnected.get() && !isConnecting.get() && !AirBridgeClient.isRelayConnectedOrConnecting()) {
+                    val manual = ds.getUserManuallyDisconnected().first()
+                    val autoEnabled = ds.getAutoReconnectEnabled().first()
+                    if (!manual && autoEnabled) {
+                        val last = ds.getLastConnectedDevice().first()
+                        if (last != null) {
+                            val all = ds.getAllNetworkDeviceConnections().first()
+                            val targetConnection = all.firstOrNull { it.deviceName == last.name }
+                            if (targetConnection != null) {
+                                val localIp = DeviceInfoUtil.getWifiIpAddress(context)
+                                val knownIp = targetConnection.getClientIpForNetwork(localIp ?: "") ?: last.ipAddress
+                                val port = targetConnection.port.toIntOrNull() ?: 6996
+                                Log.d(TAG, "Fast LAN auto-reconnect attempting known IP: $knownIp")
+                                connect(
+                                    context = context,
+                                    ipAddress = knownIp,
+                                    port = port,
+                                    symmetricKey = targetConnection.symmetricKey,
+                                    manualAttempt = false,
+                                    onConnectionStatus = { connected ->
+                                        if (connected) {
+                                            CoroutineScope(Dispatchers.IO).launch {
+                                                try {
+                                                    ds.updateNetworkDeviceLastConnected(
+                                                        targetConnection.deviceName,
+                                                        System.currentTimeMillis()
+                                                    )
+                                                } catch (_: Exception) {}
+                                                cancelAutoReconnect()
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Monitor discovered devices
                 UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
                     if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
