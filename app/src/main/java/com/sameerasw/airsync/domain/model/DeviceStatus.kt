@@ -12,8 +12,14 @@ data class AudioInfo(
     val volume: Int,
     val isMuted: Boolean,
     val albumArt: String? = null,
-    // New: like status for current media ("liked", "not_liked", or "none")
-    val likeStatus: String = "none"
+    val likeStatus: String = "none",
+    val durationMs: Long = -1L,
+    val positionMs: Long = -1L,
+    // True when the media session is in STATE_BUFFERING (position not advancing).
+    val isBuffering: Boolean = false,
+    // System.currentTimeMillis() at the moment positionMs was captured,
+    // so the Mac can compensate for network transit time.
+    val positionTimestampMs: Long = -1L
 )
 
 data class MediaInfo(
@@ -21,6 +27,9 @@ data class MediaInfo(
     val title: String,
     val artist: String,
     val albumArt: String? = null,
-    // New: like status for current media ("liked", "not_liked", or "none")
-    val likeStatus: String = "none"
+    val likeStatus: String = "none",
+    val durationMs: Long = -1L,
+    val positionMs: Long = -1L,
+    val isBuffering: Boolean = false,
+    val positionTimestampMs: Long = -1L
 )

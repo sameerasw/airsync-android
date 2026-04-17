@@ -101,6 +101,27 @@ object MediaControlUtil {
     }
 
     /**
+     * Seek to a specific position in the current media.
+     * @param positionMs Position in milliseconds.
+     */
+    fun seekTo(context: Context, positionMs: Long): Boolean {
+        return try {
+            val controller = getActiveMediaController(context)
+            if (controller != null) {
+                controller.transportControls.seekTo(positionMs)
+                Log.d(TAG, "Seeked to $positionMs ms")
+                true
+            } else {
+                Log.w(TAG, "No active media controller to seek")
+                false
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in seekTo: ${e.message}")
+            false
+        }
+    }
+
+    /**
      * Toggle like status by invoking the Like/Unlike action in the active media notification.
      */
     fun toggleLike(context: Context): Boolean {

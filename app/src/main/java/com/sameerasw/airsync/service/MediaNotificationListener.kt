@@ -118,7 +118,39 @@ class MediaNotificationListener : NotificationListenerService() {
 
                         val title = metadata?.getString(MediaMetadata.METADATA_KEY_TITLE) ?: ""
                         val artist = metadata?.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: ""
-                        val isPlaying = playbackState?.state == PlaybackState.STATE_PLAYING
+                        val playbackStateCode = playbackState?.state ?: PlaybackState.STATE_NONE
+                        val isPlaying = playbackStateCode == PlaybackState.STATE_PLAYING
+                        val isBuffering = playbackStateCode == PlaybackState.STATE_BUFFERING
+
+                        // Seekbar: duration from metadata, position from playback state.
+                        val durationMs = metadata?.getLong(MediaMetadata.METADATA_KEY_DURATION) ?: -1L
+                        
+                        // Capture the raw frozen position plus the wall-clock instant it was read.
+                        // The Mac will apply the (now - captureTime) delta itself, which also
+                        // compensates for WiFi transit time — better accuracy than pre-computing here.
+                        var positionMs = playbackState?.position ?: -1L
+                        var positionTimestampMs = -1L
+                        if (positionMs >= 0 && playbackState != null) {
+                            // Map elapsedRealtime of the last state update → wall-clock ms
+                            val elapsedAtUpdate = playbackState.lastPositionUpdateTime
+                            val elapsedNow = android.os.SystemClock.elapsedRealtime()
+                            val wallNow = System.currentTimeMillis()
+                            // Wall-clock instant when playbackState.position was last set
+                            val wallAtUpdate = wallNow - (elapsedNow - elapsedAtUpdate)
+                            // Advance position to now (if playing) or leave frozen (if paused/buffering)
+                            if (isPlaying) {
+                                val timeDelta = elapsedNow - elapsedAtUpdate
+                                val speed = playbackState.playbackSpeed
+                                if (timeDelta > 0 && speed > 0) {
+                                    positionMs += (timeDelta * speed).toLong()
+                                }
+                            }
+                            // Record the wall-clock time for when this positionMs snapshot is valid.
+                            // If playing, positionMs is "now", so timestamp = wallNow.
+                            // If paused/buffering, positionMs is frozen at wallAtUpdate — but the Mac
+                            // won't advance it further (isPlaying/isBuffering guards handle that).
+                            positionTimestampMs = if (isPlaying) wallNow else wallAtUpdate
+                        }
 
                         val albumArtBitmap =
                             metadata?.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART)
@@ -126,22 +158,16 @@ class MediaNotificationListener : NotificationListenerService() {
 
                         val albumArtBase64 = albumArtBitmap?.let {
                             val outputStream = ByteArrayOutputStream()
-                            // Compress to a smaller size to avoid large payloads
                             it.compress(Bitmap.CompressFormat.JPEG, 50, outputStream)
                             Base64.encodeToString(outputStream.toByteArray(), Base64.NO_WRAP)
                         }
 
-
-                        // Log.d(TAG, "Media session - Title: $title, Artist: $artist, Playing: $isPlaying, State: ${playbackState?.state}")
-
-                        // Determine like status; apply app filter and strict positive-only like detection
+                        // Determine like status
                         val (detectedStatus, source) = determineLikeStatusWithSource(
                             context,
                             controller
                         )
                         var likeStatus = detectedStatus
-
-                        // If filtered by app, force none and skip cache
                         if (source == "appfilter") {
                             likeStatus = "none"
                         }
@@ -153,7 +179,11 @@ class MediaNotificationListener : NotificationListenerService() {
                                 title = title,
                                 artist = artist,
                                 albumArt = albumArtBase64,
-                                likeStatus = likeStatus
+                                likeStatus = likeStatus,
+                                durationMs = durationMs,
+                                positionMs = positionMs,
+                                isBuffering = isBuffering,
+                                positionTimestampMs = positionTimestampMs
                             )
                         }
                     }
@@ -444,7 +474,11 @@ class MediaNotificationListener : NotificationListenerService() {
                 // If media info changed, trigger sync
                 if (previousMediaInfo != currentMediaInfo) {
                     Log.d(TAG, "Media info changed, triggering sync")
-                    SyncManager.onMediaStateChanged(this)
+                    // Bypass suppression for play/pause AND buffering changes so the Mac
+                    // stops its timer immediately (not after the 2.5s suppression window).
+                    val isStateChanged = previousMediaInfo?.isPlaying != currentMediaInfo?.isPlaying
+                            || previousMediaInfo?.isBuffering != currentMediaInfo?.isBuffering
+                    SyncManager.onMediaStateChanged(this, isPlayingChanged = isStateChanged)
                 }
             } else {
                 Log.d(
@@ -490,7 +524,9 @@ class MediaNotificationListener : NotificationListenerService() {
             // If media info changed, trigger sync
             if (previousMediaInfo != currentMediaInfo) {
                 Log.d(TAG, "Media info changed after notification removal, triggering sync")
-                SyncManager.onMediaStateChanged(this)
+                val isStateChanged = previousMediaInfo?.isPlaying != currentMediaInfo?.isPlaying
+                        || previousMediaInfo?.isBuffering != currentMediaInfo?.isBuffering
+                SyncManager.onMediaStateChanged(this, isPlayingChanged = isStateChanged)
             }
         } else {
             Log.d(

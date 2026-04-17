@@ -166,7 +166,11 @@ object DeviceInfoUtil {
                 volume = volumePercent,
                 isMuted = isMuted,
                 albumArt = mediaInfo.albumArt,
-                likeStatus = mediaInfo.likeStatus
+                likeStatus = mediaInfo.likeStatus,
+                durationMs = mediaInfo.durationMs,
+                positionMs = mediaInfo.positionMs,
+                isBuffering = mediaInfo.isBuffering,
+                positionTimestampMs = mediaInfo.positionTimestampMs
             )
         } catch (e: Exception) {
             Log.e("DeviceInfoUtil", "Error getting audio info: ${e.message}")
@@ -188,7 +192,11 @@ object DeviceInfoUtil {
             volume = audioInfo.volume,
             isMuted = audioInfo.isMuted,
             albumArt = audioInfo.albumArt,
-            likeStatus = audioInfo.likeStatus
+            likeStatus = audioInfo.likeStatus,
+            durationMs = audioInfo.durationMs,
+            positionMs = audioInfo.positionMs,
+            isBuffering = audioInfo.isBuffering,
+            positionTimestampMs = audioInfo.positionTimestampMs
         )
     }
 
