@@ -133,7 +133,7 @@ class AirSyncViewModel(
 
             // Update dynamic shortcuts
             appContext?.let { ctx ->
-                ShortcutUtil.refreshShortcuts(ctx, isConnected)
+                ShortcutUtil.refreshShortcuts(ctx, unifiedConnected)
             }
 
             // Notify Smartspacer of connection status change
