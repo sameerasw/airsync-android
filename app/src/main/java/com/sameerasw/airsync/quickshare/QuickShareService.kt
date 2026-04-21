@@ -63,6 +63,8 @@ class QuickShareService : Service() {
         super.onCreate()
         createNotificationChannel()
         
+        startForeground(NOTIFICATION_ID, createNotification("Quick Share is active"))
+        
         server = QuickShareServer(this) { connection ->
             val id = java.util.UUID.randomUUID().toString()
             activeConnections[id] = connection

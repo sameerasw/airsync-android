@@ -30,6 +30,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
@@ -46,6 +48,15 @@ fun AirSyncFloatingToolbar(
 ) {
     // Persistent visibility
     var expanded by remember { mutableStateOf(true) }
+    val configuration = LocalConfiguration.current
+    val fontScale = LocalDensity.current.fontScale
+    val screenWidth = configuration.screenWidthDp
+    
+    // Hide label if font scale is large or screen width is too small
+    val isLargeFont = fontScale > 1.25f
+    val isCompactScreen = screenWidth < 400 
+    
+    val shouldHideLabel = isLargeFont || (isCompactScreen && tabs.size > 3)
 
     HorizontalFloatingToolbar(
 //        modifier = modifier
@@ -76,7 +87,7 @@ fun AirSyncFloatingToolbar(
 
                 // Animate label width for active tab
                 val labelWidth by animateDpAsState(
-                    targetValue = if (isSelected) 80.dp else 0.dp,
+                    targetValue = if (isSelected && !shouldHideLabel) 80.dp else 0.dp,
                     animationSpec = spring(
                         dampingRatio = Spring.DampingRatioMediumBouncy,
                         stiffness = Spring.StiffnessLow
@@ -132,7 +143,7 @@ fun AirSyncFloatingToolbar(
                                     modifier = Modifier.size(24.dp)
                                 )
                             }
-                            if (isSelected) {
+                            if (isSelected && !shouldHideLabel) {
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
                                     text = stringResource(id = tab.title),

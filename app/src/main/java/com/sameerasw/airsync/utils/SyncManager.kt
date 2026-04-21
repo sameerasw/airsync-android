@@ -214,7 +214,7 @@ object SyncManager {
                             null
                         }
                         val discoveredServices = try {
-                            AdbMdnsDiscovery(context).getDiscoveredServices()
+                            com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
                         } catch (e: Exception) {
                             emptyList()
                         }

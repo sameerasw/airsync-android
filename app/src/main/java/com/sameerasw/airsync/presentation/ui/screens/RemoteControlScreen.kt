@@ -1,7 +1,15 @@
 package com.sameerasw.airsync.presentation.ui.screens
 
 import android.content.res.Configuration
-
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.background
@@ -41,6 +49,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,7 +91,12 @@ fun RemoteControlScreen(
 ) {
     val haptics = LocalHapticFeedback.current
     val scope = rememberCoroutineScope()
-    LocalContext.current
+    val context = LocalContext.current
+    val dataStoreManager = remember { com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context) }
+    val isFlipped by dataStoreManager.isRemoteFlipped().collectAsState(initial = null)
+
+    if (isFlipped == null) return
+    val flippedValue = isFlipped!!
 
     fun sendRemoteAction(
         action: String,
@@ -267,6 +281,22 @@ fun RemoteControlScreen(
                 modifier = Modifier.padding(horizontal = 4.dp)
             ) {
                 Icon(Icons.Default.SpaceBar, "Space", modifier = Modifier.size(18.dp))
+            }
+
+            OutlinedButton(
+                onClick = { 
+                    HapticUtil.performLightTick(haptics)
+                    scope.launch {
+                        dataStoreManager.setRemoteFlipped(isFlipped != true)
+                    }
+                },
+                modifier = Modifier.padding(horizontal = 4.dp)
+            ) {
+                Icon(
+                    painter = painterResource(id = if (isWide) R.drawable.rounded_compare_arrows_24 else R.drawable.rounded_mobiledata_arrows_24),
+                    contentDescription = "Flip Layout",
+                    modifier = Modifier.size(18.dp)
+                )
             }
         }
     }
@@ -461,48 +491,96 @@ fun RemoteControlScreen(
         }
     }
 
-    if (isWide) {
-        Row(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(24.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier
-                    .weight(0.4f)
-                    .fillMaxHeight(),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
+    AnimatedContent(
+        targetState = flippedValue,
+        transitionSpec = {
+            if (isWide) {
+                if (targetState) {
+                    (slideInHorizontally { it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { -it / 4 } + fadeOut())
+                } else {
+                    (slideInHorizontally { -it / 4 } + fadeIn()) togetherWith (slideOutHorizontally { it / 4 } + fadeOut())
+                }
+            } else {
+                if (targetState) {
+                    (slideInVertically { it / 4 } + fadeIn()) togetherWith (slideOutVertically { -it / 4 } + fadeOut())
+                } else {
+                    (slideInVertically { -it / 4 } + fadeIn()) togetherWith (slideOutVertically { it / 4 } + fadeOut())
+                }
+            }.using(SizeTransform(clip = false))
+        },
+        label = "RemoteLayoutFlip"
+    ) { flipped ->
+        if (isWide) {
+            Row(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                ExtraKeys()
-                Spacer(modifier = Modifier.height(24.dp))
-                DPad()
+                if (flipped) {
+                    Trackpad(
+                        modifier = Modifier
+                            .weight(0.6f)
+                            .fillMaxHeight()
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(0.4f)
+                            .fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        ExtraKeys()
+                        Spacer(modifier = Modifier.height(24.dp))
+                        DPad()
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .weight(0.4f)
+                            .fillMaxHeight(),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        ExtraKeys()
+                        Spacer(modifier = Modifier.height(24.dp))
+                        DPad()
+                    }
+
+                    Trackpad(
+                        modifier = Modifier
+                            .weight(0.6f)
+                            .fillMaxHeight()
+                    )
+                }
             }
+        } else {
+            Column(
+                modifier = modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                if (flipped) {
+                    DPad()
+                    ExtraKeys()
 
-            Trackpad(
-                modifier = Modifier
-                    .weight(0.6f)
-                    .fillMaxHeight()
-            )
-        }
-    } else {
-        Column(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            Trackpad(
-                modifier = Modifier
-                    .weight(1f)
-            )
+                    Trackpad(
+                        modifier = Modifier
+                            .weight(1f)
+                    )
+                } else {
+                    Trackpad(
+                        modifier = Modifier
+                            .weight(1f)
+                    )
 
-            DPad()
-            ExtraKeys()
-
+                    DPad()
+                    ExtraKeys()
+                }
+            }
         }
     }
 }

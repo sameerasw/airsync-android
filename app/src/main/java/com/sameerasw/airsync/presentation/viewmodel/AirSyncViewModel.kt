@@ -22,6 +22,8 @@ import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.NetworkMonitor
 import com.sameerasw.airsync.utils.PermissionUtil
+import com.sameerasw.airsync.utils.ServiceManager
+import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.SyncManager
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
 import com.sameerasw.airsync.utils.WebSocketUtil
@@ -128,6 +130,11 @@ class AirSyncViewModel(
                 updateRatingPromptDisplay()
             }
             lastUnifiedConnected = unifiedConnected
+
+            // Update dynamic shortcuts
+            appContext?.let { ctx ->
+                ShortcutUtil.refreshShortcuts(ctx, isConnected)
+            }
 
             // Notify Smartspacer of connection status change
             appContext?.let { context ->
@@ -417,8 +424,11 @@ class AirSyncViewModel(
                 IntentFilter(PowerManager.ACTION_POWER_SAVE_MODE_CHANGED)
             )
 
-            // Start AirSync Service in scanning mode (which handles UDP Discovery and WakeupService)
-            com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+            // Start AirSync Service conditionally
+            ServiceManager.updateServiceState(context)
+            
+            // Initial shortcut state
+            ShortcutUtil.refreshShortcuts(context, WebSocketUtil.isConnected())
             isNetworkMonitoringActive = true
         }
     }
@@ -625,6 +635,7 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isAutoReconnectEnabled = enabled)
         viewModelScope.launch {
             repository.setAutoReconnectEnabled(enabled)
+            appContext?.let { ServiceManager.updateServiceState(it) }
         }
     }
 
@@ -682,15 +693,7 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isDeviceDiscoveryEnabled = enabled)
         viewModelScope.launch {
             repository.setDeviceDiscoveryEnabled(enabled)
-            if (enabled) {
-                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
-            } else {
-                // When disabling discovery, we should stop discovery broadcasts
-                // If a connection exists, the service continues but discovery stops.
-                // If no connection, the service should still run for WakeupService but maybe without scanning?
-                // For now, let's just trigger a service update that checks the new flag.
-                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
-            }
+            ServiceManager.updateServiceState(context)
         }
     }
 
@@ -813,20 +816,14 @@ class AirSyncViewModel(
                                     WebSocketUtil.disconnect(context)
                                 } catch (_: Exception) {
                                 }
-                                try {
-                                    com.sameerasw.airsync.service.AirSyncService.stop(context)
-                                } catch (_: Exception) {
-                                }
+                                ServiceManager.updateServiceState(context)
                                 _uiState.value =
                                     _uiState.value.copy(isConnected = false, isConnecting = false)
                             }
                             return@collect
                         } else {
-                            // Ensure service is running when WiFi is available
-                            try {
-                                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
-                            } catch (_: Exception) {
-                            }
+                            // Ensure service state is updated
+                            ServiceManager.updateServiceState(context)
                         }
 
                         if (target != null) {

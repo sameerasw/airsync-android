@@ -101,6 +101,7 @@ class DataStoreManager(private val context: Context) {
         private val AIRBRIDGE_RELAY_URL = stringPreferencesKey("airbridge_relay_url")
         private val AIRBRIDGE_PAIRING_ID = stringPreferencesKey("airbridge_pairing_id")
         private val AIRBRIDGE_SECRET = stringPreferencesKey("airbridge_secret")
+        private val REMOTE_FLIPPED = booleanPreferencesKey("remote_flipped")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -642,6 +643,18 @@ class DataStoreManager(private val context: Context) {
 
     fun getAirBridgeSecret(): Flow<String> {
         return context.dataStore.data.map { it[AIRBRIDGE_SECRET] ?: "" }
+    }
+
+    suspend fun setRemoteFlipped(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[REMOTE_FLIPPED] = enabled
+        }
+    }
+
+    fun isRemoteFlipped(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[REMOTE_FLIPPED] ?: false
+        }
     }
 
     // Network-aware device connections
