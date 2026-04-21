@@ -96,6 +96,11 @@ class DataStoreManager(private val context: Context) {
         // Widget preferences
         private val WIDGET_TRANSPARENCY = androidx.datastore.preferences.core.floatPreferencesKey("widget_transparency")
 
+        // AirBridge relay preferences
+        private val AIRBRIDGE_ENABLED = booleanPreferencesKey("airbridge_enabled")
+        private val AIRBRIDGE_RELAY_URL = stringPreferencesKey("airbridge_relay_url")
+        private val AIRBRIDGE_PAIRING_ID = stringPreferencesKey("airbridge_pairing_id")
+        private val AIRBRIDGE_SECRET = stringPreferencesKey("airbridge_secret")
         private val REMOTE_FLIPPED = booleanPreferencesKey("remote_flipped")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
@@ -604,6 +609,40 @@ class DataStoreManager(private val context: Context) {
         return context.dataStore.data.map { preferences ->
             preferences[WIDGET_TRANSPARENCY] ?: 1f
         }
+    }
+
+    // --- AirBridge Relay ---
+
+    suspend fun setAirBridgeEnabled(enabled: Boolean) {
+        context.dataStore.edit { prefs -> prefs[AIRBRIDGE_ENABLED] = enabled }
+    }
+
+    fun getAirBridgeEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { it[AIRBRIDGE_ENABLED] ?: false }
+    }
+
+    suspend fun setAirBridgeRelayUrl(url: String) {
+        context.dataStore.edit { prefs -> prefs[AIRBRIDGE_RELAY_URL] = url }
+    }
+
+    fun getAirBridgeRelayUrl(): Flow<String> {
+        return context.dataStore.data.map { it[AIRBRIDGE_RELAY_URL] ?: "" }
+    }
+
+    suspend fun setAirBridgePairingId(id: String) {
+        context.dataStore.edit { prefs -> prefs[AIRBRIDGE_PAIRING_ID] = id }
+    }
+
+    fun getAirBridgePairingId(): Flow<String> {
+        return context.dataStore.data.map { it[AIRBRIDGE_PAIRING_ID] ?: "" }
+    }
+
+    suspend fun setAirBridgeSecret(secret: String) {
+        context.dataStore.edit { prefs -> prefs[AIRBRIDGE_SECRET] = secret }
+    }
+
+    fun getAirBridgeSecret(): Flow<String> {
+        return context.dataStore.data.map { it[AIRBRIDGE_SECRET] ?: "" }
     }
 
     suspend fun setRemoteFlipped(enabled: Boolean) {

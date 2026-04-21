@@ -516,7 +516,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 }
 
                 // Build and send update
-                if (WebSocketUtil.isConnected()) {
+                if (WebSocketUtil.isConnectedOrRelayActive()) {
                     val update = JsonUtil.toSingleLine(
                         JsonUtil.createNotificationUpdateJson(
                             id,
@@ -655,7 +655,7 @@ class MediaNotificationListener : NotificationListenerService() {
 
                     Log.d(TAG, "Preparing to send notification: $notificationJson")
 
-                    if (WebSocketUtil.isConnected()) {
+                    if (WebSocketUtil.isConnectedOrRelayActive()) {
                         Log.d(TAG, "Sending notification via WebSocket")
                         val success = WebSocketUtil.sendMessage(notificationJson)
                         if (success) {

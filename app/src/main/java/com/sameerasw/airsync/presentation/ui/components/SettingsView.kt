@@ -48,6 +48,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.MediaSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
 import com.sameerasw.airsync.presentation.ui.components.cards.QuickSettingsTilesCard
+import com.sameerasw.airsync.presentation.ui.components.cards.AirBridgeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SendNowPlayingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.SmartspacerCard
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
@@ -363,6 +364,8 @@ fun SettingsView(
                 )
 
                 ExpandNetworkingCard(context)
+
+                AirBridgeCard(context)
             }
         }
 

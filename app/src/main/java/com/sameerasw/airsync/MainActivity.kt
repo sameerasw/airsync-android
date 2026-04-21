@@ -45,6 +45,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.animation.doOnEnd
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -54,6 +55,7 @@ import com.sameerasw.airsync.presentation.ui.screens.AirSyncMainScreen
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.AdbMdnsDiscovery
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.ContentCaptureManager
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.KeyguardHelper
@@ -62,6 +64,7 @@ import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.net.URLDecoder
 
@@ -360,21 +363,48 @@ class MainActivity : ComponentActivity() {
         var pcName: String? = null
         var isPlus = false
         var symmetricKey: String? = null
+        var relayUrl: String? = null
+        var airBridgePairingId: String? = null
+        var airBridgeSecret: String? = null
 
         data?.let { uri ->
             val urlString = uri.toString()
-            val queryPart = urlString.substringAfter('?', "")
-            if (queryPart.isNotEmpty()) {
-                val params = queryPart.split('?')
-                val paramMap = params.associate {
-                    val parts = it.split('=', limit = 2)
-                    val key = parts.getOrNull(0) ?: ""
-                    val value = parts.getOrNull(1) ?: ""
-                    key to value
+            val paramMap = parseAirsyncParams(urlString)
+            pcName = paramMap["name"]?.let { android.net.Uri.decode(it) }
+            isPlus = paramMap["plus"]?.toBooleanStrictOrNull() ?: false
+            symmetricKey = paramMap["key"]?.let {
+                android.net.Uri.decode(it)
+            }
+            relayUrl = paramMap["relay"]?.let { android.net.Uri.decode(it) }
+            airBridgePairingId =
+                paramMap["pairingId"]?.let { android.net.Uri.decode(it) }
+            airBridgeSecret =
+                paramMap["secret"]?.let { android.net.Uri.decode(it) }
+        }
+
+        if (!relayUrl.isNullOrBlank() &&
+            !airBridgePairingId.isNullOrBlank() &&
+            !airBridgeSecret.isNullOrBlank()
+        ) {
+            lifecycleScope.launch {
+                try {
+                    val ds = DataStoreManager.getInstance(this@MainActivity)
+                    ds.setAirBridgeRelayUrl(relayUrl!!)
+                    ds.setAirBridgePairingId(airBridgePairingId!!)
+                    ds.setAirBridgeSecret(airBridgeSecret!!)
+                    ds.setAirBridgeEnabled(true)
+
+                    // Provide symmetric key to AirBridgeClient immediately so it doesn't
+                    // refuse connection waiting for a completed LAN handshake first
+                    if (!symmetricKey.isNullOrEmpty()) {
+                        AirBridgeClient.updateSymmetricKey(symmetricKey)
+                    }
+
+                    AirBridgeClient.disconnect()
+                    AirBridgeClient.connect(this@MainActivity)
+                } catch (e: Exception) {
+                    Log.e("MainActivity", "Failed to apply AirBridge QR config: ${e.message}", e)
                 }
-                pcName = paramMap["name"]?.let { URLDecoder.decode(it, "UTF-8") }
-                isPlus = paramMap["plus"]?.toBooleanStrictOrNull() ?: false
-                symmetricKey = paramMap["key"]
             }
         }
 
@@ -593,6 +623,22 @@ class MainActivity : ComponentActivity() {
      */
     fun getDiscoveredAdbServices(): List<AdbMdnsDiscovery.AdbServiceInfo> {
         return AdbDiscoveryHolder.getDiscoveredServices()
+    }
+
+    private fun parseAirsyncParams(urlString: String): Map<String, String> {
+        val queryPart = urlString.substringAfter('?', "")
+        if (queryPart.isEmpty()) return emptyMap()
+
+        return queryPart.split('?')
+            .mapNotNull { raw ->
+                if (raw.isBlank()) return@mapNotNull null
+                val parts = raw.split('=', limit = 2)
+                val key = parts.getOrNull(0)?.trim().orEmpty()
+                if (key.isEmpty()) return@mapNotNull null
+                val value = parts.getOrNull(1).orEmpty()
+                key to value
+            }
+            .toMap()
     }
 
     /**

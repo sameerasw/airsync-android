@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 import org.json.JSONObject
 
 /**
@@ -22,6 +23,20 @@ import org.json.JSONObject
  */
 object WebSocketMessageHandler {
     private const val TAG = "WebSocketMessageHandler"
+    private const val TRANSPORT_CANDIDATE_TTL_MS = 120_000L
+
+    private data class CandidateExtractionResult(
+        val ipsCsv: String,
+        val port: Int,
+        val total: Int,
+        val emptyIp: Int,
+        val nonPrivateIp: Int,
+        val invalidPort: Int
+    ) {
+        fun invalidReason(): String {
+            return "accepted_ips=${ipsCsv.split(",").filter { it.isNotBlank() }.size} total=$total empty_ip=$emptyIp non_private_ip=$nonPrivateIp invalid_port=$invalidPort port=$port"
+        }
+    }
 
     // Track if we're currently receiving playing media from Mac to prevent feedback loop
     private var isReceivingPlayingMedia = false
@@ -83,6 +98,13 @@ object WebSocketMessageHandler {
                 "modifierStatus" -> handleModifierStatus(data)
                 "ping" -> handlePing(context)
                 "status" -> handleMacDeviceStatus(context, data)
+                "macWake" -> handleMacWake(context, data)
+                "peerTransport" -> handlePeerTransport(data)
+                "transportOffer" -> handleTransportOffer(context, data)
+                "transportAnswer" -> handleTransportAnswer(context, data)
+                "transportCheck" -> handleTransportCheck(data)
+                "transportCheckAck" -> handleTransportCheckAck(data)
+                "transportNominate" -> handleTransportNominate(data)
                 "macInfo" -> handleMacInfo(context, data)
                 "refreshAdbPorts" -> handleRefreshAdbPorts(context)
                 "browseLs" -> handleBrowseLs(context, data)
@@ -394,11 +416,281 @@ object WebSocketMessageHandler {
 
     private fun handlePing(context: Context) {
         try {
-            // Respond to ping with current device status to keep connection alive
-            // We must force sync here because the server expects a response to every ping
-            SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
+            // Respond with lightweight pong for keepalive (works for both LAN and Relay)
+            CoroutineScope(Dispatchers.IO).launch {
+                WebSocketUtil.sendMessage("{\"type\":\"pong\"}")
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
+        }
+    }
+
+    private fun handleMacWake(context: Context, data: JSONObject?) {
+        try {
+            val ips = data?.optString("ips", "") ?: ""
+            val port = data?.optInt("port", -1) ?: -1
+
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val ds = DataStoreManager.getInstance(context)
+                    val last = ds.getLastConnectedDevice().first()
+                    val key = last?.symmetricKey
+
+                    if (!WebSocketUtil.isConnected() && !WebSocketUtil.isConnecting()) {
+                        if (ips.isNotBlank() && port > 0 && key != null) {
+                            WebSocketUtil.connect(
+                                context = context,
+                                ipAddress = ips,
+                                port = port,
+                                symmetricKey = key,
+                                manualAttempt = false
+                            )
+                            delay(1200)
+                        } else {
+                            try {
+                                UDPDiscoveryManager.burstBroadcast(context)
+                            } catch (_: Exception) {}
+                        }
+                    }
+
+                    // Keep probing LAN while relay remains active (LAN-first dynamic policy).
+                    WebSocketUtil.startLanFirstRelayProbe(
+                        context = context,
+                        immediate = false,
+                        source = "macWake",
+                        resetBackoff = true
+                    )
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error handling macWake LAN orchestration: ${e.message}")
+                }
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling macWake: ${e.message}")
+        }
+    }
+
+    private fun handlePeerTransport(data: JSONObject?) {
+        try {
+            if (data == null) return
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling peerTransport: ${e.message}")
+        }
+    }
+
+    private fun isTransportMessageFresh(data: JSONObject?): Boolean {
+        val ts = data?.optLong("ts", 0L) ?: 0L
+        if (ts <= 0L) return false
+        val delta = abs(System.currentTimeMillis() - ts)
+        return delta <= TRANSPORT_CANDIDATE_TTL_MS
+    }
+
+    private fun isPrivateOrAllowedLocalIp(ip: String): Boolean {
+        if (ip == "127.0.0.1" || ip == "localhost") return true
+        val parts = ip.split(".")
+        if (parts.size != 4) return false
+        val first = parts[0].toIntOrNull() ?: return false
+        val second = parts[1].toIntOrNull() ?: return false
+        // 10.0.0.0/8
+        if (first == 10) return true
+        // 192.168.0.0/16
+        if (first == 192 && second == 168) return true
+        // 172.16.0.0/12
+        if (first == 172 && second in 16..31) return true
+        // 100.64.0.0/10 (CGNAT — Tailscale, ZeroTier)
+        if (first == 100 && second in 64..127) return true
+        return false
+    }
+
+    private fun extractSanitizedCandidates(data: JSONObject?): CandidateExtractionResult {
+        val candidates = data?.optJSONArray("candidates")
+        val ips = mutableListOf<String>()
+        var port = -1
+        var total = 0
+        var emptyIp = 0
+        var nonPrivateIp = 0
+        var invalidPort = 0
+        if (candidates != null) {
+            for (i in 0 until candidates.length()) {
+                total++
+                val c = candidates.optJSONObject(i) ?: continue
+                val ip = c.optString("ip", "").trim()
+                val p = c.optInt("port", -1)
+                if (ip.isBlank()) {
+                    emptyIp++
+                    continue
+                }
+                if (!isPrivateOrAllowedLocalIp(ip)) {
+                    nonPrivateIp++
+                    continue
+                }
+                ips.add(ip)
+                if (p in 1..65535 && port <= 0) {
+                    port = p
+                } else if (p !in 1..65535 && p != -1) {
+                    invalidPort++
+                }
+            }
+        }
+        val fallbackPort = data?.optInt("port", -1) ?: -1
+        if (port <= 0 && fallbackPort in 1..65535) {
+            port = fallbackPort
+        }
+        return CandidateExtractionResult(
+            ipsCsv = ips.distinct().joinToString(","),
+            port = port,
+            total = total,
+            emptyIp = emptyIp,
+            nonPrivateIp = nonPrivateIp,
+            invalidPort = invalidPort
+        )
+    }
+
+    private fun handleTransportOffer(context: Context, data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val source = data?.optString("source", "peer") ?: "peer"
+            if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
+                return
+            }
+
+            if (!isTransportMessageFresh(data)) {
+                Log.w(TAG, "Dropped stale transport offer")
+                return
+            }
+            if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "offer_rx")) {
+                return
+            }
+
+            // Always answer so the remote peer can proceed with nomination logic.
+            WebSocketUtil.sendTransportAnswer(generation, reason = "offer_rx", context = context)
+
+            // Android is the LAN dialer in this architecture; only react to Mac offers.
+            if (source != "mac") return
+            if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) return
+
+            val candidateResult = extractSanitizedCandidates(data)
+            val ipsCsv = candidateResult.ipsCsv
+            val port = candidateResult.port
+            CoroutineScope(Dispatchers.IO).launch {
+                val ds = DataStoreManager.getInstance(context)
+                val key = ds.getLastConnectedDevice().first()?.symmetricKey
+                if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
+                    Log.w(TAG, "Dropped transport offer with invalid candidates")
+                    WebSocketUtil.reportLanNegotiationFailure("offer_missing_candidates_or_key")
+                    return@launch
+                }
+
+                WebSocketUtil.connect(
+                    context = context,
+                    ipAddress = ipsCsv,
+                    port = port,
+                    symmetricKey = key,
+                    manualAttempt = false,
+                    onConnectionStatus = { connected ->
+                        if (connected) {
+                            WebSocketUtil.sendTransportCheck(generation, "offer_connect_ok")
+                        } else {
+                            WebSocketUtil.reportLanNegotiationFailure("offer_connect_failed")
+                        }
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportOffer: ${e.message}")
+            WebSocketUtil.reportLanNegotiationFailure("offer_exception")
+        }
+    }
+
+    private fun handleTransportAnswer(context: Context, data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            if (!WebSocketUtil.isLanNegotiationAllowed(context)) {
+                return
+            }
+
+            if (!isTransportMessageFresh(data)) {
+                Log.w(TAG, "Dropped stale transport answer")
+                return
+            }
+            if (!WebSocketUtil.acceptIncomingTransportGeneration(generation, "answer_rx")) {
+                return
+            }
+
+            // If LAN is already up, no need to dial again.
+            if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) return
+
+            // Reuse answer candidates as immediate dial hints (Happy Eyeballs LAN-first).
+            val candidateResult = extractSanitizedCandidates(data)
+            val ipsCsv = candidateResult.ipsCsv
+            val port = candidateResult.port
+
+            CoroutineScope(Dispatchers.IO).launch {
+                val ds = DataStoreManager.getInstance(context)
+                val key = ds.getLastConnectedDevice().first()?.symmetricKey
+                if (ipsCsv.isBlank() || port <= 0 || key.isNullOrBlank()) {
+                    Log.w(TAG, "Dropped transport answer with invalid candidates")
+                    return@launch
+                }
+
+                WebSocketUtil.connect(
+                    context = context,
+                    ipAddress = ipsCsv,
+                    port = port,
+                    symmetricKey = key,
+                    manualAttempt = false,
+                    onConnectionStatus = { connected ->
+                        if (connected) {
+                            WebSocketUtil.sendTransportCheck(generation, "answer_connect_ok")
+                        } else {
+                            WebSocketUtil.reportLanNegotiationFailure("answer_connect_failed")
+                        }
+                    }
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportAnswer: ${e.message}")
+        }
+    }
+
+    private fun handleTransportCheck(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val token = data?.optString("token", "") ?: ""
+            if (token.isBlank() || !WebSocketUtil.isTransportGenerationActive(generation)) return
+            WebSocketUtil.sendTransportCheckAck(generation, token)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportCheck: ${e.message}")
+        }
+    }
+
+    private fun handleTransportCheckAck(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val token = data?.optString("token", "") ?: ""
+            if (token.isBlank() || !WebSocketUtil.isTransportGenerationActive(generation)) return
+            WebSocketUtil.onTransportCheckAck(generation, token)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportCheckAck: ${e.message}")
+        }
+    }
+
+    private fun handleTransportNominate(data: JSONObject?) {
+        try {
+            val generation = data?.optLong("generation", 0L) ?: 0L
+            val path = data?.optString("path", "relay") ?: "relay"
+            if (!WebSocketUtil.isTransportGenerationActive(generation)) {
+                Log.w(TAG, "Dropped transport nominate for inactive generation")
+                return
+            }
+            if (path == "lan") {
+                if (!WebSocketUtil.isConnected() || !WebSocketUtil.isTransportGenerationValidated(generation)) {
+                    Log.w(TAG, "Dropped LAN nominate before validation")
+                    return
+                }
+                WebSocketUtil.reportLanNegotiationSuccess("peer_nominate_lan")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling transportNominate: ${e.message}")
         }
     }
 

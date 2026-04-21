@@ -73,7 +73,7 @@ object MacDeviceStatusManager {
             CoroutineScope(Dispatchers.IO).launch {
                 val ds = DataStoreManager(context)
                 val isMediaControlsEnabled = ds.getMacMediaControlsEnabled().first()
-                val isConnected = WebSocketUtil.isConnected()
+                val isConnected = WebSocketUtil.isConnectedOrRelayActive()
                 val isEssentialsEnabled = ds.getEssentialsConnectionEnabled().first()
 
                 if (isConnected && isMediaControlsEnabled && (title.isNotEmpty() || artist.isNotEmpty() || isPlaying)) {
@@ -175,7 +175,7 @@ object MacDeviceStatusManager {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 // Check current state
-                val isConnected = WebSocketUtil.isConnected()
+                val isConnected = WebSocketUtil.isConnectedOrRelayActive()
                 val currentStatus = _macDeviceStatus.value
 
                 if (isConnected && currentStatus != null) {

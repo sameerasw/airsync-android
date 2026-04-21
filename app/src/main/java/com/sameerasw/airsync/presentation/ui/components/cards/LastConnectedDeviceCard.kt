@@ -32,6 +32,7 @@ fun LastConnectedDeviceCard(
     isAutoReconnectEnabled: Boolean,
     onToggleAutoReconnect: (Boolean) -> Unit,
     onQuickConnect: () -> Unit,
+    onConnectWithRelay: () -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -121,23 +122,40 @@ fun LastConnectedDeviceCard(
 
 
 
-            Button(
-                onClick = {
-                    HapticUtil.performClick(haptics)
-                    onQuickConnect()
-                },
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .requiredHeight(65.dp)
                     .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Icon(
-                    painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_sync_desktop_24),
-                    contentDescription = "Quick connect",
-                    modifier = Modifier.padding(end = 12.dp),
-//                    tint = MaterialTheme.colorScheme.primary
-                )
-                Text("Quick Connect")
+                Button(
+                    onClick = {
+                        HapticUtil.performClick(haptics)
+                        onQuickConnect()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .requiredHeight(65.dp),
+                ) {
+                    Icon(
+                        painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_sync_desktop_24),
+                        contentDescription = "Quick connect",
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+                    Text("Quick Connect")
+                }
+
+                Button(
+                    onClick = {
+                        HapticUtil.performClick(haptics)
+                        onConnectWithRelay()
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .requiredHeight(65.dp),
+                ) {
+                    Text("Connect with Relay")
+                }
             }
 
             // Auto-reconnect toggle

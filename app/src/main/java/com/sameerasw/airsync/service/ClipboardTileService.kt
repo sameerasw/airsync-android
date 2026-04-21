@@ -9,6 +9,7 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,7 +49,7 @@ class ClipboardTileService : TileService() {
     override fun onStartListening() {
         super.onStartListening()
         serviceScope.launch {
-            val isConnected = WebSocketUtil.isConnected()
+            val isConnected = WebSocketUtil.isConnectedOrRelayActive()
             updateTileState(isConnected)
         }
     }
@@ -57,7 +58,7 @@ class ClipboardTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
-            val isConnected = WebSocketUtil.isConnected()
+            val isConnected = WebSocketUtil.isConnectedOrRelayActive()
             if (isConnected) {
                 try {
                     val intent = android.content.Intent(

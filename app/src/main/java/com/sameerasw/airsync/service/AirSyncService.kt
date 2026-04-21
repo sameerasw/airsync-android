@@ -17,6 +17,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.utils.AirBridgeClient
 import com.sameerasw.airsync.utils.DiscoveryMode
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
 import com.sameerasw.airsync.utils.WebSocketUtil
@@ -107,6 +108,18 @@ class AirSyncService : Service() {
             UDPDiscoveryManager.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
             startForeground(NOTIFICATION_ID, buildNotification()) // Update notification if needed
         }
+        if (!WebSocketUtil.isConnected() && AirBridgeClient.isRelayConnectedOrConnecting()) {
+            WebSocketUtil.sendTransportOffer(
+                context = applicationContext,
+                reason = "app_foreground"
+            )
+            WebSocketUtil.startLanFirstRelayProbe(
+                context = applicationContext,
+                immediate = true,
+                source = "app_foreground",
+                resetBackoff = true
+            )
+        }
     }
 
     private fun handleAppBackground() {
@@ -160,6 +173,35 @@ class AirSyncService : Service() {
                     if (isScanning) {
                         UDPDiscoveryManager.burstBroadcast(applicationContext)
                         WebSocketUtil.requestAutoReconnect(applicationContext)
+                        // If relay is already active, also force a direct LAN retry immediately.
+                        if (AirBridgeClient.isRelayConnectedOrConnecting()) {
+                            WebSocketUtil.sendTransportOffer(
+                                context = applicationContext,
+                                reason = "network_onAvailable_scanning"
+                            )
+                            WebSocketUtil.startLanFirstRelayProbe(
+                                context = applicationContext,
+                                immediate = true,
+                                source = "network_onAvailable_scanning",
+                                resetBackoff = true
+                            )
+                        }
+                    }
+                    // When WiFi returns while relay is active but LAN is down,
+                    // attempt to re-establish the preferred local connection.
+                    if (!isScanning && !WebSocketUtil.isConnected() && AirBridgeClient.isRelayActive()) {
+                        Log.i(TAG, "WiFi available while relay is active — attempting LAN reconnect")
+                        UDPDiscoveryManager.burstBroadcast(applicationContext)
+                        WebSocketUtil.sendTransportOffer(
+                            context = applicationContext,
+                            reason = "network_onAvailable_sync"
+                        )
+                        WebSocketUtil.startLanFirstRelayProbe(
+                            context = applicationContext,
+                            immediate = true,
+                            source = "network_onAvailable_sync",
+                            resetBackoff = true
+                        )
                     }
                 }
             }

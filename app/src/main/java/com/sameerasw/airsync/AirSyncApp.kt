@@ -4,9 +4,17 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.AirBridgeClient
+import com.sameerasw.airsync.utils.WebSocketMessageHandler
 import io.sentry.android.core.SentryAndroid
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import com.sameerasw.airsync.utils.WebSocketUtil
+import android.util.Log
 
 class AirSyncApp : Application() {
     private var activityCount = 0
@@ -20,6 +28,7 @@ class AirSyncApp : Application() {
         super.onCreate()
         instance = this
         initSentry()
+        initAirBridge()
         registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
             override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
             override fun onActivityStarted(activity: Activity) {
@@ -46,6 +55,27 @@ class AirSyncApp : Application() {
         SentryAndroid.init(this) { options ->
             options.dsn = "https://cb9b0ead9e88e0818269e773cb662141@o4510996760887296.ingest.de.sentry.io/4511002261389392"
             options.isEnabled = true
+        }
+    }
+
+    private fun initAirBridge() {
+        // Wire message handler: relay messages → existing WebSocket message pipeline
+        AirBridgeClient.setMessageHandler { context, message ->
+            WebSocketMessageHandler.handleIncomingMessage(context, message)
+        }
+
+        // Auto-connect if previously enabled
+        CoroutineScope(Dispatchers.IO).launch {
+            val ds = DataStoreManager.getInstance(this@AirSyncApp)
+            val enabled = ds.getAirBridgeEnabled().first()
+            if (enabled) {
+                // Give LAN a 1-second head start if we appear to be on a private LAN.
+                if (WebSocketUtil.isLanNegotiationAllowed(this@AirSyncApp)) {
+                    Log.d("AirSyncApp", "Private LAN detected on startup, delaying Relay by 1000ms for fast-LAN.")
+                    delay(1000)
+                }
+                AirBridgeClient.connect(this@AirSyncApp)
+            }
         }
     }
 }

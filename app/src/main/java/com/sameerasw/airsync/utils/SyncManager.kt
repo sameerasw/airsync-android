@@ -43,7 +43,7 @@ object SyncManager {
             while (isActive && isSyncing.get()) {
                 try {
                     // Check if WebSocket is connected and sync is enabled
-                    if (WebSocketUtil.isConnected()) {
+                    if (WebSocketUtil.isConnectedOrRelayActive()) {
                         val dataStoreManager = DataStoreManager(context)
                         val isSyncEnabled = dataStoreManager.getNotificationSyncEnabled().first()
 
@@ -110,7 +110,7 @@ object SyncManager {
                     shouldSync = true // First time
                 }
 
-                if (shouldSync && WebSocketUtil.isConnected()) {
+                if (shouldSync && WebSocketUtil.isConnectedOrRelayActive()) {
                     val statusJson = DeviceInfoUtil.generateDeviceStatusJson(context)
                     val success = WebSocketUtil.sendMessage(statusJson)
 
