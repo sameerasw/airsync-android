@@ -917,48 +917,6 @@ object WebSocketUtil {
                 val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
                 acquireWifiLock(context)
 
-<<<<<<< HEAD
-                // Fast path: attempt immediate connection to last known LAN IP
-                if (!isConnected.get() && !isConnecting.get() && !AirBridgeClient.isRelayConnectedOrConnecting()) {
-                    val manual = ds.getUserManuallyDisconnected().first()
-                    val autoEnabled = ds.getAutoReconnectEnabled().first()
-                    if (!manual && autoEnabled) {
-                        val last = ds.getLastConnectedDevice().first()
-                        if (last != null) {
-                            val all = ds.getAllNetworkDeviceConnections().first()
-                            val targetConnection = all.firstOrNull { it.deviceName == last.name }
-                            if (targetConnection != null) {
-                                val localIp = DeviceInfoUtil.getWifiIpAddress(context)
-                                val knownIp = targetConnection.getClientIpForNetwork(localIp ?: "") ?: last.ipAddress
-                                val port = targetConnection.port.toIntOrNull() ?: 6996
-                                Log.d(TAG, "Fast LAN auto-reconnect attempting known IP: $knownIp")
-                                connect(
-                                    context = context,
-                                    ipAddress = knownIp,
-                                    port = port,
-                                    symmetricKey = targetConnection.symmetricKey,
-                                    manualAttempt = false,
-                                    onConnectionStatus = { connected ->
-                                        if (connected) {
-                                            CoroutineScope(Dispatchers.IO).launch {
-                                                try {
-                                                    ds.updateNetworkDeviceLastConnected(
-                                                        targetConnection.deviceName,
-                                                        System.currentTimeMillis()
-                                                    )
-                                                } catch (_: Exception) {}
-                                                cancelAutoReconnect()
-                                            }
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Monitor discovered devices
-=======
                 // 1.  Retry Loop (Try last known IPs immediately and periodically)
                 launch {
                     var backoffMs = 2000L
@@ -972,14 +930,16 @@ object WebSocketUtil {
                             break
                         }
 
-                        if (!isConnecting.get()) {
+                        if (!isConnecting.get() && !AirBridgeClient.isRelayConnectedOrConnecting()) {
                             val last = ds.getLastConnectedDevice().first()
                             if (last != null) {
                                 val all = ds.getAllNetworkDeviceConnections().first()
                                 val targetConnection = all.firstOrNull { it.deviceName == last.name }
                                 
                                 if (targetConnection != null) {
-                                    val ips = targetConnection.networkConnections.values.joinToString(",")
+                                    val localIp = DeviceInfoUtil.getWifiIpAddress(context)
+                                    val knownIp = targetConnection.getClientIpForNetwork(localIp ?: "") ?: last.ipAddress
+                                    val ips = if (knownIp.isNotEmpty()) knownIp else targetConnection.networkConnections.values.joinToString(",")
                                     val port = targetConnection.port.toIntOrNull() ?: 6996
                                     
                                     Log.d(TAG, "Proactive retry to $ips:$port (backoff: ${backoffMs}ms)")
@@ -991,6 +951,14 @@ object WebSocketUtil {
                                         manualAttempt = false,
                                         onConnectionStatus = { connected ->
                                             if (connected) {
+                                                CoroutineScope(Dispatchers.IO).launch {
+                                                    try {
+                                                        ds.updateNetworkDeviceLastConnected(
+                                                            targetConnection.deviceName,
+                                                            System.currentTimeMillis()
+                                                        )
+                                                    } catch (_: Exception) {}
+                                                }
                                                 releaseWifiLock()
                                                 cancelAutoReconnect()
                                             }
@@ -1007,7 +975,6 @@ object WebSocketUtil {
                 }
 
                 // 2. Discovery Monitoring (Listen for presence packets in case IP changed)
->>>>>>> origin/main
                 UDPDiscoveryManager.discoveredDevices.collect { discoveredList ->
                     if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
                     if (AirBridgeClient.isRelayConnectedOrConnecting()) {
@@ -1046,15 +1013,12 @@ object WebSocketUtil {
                     }
                 }
             } catch (e: Exception) {
-<<<<<<< HEAD
                 if (e is kotlinx.coroutines.CancellationException) {
+                    // Ignore cancellation
                 } else {
-                    Log.e(TAG, "Error in discovery auto-reconnect: ${e.message}")
+                    Log.e(TAG, "Error in smart auto-reconnect: ${e.message}")
                 }
-=======
-                Log.e(TAG, "Error in smart auto-reconnect: ${e.message}")
                 releaseWifiLock()
->>>>>>> origin/main
             }
         }
     }
