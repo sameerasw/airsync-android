@@ -36,7 +36,14 @@ object ServiceManager {
     fun updateServiceState(context: Context) {
         CoroutineScope(Dispatchers.IO).launch {
             if (shouldServiceRun(context)) {
-                AirSyncService.startScanning(context)
+                if (WebSocketUtil.isConnected()) {
+                    // If already connected, start in sync mode so the notification correctly shows "Connected to X"
+                    val dataStore = DataStoreManager.getInstance(context)
+                    val lastDevice = dataStore.getLastConnectedDevice().first()
+                    AirSyncService.start(context, lastDevice?.name)
+                } else {
+                    AirSyncService.startScanning(context)
+                }
             } else {
                 AirSyncService.stop(context)
             }

@@ -26,11 +26,14 @@ object NetworkMonitor {
             val activeNetwork = connectivityManager.activeNetwork
             val networkCapabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
 
-            val isConnected = networkCapabilities != null &&
-                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            val isConnected = networkCapabilities != null
             val isWifi =
                 networkCapabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-            val ipAddress = if (isWifi) DeviceInfoUtil.getWifiIpAddress(context) else null
+            val ipAddress = if (isWifi) {
+                DeviceInfoUtil.getWifiIpAddress(context)
+            } else {
+                DeviceInfoUtil.getLocalIpAddress()
+            }
 
             return NetworkInfo(isConnected, isWifi, ipAddress)
         }
@@ -59,10 +62,7 @@ object NetworkMonitor {
             }
         }
 
-        val request = NetworkRequest.Builder()
-            .addCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
-            .addTransportType(NetworkCapabilities.TRANSPORT_WIFI)
-            .build()
+        val request = NetworkRequest.Builder().build()
 
         connectivityManager.registerNetworkCallback(request, networkCallback)
 

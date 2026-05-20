@@ -107,6 +107,35 @@ object DeviceInfoUtil {
         }
     }
 
+    data class NetworkStatus(
+        val isConnected: Boolean,
+        val hasWifi: Boolean,
+        val hasVpn: Boolean
+    )
+
+    fun getNetworkStatus(context: Context): NetworkStatus {
+        return try {
+            val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val activeNetwork = connectivityManager.activeNetwork
+            val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork)
+            
+            if (capabilities == null) {
+                return NetworkStatus(false, false, false)
+            }
+            
+            val hasWifi = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+            val hasVpn = capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+            
+            NetworkStatus(
+                isConnected = true,
+                hasWifi = hasWifi,
+                hasVpn = hasVpn
+            )
+        } catch (_: Exception) {
+            NetworkStatus(false, false, false)
+        }
+    }
+
     fun getBatteryInfo(context: Context): BatteryInfo {
         return try {
             val batteryIntent =

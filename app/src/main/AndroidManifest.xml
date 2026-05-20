@@ -118,6 +118,7 @@
         <service
             android:name=".service.MediaNotificationListener"
             android:exported="false"
+            android:directBootAware="true"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -178,15 +179,11 @@
 
 
 
-        <!-- Wake-up Service for receiving reconnection requests from Mac -->
-        <service
-            android:name=".service.WakeupService"
-            android:exported="false" />
-
         <!-- AirSync Service - maintains connection to Mac and handles call monitoring -->
         <service
             android:name=".service.AirSyncService"
             android:exported="false"
+            android:directBootAware="true"
             android:foregroundServiceType="connectedDevice" />
 
         <service

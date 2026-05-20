@@ -40,11 +40,13 @@ enum class DiscoveryMode {
     PASSIVE  // Listening only (Background)
 }
 
+
 object UDPDiscoveryManager {
     private const val TAG = "UDPDiscoveryManager"
     private const val BROADCAST_PORT = 8889
     private const val PRUNE_INTERVAL_MS = 10000L
     private const val DEVICE_TIMEOUT_MS = 25000L
+    private const val PEER_EXCHANGE_INTERVAL_MS = 30000L  // Exchange peer info every 30s
 
     private val _discoveredDevices = MutableStateFlow<List<DiscoveredDevice>>(emptyList())
     val discoveredDevices: StateFlow<List<DiscoveredDevice>> = _discoveredDevices.asStateFlow()
@@ -54,6 +56,7 @@ object UDPDiscoveryManager {
     private var broadcastJob: Job? = null
     private var pruningJob: Job? = null
     private var burstJob: Job? = null
+    private var peerExchangeJob: Job? = null
 
     @Volatile
     private var isRunning = false
@@ -92,6 +95,9 @@ object UDPDiscoveryManager {
         }
     }
 
+    @Volatile
+    private var lastKnownPeerIps: MutableMap<String, Set<String>> = mutableMapOf() // deviceId -> IPs
+
     fun start(context: Context, discoveryEnabled: Boolean = true) {
         isDiscoveryEnabled = discoveryEnabled
         if (isRunning) {
@@ -100,6 +106,7 @@ object UDPDiscoveryManager {
         }
 
         isRunning = true
+        
         Log.d(
             TAG,
             "Starting UDP Discovery Manager (Discovery: $isDiscoveryEnabled, Mode: $currentMode)"
@@ -108,7 +115,8 @@ object UDPDiscoveryManager {
         acquireMulticastLock(context)
         startListening(context)
         updateBroadcastingState(context)
-        startPruning()
+        startPruning(context)
+        startPeerExchange(context)
     }
 
     fun setDiscoveryMode(context: Context, mode: DiscoveryMode) {
@@ -135,6 +143,16 @@ object UDPDiscoveryManager {
             Log.d(TAG, "Burst broadcast finished")
         }
     }
+
+    fun triggerPeerExchange(context: Context) {
+        if (!isRunning) return
+        Log.d(TAG, "Manually triggering peer exchange")
+        CoroutineScope(Dispatchers.IO).launch {
+            performPeerExchange(context)
+        }
+    }
+
+    fun getLastKnownPeerIps(): Map<String, Set<String>> = lastKnownPeerIps.toMap()
 
     private fun updateBroadcastingState(context: Context) {
         broadcastJob?.cancel()
@@ -225,50 +243,71 @@ object UDPDiscoveryManager {
     }
 
     private fun handleIncomingTraffic(context: Context, message: String, sourceIp: String?) {
-        try {
-            val json = JSONObject(message)
-            val type = json.optString("type")
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                Log.d(TAG, "RAW UDP MSG from $sourceIp: $message")
+                var payload = message
+                if (payload.startsWith("AIRSYNC_WAKEUP:")) {
+                    payload = payload.substring("AIRSYNC_WAKEUP:".length)
+                }
+                val json = JSONObject(payload)
+                val type = json.optString("type")
 
-            when (type) {
-                "presence" -> {
-                    val deviceType = json.optString("deviceType")
-                    if (deviceType == "mac") {
-                        handlePresenceMessage(context, json, sourceIp)
+                when (type) {
+                    "presence" -> {
+                        val deviceType = json.optString("deviceType")
+                        if (deviceType == "mac") {
+                            handlePresenceMessage(context, json, sourceIp)
 
-                        // Optimization: If we receive a presence packet in PASSIVE mode, 
-                        // we might want to respond once so the Mac knows we are here,
-                        // essentially performing a "lazy handshake"
-                        if (currentMode == DiscoveryMode.PASSIVE && isDiscoveryEnabled) {
-                            CoroutineScope(Dispatchers.IO).launch {
-                                // broadcastPresence(context) // Optional: avoid if we want to be truly silent
+                            // Lazy-handshake: when in PASSIVE mode and we see a Mac presence beacon,
+                            // respond with a single unicast so the Mac knows we're alive.
+                            // This is battery-friendly (no loop, no timer) and is the primary
+                            // mechanism that makes the Mac auto-discover the Android when the
+                            // AirSync app is in the background.
+                            if (currentMode == DiscoveryMode.PASSIVE && isDiscoveryEnabled) {
+                                val macIp = sourceIp ?: run {
+                                    val ipsArray = json.optJSONArray("ips")
+                                    if (ipsArray != null && ipsArray.length() > 0) ipsArray.getString(0)
+                                    else json.optString("ip").takeIf { it.isNotEmpty() }
+                                }
+                                if (macIp != null) {
+                                    // Already in an IO coroutine, no need to launch another one for unicast
+                                    sendPresenceUnicast(context, macIp)
+                                    if (!WebSocketUtil.isConnected() && !WebSocketUtil.isConnecting()) {
+                                        WebSocketUtil.requestAutoReconnect(context)
+                                    }
+                                }
                             }
                         }
                     }
-                }
 
-                "bye" -> {
-                    val deviceType = json.optString("deviceType")
-                    if (deviceType == "mac") {
-                        val id = json.optString("id")
-                        val currentList = _discoveredDevices.value.filter { it.id != id }
-                        _discoveredDevices.value = currentList
+                    "bye" -> {
+                        val deviceType = json.optString("deviceType")
+                        if (deviceType == "mac") {
+                            val id = json.optString("id")
+                            val currentList = _discoveredDevices.value.filter { it.id != id }
+                            _discoveredDevices.value = currentList
+                        }
                     }
-                }
 
-                "wakeUpRequest" -> {
-                    // Handle wake-up logic shifted from WakeupService
-                    val data = if (json.has("data")) json.getJSONObject("data") else json
-                    val macIp = data.optString("macIP", data.optString("macIp", ""))
-                    val macPort = data.optInt("macPort", 6996)
-                    val macName = data.optString("macName", "Mac")
+                    "wakeUpRequest" -> {
+                        // Handle wake-up logic shifted from WakeupService
+                        val data = if (json.has("data")) json.getJSONObject("data") else json
+                        val macIp = data.optString("macIP", data.optString("macIp", ""))
+                        val macPort = data.optInt("macPort", 6996)
+                        val macName = data.optString("macName", "Mac")
 
-                    CoroutineScope(Dispatchers.IO).launch {
                         WakeupHandler.processWakeupRequest(context, macIp, macPort, macName)
                     }
-                }
-            }
-        } catch (e: Exception) {
 
+                    "peerExchange" -> {
+                        // Handle peer exchange for no-WiFi discovery
+                        handlePeerExchange(context, json)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.d(TAG, "Error handling incoming traffic: ${e.message}, message=$message")
+            }
         }
     }
 
@@ -490,6 +529,204 @@ object UDPDiscoveryManager {
         }
     }
 
+    /**
+     * Send a single unicast presence packet to a specific IP (e.g., the Mac that just pinged us).
+     * Used in PASSIVE mode as a lazy-handshake so the Mac becomes aware we are reachable.
+     */
+    private fun sendPresenceUnicast(context: Context, targetIp: String) {
+        try {
+            val allIps = getAllIpAddresses()
+            if (allIps.isEmpty()) return
+
+            val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+            val customName = try {
+                runBlocking { ds.getDeviceName().first() }
+            } catch (e: Exception) { "" }
+
+            val deviceName = if (customName.isNotBlank()) customName else android.os.Build.MODEL
+            val expandNetworkingEnabled = try {
+                runBlocking { ds.getExpandNetworkingEnabled().first() }
+            } catch (e: Exception) { false }
+
+            val filteredIps = if (expandNetworkingEnabled) allIps else allIps.filter { !it.startsWith("100.") }
+            if (filteredIps.isEmpty()) return
+
+            val deviceId = DeviceInfoUtil.getDeviceId(context)
+            val json = JSONObject()
+            json.put("type", "presence")
+            json.put("deviceType", "android")
+            json.put("id", deviceId)
+            json.put("name", deviceName)
+            json.put("ips", FilteredIpArray(filteredIps))
+            val payload = json.toString()
+
+            sendUnicast(targetIp, payload)
+            Log.d(TAG, "Lazy-handshake: sent presence unicast to $targetIp")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to send presence unicast: ${e.message}")
+        }
+    }
+
+    private fun startPeerExchange(context: Context) {
+        peerExchangeJob?.cancel()
+        peerExchangeJob = CoroutineScope(Dispatchers.IO).launch {
+            while (isRunning) {
+                delay(PEER_EXCHANGE_INTERVAL_MS)
+                performPeerExchange(context)
+            }
+        }
+    }
+
+    private fun performPeerExchange(context: Context) {
+        val allIps = getAllIpAddresses()
+        if (allIps.isEmpty()) return
+
+        val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+        val expandNetworkingEnabled = try {
+            runBlocking { ds.getExpandNetworkingEnabled().first() }
+        } catch (e: Exception) { true }
+
+        val customName = try {
+            runBlocking { ds.getDeviceName().first() }
+        } catch (e: Exception) { "" }
+        val deviceName = if (customName.isNotBlank()) customName else android.os.Build.MODEL
+        val deviceId = DeviceInfoUtil.getDeviceId(context)
+
+        val json = JSONObject()
+        json.put("type", "peerExchange")
+        json.put("deviceType", "android")
+        json.put("id", deviceId)
+        json.put("name", deviceName)
+        
+        // Include all IPs based on settings
+        val ipsToSend = if (expandNetworkingEnabled) allIps else allIps.filter { !it.startsWith("100.") }
+        json.put("ips", FilteredIpArray(ipsToSend))
+        
+        // Include known peer IPs from stored connections (for no-WiFi scenarios)
+        val knownPeers = mutableMapOf<String, List<String>>()
+        try {
+            val connections = runBlocking { ds.getAllNetworkDeviceConnections().first() }
+            for (conn in connections) {
+                val peerIps = conn.networkConnections.values.toList()
+                if (peerIps.isNotEmpty()) {
+                    knownPeers[conn.deviceName] = peerIps
+                }
+            }
+        } catch (e: Exception) { }
+        
+        // Build JSON object for knownPeers manually
+        val knownPeersJson = org.json.JSONObject()
+        for ((name, ips) in knownPeers) {
+            val ipsArray = org.json.JSONArray()
+            for (ip in ips) {
+                ipsArray.put(ip)
+            }
+            knownPeersJson.put(name, ipsArray)
+        }
+        json.put("knownPeers", knownPeersJson)
+
+        val payload = json.toString()
+
+        // Send to all known peer IPs (even without WiFi, we can reach Tailscale peers)
+        val allKnownTargetIps = mutableSetOf<String>()
+        try {
+            val connections = runBlocking { ds.getAllNetworkDeviceConnections().first() }
+            for (conn in connections) {
+                allKnownTargetIps.addAll(conn.networkConnections.values)
+            }
+        } catch (e: Exception) { }
+
+        // Store our IPs for peers to discover
+        lastKnownPeerIps[deviceId] = ipsToSend.toSet()
+
+        // Broadcast our presence to all known peers
+        for (targetIp in allKnownTargetIps) {
+            // Skip if it's our own IP
+            if (ipsToSend.contains(targetIp)) continue
+            
+            // If Expanded Networking is disabled, don't ping Tailscale targets
+            if (!expandNetworkingEnabled && targetIp.startsWith("100.")) continue
+            
+            sendUnicast(targetIp, payload)
+        }
+
+        Log.d(TAG, "Peer exchange completed, knownPeers=${knownPeers.size}")
+    }
+
+    private fun handlePeerExchange(context: Context, json: JSONObject) {
+        try {
+            val id = json.optString("id")
+            val name = json.optString("name")
+            val ipsArray = json.optJSONArray("ips")
+            val port = json.optInt("port", 0)
+            val deviceType = json.optString("deviceType")
+            val knownPeers = json.optJSONObject("knownPeers")
+
+            if (id.isEmpty() || name.isEmpty() || ipsArray == null) return
+
+            val ips = mutableSetOf<String>()
+            for (i in 0 until ipsArray.length()) {
+                ips.add(ipsArray.getString(i))
+            }
+
+            val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+            val expandNetworkingEnabled = try {
+                runBlocking { ds.getExpandNetworkingEnabled().first() }
+            } catch (e: Exception) { true }
+
+            // Validate IPs
+            val validIps = ips.filter { ip ->
+                if (ip.startsWith("100.")) {
+                    expandNetworkingEnabled || DeviceInfoUtil.getNetworkStatus(context).hasVpn
+                } else true
+            }.toSet()
+
+            if (validIps.isEmpty()) return
+
+            // Update peer knowledge for future connections
+            lastKnownPeerIps[id] = validIps
+
+            // Also learn about peer's known peers (recursive discovery)
+            if (knownPeers != null && expandNetworkingEnabled) {
+                handleKnownPeersFromPeer(context, knownPeers)
+            }
+
+            val device = DiscoveredDevice(
+                id = id,
+                name = name,
+                ips = validIps,
+                port = port,
+                type = deviceType,
+                lastSeen = System.currentTimeMillis()
+            )
+            updateDeviceList(device, validIps)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling peer exchange: ${e.message}")
+        }
+    }
+
+    private fun handleKnownPeersFromPeer(context: Context, knownPeers: org.json.JSONObject) {
+        // When a peer sends us their known peers, store them for potential future connection
+        // This helps discover devices even when we're not on the same network
+        try {
+            val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+            
+            knownPeers.keys().forEach { deviceName ->
+                val peerIps = knownPeers.getJSONArray(deviceName)
+                val ips = mutableSetOf<String>()
+                for (i in 0 until peerIps.length()) {
+                    ips.add(peerIps.getString(i))
+                }
+                
+                // Store these IPs as potential connection targets
+                // This allows us to reach peers even if we can't broadcast
+                Log.d(TAG, "Learned peer $deviceName with IPs: $ips from peer exchange")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error handling known peers: ${e.message}")
+        }
+    }
+
     private fun FilteredIpArray(ips: List<String>): org.json.JSONArray {
         val array = org.json.JSONArray()
         ips.forEach { array.put(it) }
@@ -526,7 +763,7 @@ object UDPDiscoveryManager {
         return ips
     }
 
-    private fun startPruning() {
+    private fun startPruning(context: Context) {
         pruningJob = CoroutineScope(Dispatchers.IO).launch {
             while (isRunning) {
                 delay(PRUNE_INTERVAL_MS)
@@ -537,13 +774,8 @@ object UDPDiscoveryManager {
                     _discoveredDevices.value = active
                 }
 
-                // Smart Auto-Connect logic trigger
-                // When in PASSIVE mode, if we see a device we know, try to connect!
-                if (currentMode == DiscoveryMode.PASSIVE && active.isNotEmpty()) {
-                    // We rely on the WebSocketUtil's existing auto-connect logic 
-                    // which might need to be notified that candidates are available
-                    // But actually, WebSocketUtil.tryStartAutoReconnect observes _discoveredDevices
-                    // so it should pick it up automatically if the service requested auto-connect.
+                if (active.isNotEmpty() && !WebSocketUtil.isConnected() && !WebSocketUtil.isConnecting()) {
+                    WebSocketUtil.requestAutoReconnect(context)
                 }
             }
         }
