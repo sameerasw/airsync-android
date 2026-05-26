@@ -369,7 +369,7 @@ object AirBridgeClient {
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .writeTimeout(10, TimeUnit.SECONDS)
                 .readTimeout(0, TimeUnit.SECONDS)
-                .pingInterval(0, TimeUnit.SECONDS) // Disable client-side pings to prevent protocol conflicts
+                .pingInterval(20, TimeUnit.SECONDS) // Active pings to prevent silent TCP drops
                 .build()
         }
 
@@ -528,8 +528,13 @@ object AirBridgeClient {
                     return
                 }
                 "mac_info" -> {
-                    // Server echoing Mac's info — we can ignore this at the relay level
-                    // but let the message handler process it for device discovery
+                    val macIp = json.optString("localIp", "")
+                    val macPort = json.optInt("port", 0)
+                    if (macIp.isNotBlank() && macPort > 0) {
+                        Log.i(TAG, "Received Mac LAN info over relay: $macIp:$macPort")
+                        WebSocketUtil.updateMacLanInfoFromRelay(macIp, macPort)
+                    }
+                    return
                 }
                 "error" -> {
                     val msg = json.optString("message", "Unknown error")

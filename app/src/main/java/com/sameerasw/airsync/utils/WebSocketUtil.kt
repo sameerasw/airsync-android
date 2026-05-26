@@ -36,7 +36,7 @@ object WebSocketUtil {
     private var webSocket: WebSocket? = null
     private var client: OkHttpClient? = null
     var currentIpAddress: String? = null
-    private var currentPort: Int? = null
+    var currentPort: Int? = null
     private var currentSymmetricKey: javax.crypto.SecretKey? = null
     private val isConnected = AtomicBoolean(false)
     private val isConnecting = AtomicBoolean(false)
@@ -409,6 +409,12 @@ object WebSocketUtil {
                                             Log.w(TAG, "Handshake timed out")
                                             isConnected.set(false)
                                             isConnecting.set(false)
+                                            isSocketOpen.set(false)
+                                            handshakeCompleted.set(false)
+                                            handshakeTimeoutJob?.cancel()
+                                            connectionAttemptJob?.cancel()
+                                            currentIpAddress = null
+                                            currentPort = null
                                             try {
                                                 webSocket.close(4001, "Handshake timeout")
                                             } catch (_: Exception) {
@@ -602,6 +608,7 @@ object WebSocketUtil {
                                     handshakeTimeoutJob?.cancel()
                                     connectionAttemptJob?.cancel()
                                     currentIpAddress = null
+                                    currentPort = null
                                     try {
                                         ServiceManager.updateServiceState(context)
                                     } catch (_: Exception) {
@@ -714,23 +721,26 @@ object WebSocketUtil {
      * Disconnects the WebSocket and cleans up resources.
      * Stops related services (AirSyncService, periodic sync) and updates UI state.
      */
-    fun disconnect(context: Context? = null) {
-        Log.d(TAG, "Disconnecting WebSocket")
+    fun disconnect(context: Context? = null, isManual: Boolean = true) {
+        Log.d(TAG, "Disconnecting WebSocket (isManual=$isManual)")
         isConnected.set(false)
         isConnecting.set(false)
         isSocketOpen.set(false)
         handshakeCompleted.set(false)
         handshakeTimeoutJob?.cancel()
         currentIpAddress = null
+        currentPort = null
 
-        // Set manual disconnect flag
+        // Set manual disconnect flag if requested
         val ctx = context ?: appContext
-        ctx?.let { c ->
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
-                    ds.setUserManuallyDisconnected(true)
-                } catch (_: Exception) {
+        if (isManual) {
+            ctx?.let { c ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
+                        ds.setUserManuallyDisconnected(true)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
@@ -738,10 +748,11 @@ object WebSocketUtil {
         // Stop periodic sync when disconnecting
         SyncManager.stopPeriodicSync()
         lastAdvertisedTransport.set(null)
-        stopLanFirstRelayProbe("manual_disconnect")
-        resetLanProbeFailureState("manual_disconnect")
+        val probeReason = if (isManual) "manual_disconnect" else "network_change_disconnect"
+        stopLanFirstRelayProbe(probeReason)
+        resetLanProbeFailureState(probeReason)
 
-        webSocket?.close(1000, "Manual disconnection")
+        webSocket?.close(1000, if (isManual) "Manual disconnection" else "Network change disconnection")
         webSocket = null
 
         // Transition back to scanning on disconnect
@@ -1399,5 +1410,36 @@ object WebSocketUtil {
         }
     }
 
+    fun updateMacLanInfoFromRelay(ip: String, port: Int) {
+        val context = appContext ?: return
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
+                val last = ds.getLastConnectedDevice().first() ?: return@launch
+                val all = ds.getAllNetworkDeviceConnections().first()
+                val targetConnection = all.firstOrNull { it.deviceName == last.name }
+                if (targetConnection != null) {
+                    val ourIp = DeviceInfoUtil.getWifiIpAddress(context) ?: ""
+                    if (ourIp.isNotBlank()) {
+                        ds.saveNetworkDeviceConnection(
+                            deviceName = targetConnection.deviceName,
+                            ourIp = ourIp,
+                            clientIp = ip,
+                            port = port.toString(),
+                            isPlus = targetConnection.isPlus,
+                            symmetricKey = targetConnection.symmetricKey,
+                            model = targetConnection.model,
+                            deviceType = targetConnection.deviceType
+                        )
+                        Log.i(TAG, "Updated Mac LAN IP to $ip and port to $port from AirBridge relay")
+                        // Trigger immediate LAN reconnect check
+                        startLanFirstRelayProbe(context, immediate = true, source = "mac_info_rx", resetBackoff = true)
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to update Mac LAN info from relay: ${e.message}")
+            }
+        }
+    }
 
 }
