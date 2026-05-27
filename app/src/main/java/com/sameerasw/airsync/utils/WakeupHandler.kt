@@ -45,6 +45,14 @@ object WakeupHandler {
                 return
             }
 
+            if (!isManual) {
+                val isAutoReconnectEnabled = dataStoreManager.getAutoReconnectEnabled().first()
+                if (!isAutoReconnectEnabled) {
+                    Log.d(TAG, "Ignoring wake-up request because auto-reconnect is disabled in settings")
+                    return
+                }
+            }
+
             // Clear manual disconnect flag since this is an external wake-up request
             dataStoreManager.setUserManuallyDisconnected(false)
 

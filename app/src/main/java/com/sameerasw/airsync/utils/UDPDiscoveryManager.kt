@@ -463,12 +463,25 @@ object UDPDiscoveryManager {
 
         val deviceId = DeviceInfoUtil.getDeviceId(context)
 
+        val autoConnect = try {
+            runBlocking { ds.getAutoReconnectEnabled().first() }
+        } catch (e: Exception) {
+            true
+        }
+        val bleAutoConnect = try {
+            runBlocking { ds.getBleAutoConnectEnabled().first() }
+        } catch (e: Exception) {
+            true
+        }
+
         val json = JSONObject()
         json.put("type", "presence")
         json.put("deviceType", "android")
         json.put("id", deviceId)
         json.put("name", deviceName)
         json.put("ips", FilteredIpArray(filteredLocalIps)) // Send FILTERED IPs
+        json.put("autoConnect", autoConnect)
+        json.put("bleAutoConnect", bleAutoConnect)
         val payload = json.toString()
         val data = payload.toByteArray()
 
@@ -583,12 +596,26 @@ object UDPDiscoveryManager {
             if (filteredIps.isEmpty()) return
 
             val deviceId = DeviceInfoUtil.getDeviceId(context)
+
+            val autoConnect = try {
+                runBlocking { ds.getAutoReconnectEnabled().first() }
+            } catch (e: Exception) {
+                true
+            }
+            val bleAutoConnect = try {
+                runBlocking { ds.getBleAutoConnectEnabled().first() }
+            } catch (e: Exception) {
+                true
+            }
+
             val json = JSONObject()
             json.put("type", "presence")
             json.put("deviceType", "android")
             json.put("id", deviceId)
             json.put("name", deviceName)
             json.put("ips", FilteredIpArray(filteredIps))
+            json.put("autoConnect", autoConnect)
+            json.put("bleAutoConnect", bleAutoConnect)
             val payload = json.toString()
 
             sendUnicast(targetIp, payload)
@@ -623,11 +650,24 @@ object UDPDiscoveryManager {
         val deviceName = if (customName.isNotBlank()) customName else android.os.Build.MODEL
         val deviceId = DeviceInfoUtil.getDeviceId(context)
 
+        val autoConnect = try {
+            runBlocking { ds.getAutoReconnectEnabled().first() }
+        } catch (e: Exception) {
+            true
+        }
+        val bleAutoConnect = try {
+            runBlocking { ds.getBleAutoConnectEnabled().first() }
+        } catch (e: Exception) {
+            true
+        }
+
         val json = JSONObject()
         json.put("type", "peerExchange")
         json.put("deviceType", "android")
         json.put("id", deviceId)
         json.put("name", deviceName)
+        json.put("autoConnect", autoConnect)
+        json.put("bleAutoConnect", bleAutoConnect)
         
         // Include all IPs based on settings
         val ipsToSend = if (expandNetworkingEnabled) allIps else allIps.filter { !it.startsWith("100.") }
