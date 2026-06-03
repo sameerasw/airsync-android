@@ -426,11 +426,7 @@ object WebSocketMessageHandler {
     private fun handlePing(context: Context) {
         try {
             // Reply immediately with lightweight pong message to keep session active
-            val pongJson = "{\"type\":\"pong\",\"data\":{}}"
-            WebSocketUtil.sendMessage(pongJson)
-
-            // Respond to ping with current device status to keep connection alive
-            // We must force sync here because the server expects a response to every ping
+            WebSocketUtil.sendMessage("{\"type\":\"pong\",\"data\":{}}")
             SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
@@ -439,6 +435,8 @@ object WebSocketMessageHandler {
 
     private fun handleDisconnectRequest(context: Context) {
         try {
+            // Set the manual disconnect pending flag on WebSocketUtil to suppress toasts
+            WebSocketUtil.isManualDisconnectPending.set(true)
             // Mark as intentional disconnect to prevent auto-reconnect
             kotlinx.coroutines.runBlocking {
                 try {

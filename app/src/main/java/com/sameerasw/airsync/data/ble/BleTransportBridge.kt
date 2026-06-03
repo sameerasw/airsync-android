@@ -22,7 +22,7 @@ object BleTransportBridge {
         return try {
             val md = MessageDigest.getInstance("SHA-256")
             val hash = md.digest(symmetricKey.toByteArray(Charsets.UTF_8))
-            Base64.getEncoder().encodeToString(hash.copyOf(16))
+            Base64.getEncoder().encodeToString(hash.copyOf(12))
         } catch (e: Exception) {
             Log.e(TAG, "Error deriving auth token: ${e.message}")
             ""
