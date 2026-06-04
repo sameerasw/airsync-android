@@ -162,6 +162,8 @@ fun AirSyncMainScreen(
 
     if (!uiState.isOnboardingCompleted) {
         hasSeenWelcomeThisSession = true
+    } else {
+        hasSeenWelcomeThisSession = false
     }
 
     // Volume & Media state
