@@ -39,6 +39,9 @@ import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.UDPDiscoveryManager
 import com.sameerasw.airsync.utils.WebSocketUtil
+import com.canerture.exceptionreport.handler.ExceptionReport
+import com.sameerasw.airsync.crash.CrashHandler
+import com.sameerasw.airsync.crash.CrashReportActivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import java.net.URLDecoder
@@ -174,6 +177,10 @@ class MainActivity : ComponentActivity() {
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
+
+        ExceptionReport(this) { deviceInfo, stackTrace ->
+            CrashHandler.onCrash(applicationContext, deviceInfo, stackTrace)
+        }.setCustomActivity(CrashReportActivity::class.java)
 
         // Dynamically set the splash screen icon based on last connected device
         splashScreen.setOnExitAnimationListener { splashScreenViewProvider ->
