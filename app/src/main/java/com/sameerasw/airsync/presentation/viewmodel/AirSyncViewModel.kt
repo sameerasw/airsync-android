@@ -211,12 +211,7 @@ class AirSyncViewModel(
             }
         }
 
-        // Observe sentry reporting preference
-        viewModelScope.launch {
-            repository.getSentryReportingEnabled().collect { enabled ->
-                _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
-            }
-        }
+
 
         // Observe widget transparency preference
         viewModelScope.launch {
@@ -368,7 +363,6 @@ class AirSyncViewModel(
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
             val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
-            val isSentryReportingEnabled = repository.getSentryReportingEnabled().first()
             val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
@@ -433,7 +427,6 @@ class AirSyncViewModel(
                 isPowerSaveMode = isPowerSaveMode,
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
-                isSentryReportingEnabled = isSentryReportingEnabled,
                 isOnboardingCompleted = !isFirstRun,
                 isQuickShareEnabled = isQuickShareEnabled
             )
@@ -703,13 +696,7 @@ class AirSyncViewModel(
         }
     }
 
-    fun setSentryReportingEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
-        viewModelScope.launch {
-            repository.setSentryReportingEnabled(enabled)
-            // Note: Changes typically take effect on next launch as Sentry is initialized in Application.onCreate
-        }
-    }
+
 
     fun setPitchBlackThemeEnabled(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)

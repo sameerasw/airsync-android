@@ -51,8 +51,6 @@
     <string name="subtitle_blur_disabled_samsung">Disabled due to compatibility issues with this Samsung device</string>
     <string name="label_pitch_black_theme">Pitch Black Theme</string>
     <string name="subtitle_pitch_black_theme">Pure black background in dark mode</string>
-    <string name="label_error_reporting">Error Reporting</string>
-    <string name="subtitle_error_reporting">Automatically report crashes when they happen</string>
 
     <!-- Onboarding / Welcome Screen -->
     <string name="welcome_title">Welcome to AirSync</string>
@@ -75,10 +73,6 @@
     <string name="action_how_to_connect">How to Connect?</string>
     <string name="action_back">Back</string>
 
-    <!-- Sentry Reporting (Picker) -->
-    <string name="sentry_report_mode_title">Crash reporting</string>
-    <string name="sentry_mode_off">Off</string>
-    <string name="sentry_mode_auto">Auto</string>
     <string name="label_app_icon_credits">App icon credits: @Syntrop2k2 on Telegram</string>
     <string name="url_syntrop_telegram">https://t.me/Syntrop2k2</string>
 

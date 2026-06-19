@@ -176,16 +176,6 @@ fun SettingsView(
                         viewModel.setPitchBlackThemeEnabled(enabled)
                     }
                 )
-
-                IconToggleItem(
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_error_reporting),
-                    description = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_error_reporting),
-                    iconRes = R.drawable.rounded_bug_report_24,
-                    isChecked = uiState.isSentryReportingEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setSentryReportingEnabled(enabled)
-                    }
-                )
             }
         }
 

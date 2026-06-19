@@ -224,13 +224,7 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getDefaultTab()
     }
 
-    override suspend fun setSentryReportingEnabled(enabled: Boolean) {
-        dataStoreManager.setSentryReportingEnabled(enabled)
-    }
 
-    override fun getSentryReportingEnabled(): Flow<Boolean> {
-        return dataStoreManager.getSentryReportingEnabled()
-    }
 
     override suspend fun setWidgetTransparency(alpha: Float) {
         dataStoreManager.setWidgetTransparency(alpha)

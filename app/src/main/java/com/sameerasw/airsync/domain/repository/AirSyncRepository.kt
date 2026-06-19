@@ -101,9 +101,7 @@ interface AirSyncRepository {
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>
 
-    // Sentry reporting settings
-    suspend fun setSentryReportingEnabled(enabled: Boolean)
-    fun getSentryReportingEnabled(): Flow<Boolean>
+
 
     // Widget specific settings
     suspend fun setWidgetTransparency(alpha: Float)

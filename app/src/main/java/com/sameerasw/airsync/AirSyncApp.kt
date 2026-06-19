@@ -4,9 +4,6 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.sameerasw.airsync.data.local.DataStoreManager
-import io.sentry.android.core.SentryAndroid
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 
 class AirSyncApp : Application() {
     private var activityCount = 0
@@ -22,7 +19,6 @@ class AirSyncApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
-        initSentry()
 
         bleConnectionManager = com.sameerasw.airsync.data.ble.BleConnectionManager(this)
         bleConnectionManager.start()
@@ -44,17 +40,4 @@ class AirSyncApp : Application() {
     }
 
     private fun isForeground(): Boolean = activityCount > 0
-
-    private fun initSentry() {
-        val dataStoreManager = DataStoreManager.getInstance(this)
-        val isEnabled = runBlocking { dataStoreManager.getSentryReportingEnabled().first() }
-
-        if (!isEnabled) return
-
-        SentryAndroid.init(this) { options ->
-            options.dsn =
-                "https://cb9b0ead9e88e0818269e773cb662141@o4510996760887296.ingest.de.sentry.io/4511002261389392"
-            options.isEnabled = true
-        }
-    }
 }

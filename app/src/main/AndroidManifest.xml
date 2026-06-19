@@ -65,10 +65,7 @@
         android:theme="@style/Theme.AirSync"
         tools:targetApi="36">
 
-        <!-- Disable Sentry auto-init as it's handled manually in AirSyncApp -->
-        <meta-data
-            android:name="io.sentry.auto-init"
-            android:value="false" />
+
 
         <activity
             android:name=".MainActivity"
