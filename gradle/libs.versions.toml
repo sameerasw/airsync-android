@@ -21,8 +21,11 @@ wire = "6.0.0-alpha03"
 bouncycastle = "1.78.1"
 ktor = "2.3.12"
 appcompat = "1.7.1"
+exceptionreport = "2.0.0"
+
 
 [libraries]
+exceptionreport = { group = "com.github.cnrture", name = "ExceptionReport", version.ref = "exceptionreport" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }

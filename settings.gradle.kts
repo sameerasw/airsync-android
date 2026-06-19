@@ -19,11 +19,10 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven("https://jitpack.io")
     }
 }
 
 rootProject.name = "AirSync"
 include(":app")
-include(":exceptionreport")
-project(":exceptionreport").projectDir = File("../ExceptionReport/exceptionreport")
 

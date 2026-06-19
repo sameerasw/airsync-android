@@ -65,7 +65,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":exceptionreport"))
+    implementation(libs.exceptionreport)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
