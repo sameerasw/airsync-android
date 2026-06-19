@@ -101,4 +101,24 @@
     <string name="permission_answer_calls_button">Grant Answer Calls Access</string>
     <string name="action_select_apps">Select apps</string>
     <string name="subtitle_to_be_notified">To be notified</string>
+
+    <!-- Crash Reporting Strings -->
+    <string name="label_notify_on_crash">Notify on crash</string>
+    <string name="subtitle_notify_on_crash">Send a notification if something goes wrong</string>
+    <string name="crash_notification_title">AirSync did an oopsie!</string>
+    <string name="crash_notification_body">Share with the developer to help improve AirSync</string>
+    <string name="crash_action_dismiss">Dismiss</string>
+    <string name="crash_action_report">Report</string>
+    <string name="crash_report_title">Send Crash Report</string>
+    <string name="crash_copy">Copy report</string>
+    <string name="crash_copy_desc">Copy the crash trace to clipboard</string>
+    <string name="crash_save_file">Save to file</string>
+    <string name="crash_save_file_desc">Save log to your downloads folder</string>
+    <string name="crash_email">Email report</string>
+    <string name="crash_email_desc">Email log to mail@sameerasw.com</string>
+    <string name="crash_github">Open GitHub issue</string>
+    <string name="crash_github_desc">Submit an issue on our GitHub repository</string>
+    <string name="crash_file_saved">Log saved to Downloads</string>
+    <string name="crash_github_hint">Please attach the log from Downloads to the issue</string>
+    <string name="crash_file_save_failed">Failed to save log file</string>
 </resources>

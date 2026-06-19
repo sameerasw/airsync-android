@@ -101,6 +101,7 @@ class DataStoreManager(private val context: Context) {
 
         private val BLE_SYNC_ENABLED = booleanPreferencesKey("ble_sync_enabled")
         private val BLE_AUTO_CONNECT_ENABLED = booleanPreferencesKey("ble_auto_connect_enabled")
+        private val NOTIFY_ON_CRASH = booleanPreferencesKey("notify_on_crash")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -621,6 +622,18 @@ class DataStoreManager(private val context: Context) {
     fun isRemoteFlipped(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[REMOTE_FLIPPED] ?: false
+        }
+    }
+
+    suspend fun setNotifyOnCrashEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFY_ON_CRASH] = enabled
+        }
+    }
+
+    fun getNotifyOnCrashEnabled(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[NOTIFY_ON_CRASH] != false
         }
     }
 

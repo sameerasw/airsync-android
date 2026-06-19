@@ -176,6 +176,16 @@ fun SettingsView(
                         viewModel.setPitchBlackThemeEnabled(enabled)
                     }
                 )
+
+                IconToggleItem(
+                    title = stringResource(R.string.label_notify_on_crash),
+                    description = stringResource(R.string.subtitle_notify_on_crash),
+                    iconRes = R.drawable.rounded_bug_report_24,
+                    isChecked = uiState.isNotifyOnCrashEnabled,
+                    onCheckedChange = { enabled: Boolean ->
+                        viewModel.setNotifyOnCrashEnabled(enabled)
+                    }
+                )
             }
         }
 

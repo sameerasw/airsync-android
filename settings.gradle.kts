@@ -24,3 +24,6 @@ dependencyResolutionManagement {
 
 rootProject.name = "AirSync"
 include(":app")
+include(":exceptionreport")
+project(":exceptionreport").projectDir = File("../ExceptionReport/exceptionreport")
+

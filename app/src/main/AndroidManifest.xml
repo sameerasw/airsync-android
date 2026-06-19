@@ -260,6 +260,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- Crash Reporting System Components -->
+        <receiver
+            android:name=".crash.CrashNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.sameerasw.airsync.action.DISMISS_CRASH_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".crash.CrashReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AirSync.Transparent"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity="" />
 
     </application>
 

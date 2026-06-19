@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.Application
 import android.os.Bundle
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.crash.CrashNotificationHelper
 
 class AirSyncApp : Application() {
     private var activityCount = 0
@@ -19,6 +20,8 @@ class AirSyncApp : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+
+        CrashNotificationHelper.createChannel(this)
 
         bleConnectionManager = com.sameerasw.airsync.data.ble.BleConnectionManager(this)
         bleConnectionManager.start()
