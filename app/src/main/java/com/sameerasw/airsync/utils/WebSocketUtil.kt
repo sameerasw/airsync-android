@@ -216,7 +216,22 @@ object WebSocketUtil {
 
                 // Try each IP in parallel
                 ipList.forEach { ip ->
-                    val url = "ws://$ip:$port/socket"
+                    // Handle IPv6 addresses, wrapping them in brackets for URI parsing.
+                    // Also handle link-local scope zones (e.g. fe80::18cd:e714:19a7:2c21%wlan0 -> [fe80::18cd:e714:19a7:2c21])
+                    val formattedIp = if (ip.contains(":")) {
+                        var cleanIp = ip
+                        if (cleanIp.contains("%")) {
+                            cleanIp = cleanIp.substringBefore("%")
+                        }
+                        if (!cleanIp.startsWith("[")) {
+                            "[$cleanIp]"
+                        } else {
+                            cleanIp
+                        }
+                    } else {
+                        ip
+                    }
+                    val url = "ws://$formattedIp:$port/socket"
                     Log.d(TAG, "Attempting connection to $url")
 
                     CoroutineScope(Dispatchers.IO).launch {
@@ -521,6 +536,20 @@ object WebSocketUtil {
         val expandNetworkingEnabled = ds.getExpandNetworkingEnabled().first()
         if (expandNetworkingEnabled) {
             return true
+        }
+
+        // Handle IPv6 address checks
+        if (ipAddress.contains(":")) {
+            // Check for IPv6 localhost (::1) or Link-local (fe80::)
+            val cleanIp = ipAddress.lowercase().trim().removeSurrounding("[", "]").substringBefore("%")
+            if (cleanIp == "::1" || cleanIp.startsWith("fe80:")) {
+                return true
+            }
+            // Other common local/unique-local IPv6 prefixes (fc00::/7)
+            if (cleanIp.startsWith("fc") || cleanIp.startsWith("fd")) {
+                return true
+            }
+            return false
         }
 
         // Check standard private IP ranges (RFC 1918) and Carrier-Grade NAT (Tailscale/VPNs)
