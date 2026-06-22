@@ -37,7 +37,7 @@ import com.sameerasw.airsync.utils.KeyguardHelper
 import com.sameerasw.airsync.utils.NotesRoleManager
 import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.ShortcutUtil
-import com.sameerasw.airsync.utils.UDPDiscoveryManager
+import com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -576,8 +576,8 @@ class MainActivity : ComponentActivity() {
             val isDiscoveryEnabled = runBlocking {
                 ds.getDeviceDiscoveryEnabled().first()
             }
-            UDPDiscoveryManager.start(this, isDiscoveryEnabled)
-            UDPDiscoveryManager.burstBroadcast(this)
+            DiscoveryOrchestrator.start(this, isDiscoveryEnabled)
+            DiscoveryOrchestrator.burstBroadcast(this)
         }
     }
 
