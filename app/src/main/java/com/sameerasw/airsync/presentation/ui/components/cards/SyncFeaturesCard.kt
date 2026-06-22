@@ -20,6 +20,9 @@ fun ClipboardFeaturesCard(
     // Keep previous link props
     isKeepPreviousLinkEnabled: Boolean,
     onToggleKeepPreviousLink: (Boolean) -> Unit,
+    // Cellular Network Sync props
+    isCellularSyncEnabled: Boolean,
+    onToggleCellularSync: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -29,6 +32,13 @@ fun ClipboardFeaturesCard(
             description = "Update Android clipboard automatically",
             isChecked = isClipboardSyncEnabled,
             onCheckedChange = onToggleClipboardSync
+        )
+        IconToggleItem(
+            iconRes = R.drawable.rounded_network_node_24,
+            title = "Cellular Network Sync",
+            description = "Sync 5G/4G status to Mac",
+            isChecked = isCellularSyncEnabled,
+            onCheckedChange = onToggleCellularSync
         )
         IconToggleItem(
             iconRes = R.drawable.outline_open_in_browser_24,

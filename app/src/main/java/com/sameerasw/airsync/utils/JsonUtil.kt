@@ -168,7 +168,9 @@ object JsonUtil {
         val albumArtJson = if (albumArt != null) ",\"albumArt\":\"$albumArt\"" else ""
         val albumArtLiteJson =
             if (albumArtLite != null) ",\"albumArtLite\":\"$albumArtLite\"" else ""
-        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
+        val cellularNetwork = com.sameerasw.airsync.utils.CellularMonitor.currentNetworkState
+        val cellularNetworkJson = if (cellularNetwork != null) ",\"cellularNetwork\":\"$cellularNetwork\"" else ""
+        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired$cellularNetworkJson,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
     }
 
     /**

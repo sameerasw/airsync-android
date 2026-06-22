@@ -63,6 +63,21 @@ class AirSyncService : Service() {
         Log.d(TAG, "AirSyncService created")
         createNotificationChannel()
         MacDeviceStatusManager.startMonitoring(this)
+        val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager(this)
+        scope.launch {
+            combine(
+                dataStoreManager.isCellularSyncEnabled,
+                WebSocketUtil.connectionState
+            ) { isEnabled, isConnected ->
+                isEnabled && isConnected
+            }.collect { shouldRun ->
+                if (shouldRun) {
+                    com.sameerasw.airsync.utils.CellularMonitor.start(this@AirSyncService)
+                } else {
+                    com.sameerasw.airsync.utils.CellularMonitor.stop(this@AirSyncService)
+                }
+            }
+        }
         registerNetworkCallback()
         WebSocketUtil.registerConnectionStatusListener(connectionStatusListener)
 
