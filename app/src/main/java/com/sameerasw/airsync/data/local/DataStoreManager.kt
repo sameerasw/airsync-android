@@ -1051,6 +1051,6 @@ class DataStoreManager(private val context: Context) {
     }
 
     val isCellularSyncEnabled: Flow<Boolean> = context.dataStore.data.map { preferences ->
-        preferences[IS_CELLULAR_SYNC_ENABLED] ?: false // Default to false
+        preferences[IS_CELLULAR_SYNC_ENABLED] ?: true // Default to true
     }
 }

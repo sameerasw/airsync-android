@@ -159,6 +159,12 @@ class AirSyncViewModel(
             null
         }
 
+        val storedDefaultTab = try {
+            kotlinx.coroutines.runBlocking { repository.getDefaultTab().first() }
+        } catch (_: Exception) {
+            "dynamic"
+        }
+
         val activeIp = if (isWsConnected) WebSocketUtil.currentIpAddress else null
 
         val initialIp = if (isWsConnected && activeIp != null) {
@@ -181,7 +187,8 @@ class AirSyncViewModel(
             ipAddress = savedIp,
             activeIp = activeIp,
             macDeviceStatus = if (isGlobalConnected) MacDeviceStatusManager.macDeviceStatus.value else null,
-            lastConnectedDevice = storedDevice
+            lastConnectedDevice = storedDevice,
+            defaultTab = storedDefaultTab
         )
 
         // Register for WebSocket connection status updates
@@ -370,7 +377,7 @@ class AirSyncViewModel(
             val isKeepPreviousLinkEnabled = repository.getKeepPreviousLinkEnabled().first()
             val isMacMediaControlsEnabled = repository.getMacMediaControlsEnabled().first()
             val isClipboardHistoryEnabled = repository.getClipboardHistoryEnabled().first()
-            repository.getDefaultTab().first()
+            val defaultTab = repository.getDefaultTab().first()
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
@@ -435,6 +442,7 @@ class AirSyncViewModel(
                 isKeepPreviousLinkEnabled = isKeepPreviousLinkEnabled,
                 isMacMediaControlsEnabled = isMacMediaControlsEnabled,
                 isClipboardHistoryEnabled = isClipboardHistoryEnabled,
+                defaultTab = defaultTab,
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
                 isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
                 isBlurSettingEnabled = isBlurEnabledSetting,

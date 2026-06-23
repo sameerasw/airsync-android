@@ -105,10 +105,18 @@ class AirSyncService : Service() {
             ACTION_APP_FOREGROUND -> handleAppForeground()
             ACTION_APP_BACKGROUND -> handleAppBackground()
             else -> {
-                if (connectedDeviceName != null) {
-                    startSync()
-                } else {
-                    startScanning()
+                scope.launch {
+                    val shouldRun = com.sameerasw.airsync.utils.ServiceManager.shouldServiceRun(this@AirSyncService)
+                    if (shouldRun) {
+                        if (connectedDeviceName != null) {
+                            startSync()
+                        } else {
+                            startScanning()
+                        }
+                    } else {
+                        Log.d(TAG, "Service restarted by system but shouldRun is false, stopping")
+                        stopSync()
+                    }
                 }
             }
         }

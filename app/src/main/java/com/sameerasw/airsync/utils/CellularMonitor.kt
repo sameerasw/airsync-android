@@ -81,28 +81,32 @@ object CellularMonitor {
     }
 
     fun stop(context: Context) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            val defaultTm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager ?: return
-            val telephonyManager = if (activeDataSubId != android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
-                defaultTm.createForSubscriptionId(activeDataSubId)
-            } else {
-                defaultTm
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                val defaultTm = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                if (defaultTm != null) {
+                    val telephonyManager = if (activeDataSubId != android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID) {
+                        defaultTm.createForSubscriptionId(activeDataSubId)
+                    } else {
+                        defaultTm
+                    }
+
+                    telephonyCallback?.let {
+                        telephonyManager.unregisterTelephonyCallback(it)
+                    }
+                }
             }
 
-            telephonyCallback?.let {
-                telephonyManager.unregisterTelephonyCallback(it)
+            subscriptionListener?.let {
+                val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
+                subManager?.removeOnSubscriptionsChangedListener(it)
             }
+        } finally {
+            telephonyCallback = null
+            subscriptionListener = null
+            activeDataSubId = android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID
+            currentNetworkState = null
         }
-
-        subscriptionListener?.let {
-            val subManager = context.getSystemService(android.telephony.SubscriptionManager::class.java)
-            subManager.removeOnSubscriptionsChangedListener(it)
-        }
-
-        telephonyCallback = null
-        subscriptionListener = null
-        activeDataSubId = android.telephony.SubscriptionManager.INVALID_SUBSCRIPTION_ID
-        currentNetworkState = null
     }
 
     private fun evaluateAndPushState(context: Context) {
