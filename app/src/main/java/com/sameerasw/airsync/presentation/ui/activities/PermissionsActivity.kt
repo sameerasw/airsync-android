@@ -62,6 +62,10 @@ class PermissionsActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { refreshUI() }
 
+    private val locationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refreshUI() }
+
     private var refreshCounter by mutableStateOf(0)
 
     @OptIn(ExperimentalMaterial3Api::class)
@@ -140,6 +144,9 @@ class PermissionsActivity : ComponentActivity() {
                         onRequestAnswerCallsPermission = {
                             requestAnswerCallsPermission()
                         },
+                        onRequestLocationPermission = {
+                            requestLocationPermission()
+                        },
                         refreshTrigger = refreshCounter
                     )
                 }
@@ -204,6 +211,12 @@ class PermissionsActivity : ComponentActivity() {
             if (!PermissionUtil.isAnswerCallsPermissionGranted(this)) {
                 answerCallsPermissionLauncher.launch(Manifest.permission.ANSWER_PHONE_CALLS)
             }
+        }
+    }
+
+    private fun requestLocationPermission() {
+        if (!PermissionUtil.isLocationPermissionGranted(this)) {
+            locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
         }
     }
 
