@@ -62,6 +62,12 @@ android {
         targetSdk = 37
         buildConfigField("String", "MIN_MAC_APP_VERSION", "\"4.0.0\"")
     }
+
+    packaging {
+        jniLibs {
+            keepDebugSymbols.add("**/*.so")
+        }
+    }
 }
 
 dependencies {
