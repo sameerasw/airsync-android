@@ -71,6 +71,7 @@ android {
 }
 
 dependencies {
+    implementation(libs.exceptionreport)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -143,7 +144,6 @@ dependencies {
     // Google Play Review
     implementation(libs.play.review)
     implementation(libs.play.review.ktx)
-    implementation(libs.sentry.android)
 
     // Coil for image and GIF loading
     implementation("io.coil-kt:coil-compose:2.6.0")

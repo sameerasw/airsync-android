@@ -200,12 +200,12 @@ fun SettingsView(
                 )
 
                 IconToggleItem(
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_error_reporting),
-                    description = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_error_reporting),
+                    title = stringResource(R.string.label_notify_on_crash),
+                    description = stringResource(R.string.subtitle_notify_on_crash),
                     iconRes = R.drawable.rounded_bug_report_24,
-                    isChecked = uiState.isSentryReportingEnabled,
+                    isChecked = uiState.isNotifyOnCrashEnabled,
                     onCheckedChange = { enabled: Boolean ->
-                        viewModel.setSentryReportingEnabled(enabled)
+                        viewModel.setNotifyOnCrashEnabled(enabled)
                     }
                 )
             }

@@ -66,10 +66,7 @@
         android:theme="@style/Theme.AirSync"
         tools:targetApi="36">
 
-        <!-- Disable Sentry auto-init as it's handled manually in AirSyncApp -->
-        <meta-data
-            android:name="io.sentry.auto-init"
-            android:value="false" />
+
 
         <activity
             android:name=".MainActivity"
@@ -264,6 +261,22 @@
             </intent-filter>
         </receiver>
 
+        <!-- Crash Reporting System Components -->
+        <receiver
+            android:name=".crash.CrashNotificationReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.sameerasw.airsync.action.DISMISS_CRASH_NOTIFICATION" />
+            </intent-filter>
+        </receiver>
+
+        <activity
+            android:name=".crash.CrashReportActivity"
+            android:exported="false"
+            android:theme="@style/Theme.AirSync.Transparent"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity="" />
 
     </application>
 

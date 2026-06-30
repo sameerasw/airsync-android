@@ -218,12 +218,7 @@ class AirSyncViewModel(
             }
         }
 
-        // Observe sentry reporting preference
-        viewModelScope.launch {
-            repository.getSentryReportingEnabled().collect { enabled ->
-                _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
-            }
-        }
+
 
         // Observe widget transparency preference
         viewModelScope.launch {
@@ -257,6 +252,13 @@ class AirSyncViewModel(
         viewModelScope.launch {
             repository.isCellularSyncEnabled().collect { enabled ->
                 _uiState.value = _uiState.value.copy(isCellularSyncEnabled = enabled)
+            }
+        }
+
+        // Observe Notify on Crash preference
+        viewModelScope.launch {
+            repository.getNotifyOnCrashEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isNotifyOnCrashEnabled = enabled)
             }
         }
 
@@ -382,12 +384,12 @@ class AirSyncViewModel(
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
             val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
-            val isSentryReportingEnabled = repository.getSentryReportingEnabled().first()
             val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
             val isQuickShareEnabled = repository.isQuickShareEnabled().first()
             val isCellularSyncEnabled = repository.isCellularSyncEnabled().first()
+            val isNotifyOnCrashEnabled = repository.getNotifyOnCrashEnabled().first()
 
             // Replicate Essentials logic for initial state
             val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
@@ -449,10 +451,10 @@ class AirSyncViewModel(
                 isPowerSaveMode = isPowerSaveMode,
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
-                isSentryReportingEnabled = isSentryReportingEnabled,
                 isOnboardingCompleted = !isFirstRun,
                 isQuickShareEnabled = isQuickShareEnabled,
-                isCellularSyncEnabled = isCellularSyncEnabled
+                isCellularSyncEnabled = isCellularSyncEnabled,
+                isNotifyOnCrashEnabled = isNotifyOnCrashEnabled
             )
 
             updateRatingPromptDisplay()
@@ -720,13 +722,7 @@ class AirSyncViewModel(
         }
     }
 
-    fun setSentryReportingEnabled(enabled: Boolean) {
-        _uiState.value = _uiState.value.copy(isSentryReportingEnabled = enabled)
-        viewModelScope.launch {
-            repository.setSentryReportingEnabled(enabled)
-            // Note: Changes typically take effect on next launch as Sentry is initialized in Application.onCreate
-        }
-    }
+
 
     fun setPitchBlackThemeEnabled(enabled: Boolean) {
         _uiState.value = _uiState.value.copy(isPitchBlackThemeEnabled = enabled)
@@ -784,6 +780,13 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isCellularSyncEnabled = enabled)
         viewModelScope.launch {
             repository.setCellularSyncEnabled(enabled)
+        }
+    }
+
+    fun setNotifyOnCrashEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isNotifyOnCrashEnabled = enabled)
+        viewModelScope.launch {
+            repository.setNotifyOnCrashEnabled(enabled)
         }
     }
 
