@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.sameerasw.airsync.utils.discovery
 
 import android.content.Context

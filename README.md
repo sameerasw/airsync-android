@@ -1,13 +1,21 @@
 # airsync-android
-Android app for AirSync 2.0 built with Kotlin Jetpack Compose
+Android app for AirSync built with Kotlin Jetpack Compose
 
 Min : Android 11
 
 [<img src="https://steverichey.github.io/google-play-badge-svg/img/en_get.svg" width="30%" />](https://play.google.com/store/apps/details?id=com.sameerasw.airsync)
 
 
+## Features
+- QR Code / Google Lens pairing for quick setup
+- Real-time notification mirroring and actionable replies
+- Media playback and volume control from Mac
+- Cross-device clipboard synchronization
+- **Cellular Network Monitoring**: View your Android's cellular status (LTE, 5G, No Signal) directly from your Mac's menu bar.
+- **Auto-Start Support**: Enhanced background stability with auto-start helpers for various Android OEMs (Xiaomi, OPPO, Vivo, Letv, etc.).
+
 ## How to connect?
-Use your built-in camera or Google lense or anything that can scan a QR code. I twill prompt you to open the app. Once authorized, The last device will be saved on the mobile for now for easier re-connection.
+Use your built-in camera or Google Lens or anything that can scan a QR code. It will prompt you to open the app. Once authorized, the last device will be saved on the mobile for now for easier reconnection.
 
 ## [Read Documentation and How-To](https://airsync.notion.site/)
 

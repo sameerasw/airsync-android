@@ -29,9 +29,6 @@ object JsonUtil {
     /**
      * Creates a single-line JSON string for device info with ADB ports
      */
-    /**
-     * Creates a single-line JSON string for device info with ADB ports
-     */
     fun createDeviceInfoJson(
         id: String,
         name: String,
@@ -47,9 +44,6 @@ object JsonUtil {
         return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
-    /**
-     * Creates a single-line JSON string for device info with wallpaper
-     */
     /**
      * Creates a single-line JSON string for device info with wallpaper
      */
@@ -174,7 +168,9 @@ object JsonUtil {
         val albumArtJson = if (albumArt != null) ",\"albumArt\":\"$albumArt\"" else ""
         val albumArtLiteJson =
             if (albumArtLite != null) ",\"albumArtLite\":\"$albumArtLite\"" else ""
-        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
+        val cellularNetwork = com.sameerasw.airsync.utils.CellularMonitor.currentNetworkState
+        val cellularNetworkJson = if (cellularNetwork != null) ",\"cellularNetwork\":\"$cellularNetwork\"" else ""
+        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired$cellularNetworkJson,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
     }
 
     /**

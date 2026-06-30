@@ -26,7 +26,7 @@ object WallpaperUtil {
         return try {
             val wallpaperManager = WallpaperManager.getInstance(context)
 
-            // Check  permissions
+            // Check permissions
             if (!hasWallpaperPermissions(context)) {
                 Log.w(TAG, "Missing wallpaper permissions")
                 return null
