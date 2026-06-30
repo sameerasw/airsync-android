@@ -50,6 +50,7 @@ data class UiState(
     val widgetTransparency: Float = 1f,
     val isQuickShareEnabled: Boolean = false,
     val isFileAccessEnabled: Boolean = true,
+    val isCellularSyncEnabled: Boolean = true,
     val isNotifyOnCrashEnabled: Boolean = true,
     val bleConnectionState: com.sameerasw.airsync.data.ble.BleGattServer.BleConnectionState = com.sameerasw.airsync.data.ble.BleGattServer.BleConnectionState.DISCONNECTED
 )

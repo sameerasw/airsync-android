@@ -134,6 +134,9 @@ interface AirSyncRepository {
     // File Access (WebDAV Server)
     suspend fun setFileAccessEnabled(enabled: Boolean)
     fun isFileAccessEnabled(): Flow<Boolean>
+    // Cellular Network Sync
+    suspend fun setCellularSyncEnabled(enabled: Boolean)
+    fun isCellularSyncEnabled(): Flow<Boolean>
 
     suspend fun setNotifyOnCrashEnabled(enabled: Boolean)
     fun getNotifyOnCrashEnabled(): Flow<Boolean>

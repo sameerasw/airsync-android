@@ -115,6 +115,28 @@ fun SettingsView(
         RoundedCardContainer {
             PermissionsCard(missingPermissionsCount = uiState.missingPermissions.size)
 
+            if (com.sameerasw.airsync.utils.AutoStartHelper.isAutoStartSupported()) {
+                val manufacturerName = android.os.Build.MANUFACTURER.replaceFirstChar { if (it.isLowerCase()) it.titlecase(java.util.Locale.getDefault()) else it.toString() }
+                com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem(
+                    title = "Background Stability",
+                    description = "Fix connection drops by allowing Auto-Start in $manufacturerName settings.",
+                    iconRes = com.sameerasw.airsync.R.drawable.rounded_info_24,
+                    showToggle = false,
+                    onClick = {
+                        val intent = com.sameerasw.airsync.utils.AutoStartHelper.getAutoStartIntent(context)
+                        if (intent != null) {
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: android.content.ActivityNotFoundException) {
+                                android.widget.Toast.makeText(context, "Auto-Start settings not found on this device", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            android.widget.Toast.makeText(context, "Auto-Start settings not found on this device", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                )
+            }
+
             // Help and guides card
             com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem(
                 iconRes = com.sameerasw.airsync.R.drawable.rounded_info_24,
@@ -230,6 +252,10 @@ fun SettingsView(
                     isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
                     onToggleKeepPreviousLink = { enabled: Boolean ->
                         viewModel.setKeepPreviousLinkEnabled(enabled)
+                    },
+                    isCellularSyncEnabled = uiState.isCellularSyncEnabled,
+                    onToggleCellularSync = { enabled: Boolean ->
+                        viewModel.toggleCellularSync(enabled)
                     }
                 )
 
@@ -383,7 +409,7 @@ fun SettingsView(
                                 deviceInfo.name,
                                 deviceInfo.localIp,
                                 uiState.port.toIntOrNull() ?: 6996,
-                                versionName ?: "2.0.0",
+                                versionName ?: "3.0.0",
                                 adbPorts
                             )
                             onSendMessage(message)
