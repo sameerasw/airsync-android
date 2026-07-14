@@ -25,6 +25,7 @@ import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator
 import com.sameerasw.airsync.utils.WebDavServer
 import com.sameerasw.airsync.utils.WebSocketUtil
+import com.sameerasw.airsync.utils.ServiceManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -78,6 +79,22 @@ class AirSyncService : Service() {
         Log.d(TAG, "AirSyncService started with action: ${intent?.action}")
 
         val action = intent?.action
+
+        // Immediately stop self if the service should not run
+        val shouldRun = runBlocking { ServiceManager.shouldServiceRun(applicationContext) }
+        if (!shouldRun && action != ACTION_STOP_SYNC) {
+            Log.d(TAG, "Service started but should not run based on settings. Stopping.")
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    startForeground(NOTIFICATION_ID, buildNotification())
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error calling startForeground on early stop", e)
+                }
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
         when (action) {
             ACTION_START_SCANNING -> startScanning()
             ACTION_START_SYNC -> {
@@ -438,6 +455,12 @@ class AirSyncService : Service() {
                 if (isRunning()) {
                     context.startService(intent)
                 } else {
+                    val shouldRun = runBlocking { ServiceManager.shouldServiceRun(context) }
+                    if (!shouldRun && intent.action != ACTION_STOP_SYNC) {
+                        Log.d(TAG, "Service should not run based on settings. Skipping startAction.")
+                        return
+                    }
+
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                         context.startForegroundService(intent)
                     } else {
