@@ -105,6 +105,7 @@ class DataStoreManager(private val context: Context) {
         private val BLE_SYNC_ENABLED = booleanPreferencesKey("ble_sync_enabled")
         private val BLE_AUTO_CONNECT_ENABLED = booleanPreferencesKey("ble_auto_connect_enabled")
         private val NOTIFY_ON_CRASH = booleanPreferencesKey("notify_on_crash")
+        private val APP_ENABLED = booleanPreferencesKey("app_enabled")
 
         private const val NETWORK_DEVICES_PREFIX = "network_device_"
         private const val NETWORK_CONNECTIONS_PREFIX = "network_connections_"
@@ -1060,4 +1061,11 @@ class DataStoreManager(private val context: Context) {
 
     fun getBleAutoConnectEnabled(): Flow<Boolean> =
         context.dataStore.data.map { it[BLE_AUTO_CONNECT_ENABLED] ?: true }
+
+    suspend fun setAppEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[APP_ENABLED] = enabled }
+    }
+
+    fun getAppEnabled(): Flow<Boolean> =
+        context.dataStore.data.map { it[APP_ENABLED] != false }
 }
