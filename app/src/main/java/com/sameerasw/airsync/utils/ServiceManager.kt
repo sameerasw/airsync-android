@@ -19,6 +19,11 @@ object ServiceManager {
      */
     suspend fun shouldServiceRun(context: Context): Boolean {
         val dataStore = DataStoreManager.getInstance(context)
+        val isAppEnabled = dataStore.getAppEnabled().first()
+        if (!isAppEnabled) {
+            return false
+        }
+
         val isConnected = WebSocketUtil.isConnected()
         val isAutoReconnectEnabled = dataStore.getAutoReconnectEnabled().first()
         val isDiscoveryEnabled = dataStore.getDeviceDiscoveryEnabled().first()

@@ -303,4 +303,12 @@ class AirSyncRepositoryImpl(
     override fun isFileAccessEnabled(): Flow<Boolean> {
         return dataStoreManager.isFileAccessEnabled()
     }
+
+    override suspend fun setAppEnabled(enabled: Boolean) {
+        dataStoreManager.setAppEnabled(enabled)
+    }
+
+    override fun getAppEnabled(): Flow<Boolean> {
+        return dataStoreManager.getAppEnabled()
+    }
 }

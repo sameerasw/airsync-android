@@ -27,8 +27,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
@@ -100,6 +104,7 @@ import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDevic
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
+import com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
 import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottomSheet
 import com.sameerasw.airsync.presentation.ui.composables.WelcomeScreen
@@ -753,102 +758,90 @@ fun AirSyncMainScreen(
                                 verticalArrangement = Arrangement.spacedBy(24.dp)
                             ) {
 
-                                Spacer(
-                                    modifier = Modifier
-                                        .height(topSpacing)
-                                        .fillMaxWidth()
-                                )
-
-                                RoundedCardContainer {
-
-                                    // Rating Prompt Card
-                                    AnimatedVisibility(
-                                        visible = uiState.shouldShowRatingPrompt,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
+                                if (!uiState.isAppEnabled) {
+                                    // AirSync is Off landing page
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(top = 60.dp)
+                                            .padding(horizontal = 24.dp),
+                                        horizontalAlignment = Alignment.CenterHorizontally,
+                                        verticalArrangement = Arrangement.spacedBy(16.dp)
                                     ) {
-                                        RateAppCard(
-                                            onDismiss = { viewModel.setRatingCardDismissed() },
-                                            onRate = { viewModel.setAppRated() }
+                                        Image(
+                                            painter = painterResource(id = R.drawable.ic_launcher_monochrome),
+                                            contentDescription = null,
+                                            modifier = Modifier.size(130.dp),
+                                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.35f)
+                                            )
                                         )
-                                    }
 
-
-                                    // Connection Status Card
-                                    ConnectionStatusCard(
-                                        isConnected = uiState.isConnected,
-                                        isConnecting = uiState.isConnecting,
-                                        onDisconnect = { disconnect() },
-                                        connectedDevice = uiState.lastConnectedDevice,
-                                        lastConnected = uiState.lastConnectedDevice != null,
-                                        uiState = uiState,
-                                    )
-
-                                    // Remote Functions Card (Lock Screen, etc.)
-                                    AnimatedVisibility(
-                                        visible = uiState.isConnected,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
-                                        RemoteFunctionsCard(
-                                            onRemoteAction = { sendRemoteAction(it) }
+                                        Text(
+                                            text = "AirSync is Off",
+                                            style = MaterialTheme.typography.headlineMedium,
+                                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
                                         )
-                                    }
-                                }
 
-                                RoundedCardContainer {
-                                    // Nearby Devices (UDP Discovery)
-                                    val discoveredDevices by viewModel.discoveredDevices.collectAsState()
+                                        Text(
+                                            text = "Turn on AirSync to start scanning and connecting to your Mac.",
+                                            textAlign = TextAlign.Center,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.padding(horizontal = 16.dp)
+                                        )
 
-                                    // Last Connected Device Section
-                                    AnimatedVisibility(
-                                        visible = !uiState.isConnected && uiState.lastConnectedDevice != null,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
-                                        uiState.lastConnectedDevice?.let { device ->
-                                            LastConnectedDeviceCard(
-                                                device = device,
-                                                isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
-                                                onToggleAutoReconnect = { enabled ->
-                                                    viewModel.setAutoReconnectEnabled(
-                                                        enabled
-                                                    )
-                                                },
-                                                onQuickConnect = {
-                                                    // Check if we can use network-aware connection first
-                                                    val networkAwareDevice =
-                                                        viewModel.getNetworkAwareLastConnectedDevice()
-                                                    if (networkAwareDevice != null) {
-                                                        // Use network-aware device IP for current network
-                                                        viewModel.updateIpAddress(networkAwareDevice.ipAddress)
-                                                        viewModel.updatePort(networkAwareDevice.port)
-                                                        connect(
-                                                            ipAddress = networkAwareDevice.ipAddress,
-                                                            port = networkAwareDevice.port,
-                                                            symmetricKey = networkAwareDevice.symmetricKey
-                                                        )
-                                                    } else {
-                                                        // Fallback to legacy stored device
-                                                        viewModel.updateIpAddress(device.ipAddress)
-                                                        viewModel.updatePort(device.port)
-                                                        viewModel.updateSymmetricKey(device.symmetricKey)
-                                                        connect(
-                                                            ipAddress = device.ipAddress,
-                                                            port = device.port,
-                                                            symmetricKey = device.symmetricKey
-                                                        )
-                                                    }
-                                                }
+                                        Spacer(modifier = Modifier.height(16.dp))
+
+                                        Button(
+                                            onClick = {
+                                                HapticUtil.performClick(haptics)
+                                                viewModel.setAppEnabled(context, true)
+                                            },
+                                            shape = RoundedCornerShape(16.dp),
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            ),
+                                            modifier = Modifier
+                                                .height(56.dp)
+                                                .fillMaxWidth(0.8f)
+                                        ) {
+                                            Icon(
+                                                painter = painterResource(id = R.drawable.rounded_sync_desktop_24),
+                                                contentDescription = null,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.size(8.dp))
+                                            Text(
+                                                "Turn On AirSync",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                                             )
                                         }
                                     }
+                                } else {
+                                    Spacer(
+                                        modifier = Modifier
+                                            .height(topSpacing)
+                                            .fillMaxWidth()
+                                    )
 
-                                    AnimatedVisibility(
-                                        visible = !uiState.isConnected,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
+                                    RoundedCardContainer {
+
+                                        // Rating Prompt Card
+                                        AnimatedVisibility(
+                                            visible = uiState.shouldShowRatingPrompt,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            RateAppCard(
+                                                onDismiss = { viewModel.setRatingCardDismissed() },
+                                                onRate = { viewModel.setAppRated() }
+                                            )
+                                        }
+
+                                        // Normal toggle on top
                                         Card(
                                             modifier = Modifier.fillMaxWidth(),
                                             shape = MaterialTheme.shapes.extraSmall,
@@ -856,203 +849,325 @@ fun AirSyncMainScreen(
                                                 containerColor = MaterialTheme.colorScheme.surfaceBright
                                             )
                                         ) {
-                                            Column(
+                                            Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .padding(16.dp)
+                                                    .clickable {
+                                                        HapticUtil.performClick(haptics)
+                                                        viewModel.setAppEnabled(context, false)
+                                                    }
+                                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(12.dp)
                                             ) {
-                                                Row(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth()
-                                                        .padding(bottom = 12.dp),
-                                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                                    verticalAlignment = Alignment.CenterVertically
+                                                Icon(
+                                                    painter = painterResource(id = R.drawable.rounded_sync_desktop_24),
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(24.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+
+                                                Column(
+                                                    modifier = Modifier.weight(1f),
+                                                    verticalArrangement = Arrangement.Center
                                                 ) {
                                                     Text(
-                                                        text = "Available Devices",
-                                                        style = MaterialTheme.typography.titleMedium,
-                                                        color = MaterialTheme.colorScheme.primary
-                                                    )
-
-                                                    Switch(
-                                                        checked = uiState.isDeviceDiscoveryEnabled,
-                                                        onCheckedChange = { enabled ->
-                                                            HapticUtil.performClick(haptics)
-                                                            viewModel.setDeviceDiscoveryEnabled(
-                                                                context,
-                                                                enabled
-                                                            )
-                                                        },
-                                                        thumbContent = if (uiState.isDeviceDiscoveryEnabled) {
-                                                            {
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
-                                                                    contentDescription = null,
-                                                                    modifier = Modifier.size(
-                                                                        SwitchDefaults.IconSize
-                                                                    ),
-                                                                )
-                                                            }
-                                                        } else null
+                                                        text = "AirSync Active",
+                                                        style = MaterialTheme.typography.bodyLarge,
+                                                        color = MaterialTheme.colorScheme.onSurface
                                                     )
                                                 }
 
-                                                AnimatedVisibility(
-                                                    visible = uiState.isDeviceDiscoveryEnabled,
-                                                    enter = expandVertically() + fadeIn(),
-                                                    exit = shrinkVertically() + fadeOut()
-                                                ) {
-                                                    Column {
-                                                        if (discoveredDevices.isEmpty()) {
-                                                            Row(
-                                                                verticalAlignment = Alignment.CenterVertically,
-                                                                horizontalArrangement = Arrangement.spacedBy(
-                                                                    4.dp
-                                                                )
-                                                            ) {
-                                                                LoadingIndicator()
+                                                Switch(
+                                                    checked = true,
+                                                    onCheckedChange = { enabled ->
+                                                        HapticUtil.performClick(haptics)
+                                                        viewModel.setAppEnabled(context, enabled)
+                                                    }
+                                                )
+                                            }
+                                        }
 
-                                                                Text(
-                                                                    text = "Scanning...",
-                                                                    style = MaterialTheme.typography.bodyMedium,
-                                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                    modifier = Modifier.padding(
-                                                                        vertical = 8.dp
-                                                                    )
-                                                                )
-                                                            }
+                                        // Connection Status Card
+                                        ConnectionStatusCard(
+                                            isConnected = uiState.isConnected,
+                                            isConnecting = uiState.isConnecting,
+                                            onDisconnect = { disconnect() },
+                                            connectedDevice = uiState.lastConnectedDevice,
+                                            lastConnected = uiState.lastConnectedDevice != null,
+                                            uiState = uiState,
+                                        )
+
+                                        // Remote Functions Card (Lock Screen, etc.)
+                                        AnimatedVisibility(
+                                            visible = uiState.isConnected,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            RemoteFunctionsCard(
+                                                onRemoteAction = { sendRemoteAction(it) }
+                                            )
+                                        }
+                                    }
+
+                                    RoundedCardContainer {
+                                        // Nearby Devices (UDP Discovery)
+                                        val discoveredDevices by viewModel.discoveredDevices.collectAsState()
+
+                                        // Last Connected Device Section
+                                        AnimatedVisibility(
+                                            visible = !uiState.isConnected && uiState.lastConnectedDevice != null,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            uiState.lastConnectedDevice?.let { device ->
+                                                LastConnectedDeviceCard(
+                                                    device = device,
+                                                    isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
+                                                    onToggleAutoReconnect = { enabled ->
+                                                        viewModel.setAutoReconnectEnabled(
+                                                            enabled
+                                                        )
+                                                    },
+                                                    onQuickConnect = {
+                                                        // Check if we can use network-aware connection first
+                                                        val networkAwareDevice =
+                                                            viewModel.getNetworkAwareLastConnectedDevice()
+                                                        if (networkAwareDevice != null) {
+                                                            // Use network-aware device IP for current network
+                                                            viewModel.updateIpAddress(networkAwareDevice.ipAddress)
+                                                            viewModel.updatePort(networkAwareDevice.port)
+                                                            connect(
+                                                                ipAddress = networkAwareDevice.ipAddress,
+                                                                port = networkAwareDevice.port,
+                                                                symmetricKey = networkAwareDevice.symmetricKey
+                                                            )
+                                                        } else {
+                                                            // Fallback to legacy stored device
+                                                            viewModel.updateIpAddress(device.ipAddress)
+                                                            viewModel.updatePort(device.port)
+                                                            viewModel.updateSymmetricKey(device.symmetricKey)
+                                                            connect(
+                                                                ipAddress = device.ipAddress,
+                                                                port = device.port,
+                                                                symmetricKey = device.symmetricKey
+                                                            )
                                                         }
+                                                    }
+                                                )
+                                            }
+                                        }
 
-                                                        discoveredDevices.forEachIndexed { index, device ->
-                                                            if (index > 0) {
-                                                                Spacer(modifier = Modifier.height(8.dp))
+                                        AnimatedVisibility(
+                                            visible = !uiState.isConnected,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            Card(
+                                                modifier = Modifier.fillMaxWidth(),
+                                                shape = MaterialTheme.shapes.extraSmall,
+                                                colors = CardDefaults.cardColors(
+                                                    containerColor = MaterialTheme.colorScheme.surfaceBright
+                                                )
+                                            ) {
+                                                Column(
+                                                    modifier = Modifier
+                                                        .fillMaxWidth()
+                                                        .padding(16.dp)
+                                                ) {
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .padding(bottom = 12.dp),
+                                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                                        verticalAlignment = Alignment.CenterVertically
+                                                    ) {
+                                                        Text(
+                                                            text = "Available Devices",
+                                                            style = MaterialTheme.typography.titleMedium,
+                                                            color = MaterialTheme.colorScheme.primary
+                                                        )
+
+                                                        Switch(
+                                                            checked = uiState.isDeviceDiscoveryEnabled,
+                                                            onCheckedChange = { enabled ->
+                                                                HapticUtil.performClick(haptics)
+                                                                viewModel.setDeviceDiscoveryEnabled(
+                                                                    context,
+                                                                    enabled
+                                                                )
+                                                            },
+                                                            thumbContent = if (uiState.isDeviceDiscoveryEnabled) {
+                                                                {
+                                                                    Icon(
+                                                                        painter = painterResource(R.drawable.rounded_android_wifi_3_bar_24),
+                                                                        contentDescription = null,
+                                                                        modifier = Modifier.size(
+                                                                            SwitchDefaults.IconSize
+                                                                        ),
+                                                                    )
+                                                                }
+                                                            } else null
+                                                        )
+                                                    }
+
+                                                    AnimatedVisibility(
+                                                        visible = uiState.isDeviceDiscoveryEnabled,
+                                                        enter = expandVertically() + fadeIn(),
+                                                        exit = shrinkVertically() + fadeOut()
+                                                    ) {
+                                                        Column {
+                                                            if (discoveredDevices.isEmpty()) {
+                                                                Row(
+                                                                    verticalAlignment = Alignment.CenterVertically,
+                                                                    horizontalArrangement = Arrangement.spacedBy(
+                                                                        4.dp
+                                                                    )
+                                                                ) {
+                                                                    LoadingIndicator()
+
+                                                                    Text(
+                                                                        text = "Scanning...",
+                                                                        style = MaterialTheme.typography.bodyMedium,
+                                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                                        modifier = Modifier.padding(
+                                                                            vertical = 8.dp
+                                                                        )
+                                                                    )
+                                                                }
                                                             }
 
-                                                            Row(
-                                                                modifier = Modifier
-                                                                    .fillMaxWidth()
-                                                                    .clip(MaterialTheme.shapes.medium)
-                                                                    .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                                                    .clickable {
-                                                                        HapticUtil.performClick(
-                                                                            haptics
-                                                                        )
-                                                                        val bestIp = device.getBestIp()
-                                                                        val devicePort = device.port.toString()
-                                                                        val deviceName = device.name
-                                                                        
-                                                                        viewModel.updateIpAddress(bestIp)
-                                                                        viewModel.updatePort(devicePort)
-                                                                        viewModel.updateManualPcName(deviceName)
-                                                                        
-                                                                        val savedKey = viewModel.getSymmetricKeyForDevice(deviceName)
-                                                                        if (savedKey != null) {
-                                                                            viewModel.updateSymmetricKey(savedKey)
-                                                                        }
-                                                                        
-                                                                        connect(
-                                                                            deviceId = device.id,
-                                                                            ipAddress = bestIp,
-                                                                            port = devicePort,
-                                                                            symmetricKey = savedKey ?: uiState.symmetricKey
-                                                                        )
-                                                                    }
-                                                                    .padding(
-                                                                        horizontal = 16.dp,
-                                                                        vertical = 12.dp
-                                                                    ),
-                                                                verticalAlignment = Alignment.CenterVertically
-                                                            ) {
-                                                                Icon(
-                                                                    painter = painterResource(R.drawable.apple),
-                                                                    contentDescription = null,
-                                                                    tint = MaterialTheme.colorScheme.primary
-                                                                )
-                                                                Spacer(modifier = Modifier.width(12.dp))
-                                                                Column {
-                                                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                                                        Text(
-                                                                            text = device.name,
-                                                                            style = MaterialTheme.typography.bodyLarge
-                                                                        )
-                                                                        Spacer(
-                                                                            modifier = Modifier.width(
-                                                                                8.dp
+                                                            discoveredDevices.forEachIndexed { index, device ->
+                                                                if (index > 0) {
+                                                                    Spacer(modifier = Modifier.height(8.dp))
+                                                                }
+
+                                                                Row(
+                                                                    modifier = Modifier
+                                                                        .fillMaxWidth()
+                                                                        .clip(MaterialTheme.shapes.medium)
+                                                                        .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                                                        .clickable {
+                                                                            HapticUtil.performClick(
+                                                                                haptics
                                                                             )
-                                                                        )
-                                                                        if (device.hasLocalIp()) {
-                                                                            Icon(
-                                                                                painter = painterResource(
-                                                                                    R.drawable.rounded_android_wifi_3_bar_24
-                                                                                ),
-                                                                                contentDescription = "Wi-Fi",
-                                                                                modifier = Modifier.size(
-                                                                                    14.dp
-                                                                                ),
-                                                                                tint = MaterialTheme.colorScheme.primary
+                                                                            val bestIp = device.getBestIp()
+                                                                            val devicePort = device.port.toString()
+                                                                            val deviceName = device.name
+                                                                            
+                                                                            viewModel.updateIpAddress(bestIp)
+                                                                            viewModel.updatePort(devicePort)
+                                                                            viewModel.updateManualPcName(deviceName)
+                                                                            
+                                                                            val savedKey = viewModel.getSymmetricKeyForDevice(deviceName)
+                                                                            if (savedKey != null) {
+                                                                                viewModel.updateSymmetricKey(savedKey)
+                                                                            }
+                                                                            
+                                                                            connect(
+                                                                                deviceId = device.id,
+                                                                                ipAddress = bestIp,
+                                                                                port = devicePort,
+                                                                                symmetricKey = savedKey ?: uiState.symmetricKey
                                                                             )
                                                                         }
-                                                                        if (device.hasTailscaleIp()) {
-                                                                            if (device.hasLocalIp()) Spacer(
+                                                                        .padding(
+                                                                            horizontal = 16.dp,
+                                                                            vertical = 12.dp
+                                                                        ),
+                                                                    verticalAlignment = Alignment.CenterVertically
+                                                                ) {
+                                                                    Icon(
+                                                                        painter = painterResource(R.drawable.apple),
+                                                                        contentDescription = null,
+                                                                        tint = MaterialTheme.colorScheme.primary
+                                                                    )
+                                                                    Spacer(modifier = Modifier.width(12.dp))
+                                                                    Column {
+                                                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                                                            Text(
+                                                                                text = device.name,
+                                                                                style = MaterialTheme.typography.bodyLarge
+                                                                            )
+                                                                            Spacer(
                                                                                 modifier = Modifier.width(
-                                                                                    4.dp
+                                                                                    8.dp
                                                                                 )
                                                                             )
-                                                                            Icon(
-                                                                                painter = painterResource(
-                                                                                    R.drawable.rounded_network_node_24
-                                                                                ),
-                                                                                contentDescription = "Tailscale",
-                                                                                modifier = Modifier.size(
-                                                                                    14.dp
-                                                                                ),
-                                                                                tint = MaterialTheme.colorScheme.secondary
-                                                                            )
+                                                                            if (device.hasLocalIp()) {
+                                                                                Icon(
+                                                                                    painter = painterResource(
+                                                                                        R.drawable.rounded_android_wifi_3_bar_24
+                                                                                    ),
+                                                                                    contentDescription = "Wi-Fi",
+                                                                                    modifier = Modifier.size(
+                                                                                        14.dp
+                                                                                    ),
+                                                                                    tint = MaterialTheme.colorScheme.primary
+                                                                                )
+                                                                            }
+                                                                            if (device.hasTailscaleIp()) {
+                                                                                if (device.hasLocalIp()) Spacer(
+                                                                                    modifier = Modifier.width(
+                                                                                        4.dp
+                                                                                    )
+                                                                                )
+                                                                                Icon(
+                                                                                    painter = painterResource(
+                                                                                        R.drawable.rounded_network_node_24
+                                                                                    ),
+                                                                                    contentDescription = "Tailscale",
+                                                                                    modifier = Modifier.size(
+                                                                                        14.dp
+                                                                                    ),
+                                                                                    tint = MaterialTheme.colorScheme.secondary
+                                                                                )
+                                                                            }
                                                                         }
-                                                                    }
-                                                                    Row(
-                                                                        verticalAlignment = Alignment.CenterVertically,
-                                                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                                                    ) {
-                                                                        Text(
-                                                                            text = "${device.getBestIp()}:${device.port}",
-                                                                            style = MaterialTheme.typography.bodySmall,
-                                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                                                        )
-                                                                        Box(
-                                                                            modifier = Modifier
-                                                                                .clip(RoundedCornerShape(4.dp))
-                                                                                .background(
-                                                                                    if (device.discoverySource == DiscoverySource.MDNS)
-                                                                                        MaterialTheme.colorScheme.primaryContainer
-                                                                                    else
-                                                                                        MaterialTheme.colorScheme.secondaryContainer
-                                                                                )
-                                                                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                                        Row(
+                                                                            verticalAlignment = Alignment.CenterVertically,
+                                                                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                                                                         ) {
                                                                             Text(
-                                                                                text = if (device.discoverySource == DiscoverySource.MDNS) "mDNS" else "UDP",
-                                                                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                                                                                color = if (device.discoverySource == DiscoverySource.MDNS)
-                                                                                    MaterialTheme.colorScheme.onPrimaryContainer
-                                                                                else
-                                                                                    MaterialTheme.colorScheme.onSecondaryContainer
+                                                                                text = "${device.getBestIp()}:${device.port}",
+                                                                                style = MaterialTheme.typography.bodySmall,
+                                                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                                                             )
+                                                                            Box(
+                                                                                modifier = Modifier
+                                                                                    .clip(RoundedCornerShape(4.dp))
+                                                                                    .background(
+                                                                                        if (device.discoverySource == DiscoverySource.MDNS)
+                                                                                            MaterialTheme.colorScheme.primaryContainer
+                                                                                        else
+                                                                                            MaterialTheme.colorScheme.secondaryContainer
+                                                                                    )
+                                                                                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                                                                            ) {
+                                                                                Text(
+                                                                                    text = if (device.discoverySource == DiscoverySource.MDNS) "mDNS" else "UDP",
+                                                                                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                                                                                    color = if (device.discoverySource == DiscoverySource.MDNS)
+                                                                                        MaterialTheme.colorScheme.onPrimaryContainer
+                                                                                    else
+                                                                                        MaterialTheme.colorScheme.onSecondaryContainer
+                                                                                )
+                                                                            }
                                                                         }
                                                                     }
-                                                                }
-                                                                Spacer(modifier = Modifier.weight(1f))
-                                                                if (uiState.isConnecting && uiState.connectingDeviceId == device.id) {
-                                                                    CircularWavyProgressIndicator(
-                                                                        modifier = Modifier.size(20.dp)
-                                                                    )
-                                                                } else {
-                                                                    Icon(
-                                                                        Icons.AutoMirrored.Filled.ArrowForward,
-                                                                        contentDescription = "Connect",
-                                                                        modifier = Modifier.size(20.dp),
-                                                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                                                    )
+                                                                    Spacer(modifier = Modifier.weight(1f))
+                                                                    if (uiState.isConnecting && uiState.connectingDeviceId == device.id) {
+                                                                        CircularWavyProgressIndicator(
+                                                                            modifier = Modifier.size(20.dp)
+                                                                        )
+                                                                    } else {
+                                                                        Icon(
+                                                                            Icons.AutoMirrored.Filled.ArrowForward,
+                                                                            contentDescription = "Connect",
+                                                                            modifier = Modifier.size(20.dp),
+                                                                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                                                        )
+                                                                    }
                                                                 }
                                                             }
                                                         }
@@ -1060,35 +1175,35 @@ fun AirSyncMainScreen(
                                                 }
                                             }
                                         }
-                                    }
 
-                                    AnimatedVisibility(
-                                        visible = !uiState.isConnected,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
-                                        Column {
-                                            ManualConnectionCard(
-                                                isConnected = uiState.isConnected,
-                                                lastConnected = uiState.lastConnectedDevice != null,
-                                                uiState = uiState,
-                                                onIpChange = { viewModel.updateIpAddress(it) },
-                                                onPortChange = { viewModel.updatePort(it) },
-                                                onPcNameChange = { viewModel.updateManualPcName(it) },
-                                                onIsPlusChange = { viewModel.updateManualIsPlus(it) },
-                                                onSymmetricKeyChange = {
-                                                    viewModel.updateSymmetricKey(
-                                                        it
-                                                    )
-                                                },
-                                                onConnect = { viewModel.prepareForManualConnection() },
-                                                onQrScanClick = { launchScanner(context) }
-                                            )
+                                        AnimatedVisibility(
+                                            visible = !uiState.isConnected,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            Column {
+                                                ManualConnectionCard(
+                                                    isConnected = uiState.isConnected,
+                                                    lastConnected = uiState.lastConnectedDevice != null,
+                                                    uiState = uiState,
+                                                    onIpChange = { viewModel.updateIpAddress(it) },
+                                                    onPortChange = { viewModel.updatePort(it) },
+                                                    onPcNameChange = { viewModel.updateManualPcName(it) },
+                                                    onIsPlusChange = { viewModel.updateManualIsPlus(it) },
+                                                    onSymmetricKeyChange = {
+                                                        viewModel.updateSymmetricKey(
+                                                            it
+                                                        )
+                                                    },
+                                                    onConnect = { viewModel.prepareForManualConnection() },
+                                                    onQrScanClick = { launchScanner(context) }
+                                                )
+                                            }
                                         }
                                     }
-                                }
 
-                                Spacer(modifier = Modifier.height(100.dp))
+                                    Spacer(modifier = Modifier.height(100.dp))
+                                }
                             }
                         }
 

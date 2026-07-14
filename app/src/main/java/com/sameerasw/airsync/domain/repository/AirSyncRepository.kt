@@ -136,4 +136,8 @@ interface AirSyncRepository {
     // File Access (WebDAV Server)
     suspend fun setFileAccessEnabled(enabled: Boolean)
     fun isFileAccessEnabled(): Flow<Boolean>
+
+    // Global Active Toggle
+    suspend fun setAppEnabled(enabled: Boolean)
+    fun getAppEnabled(): Flow<Boolean>
 }
