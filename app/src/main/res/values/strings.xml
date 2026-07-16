@@ -41,6 +41,10 @@
     <string name="content_description_brightness_down">Brightness Down</string>
 
     <string name="cat_app">App</string>
+    <string name="cat_notifications">Notifications</string>
+    <string name="cat_clipboard">Clipboard</string>
+    <string name="cat_media">Media</string>
+    <string name="cat_files">Files</string>
     <string name="label_connection_tile">Connection Tile</string>
     <string name="label_clipboard_tile">Clipboard Tile</string>
     <string name="status_added">Added</string>

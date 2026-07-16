@@ -140,319 +140,309 @@ fun SettingsView(
         }
 
         // App Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCategoryTitle(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.cat_app))
-            RoundedCardContainer {
-                DefaultTabCard(
-                    currentDefaultTab = uiState.defaultTab,
-                    onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
-                )
+        SettingsCategory(title = stringResource(R.string.cat_app)) {
+            DefaultTabCard(
+                currentDefaultTab = uiState.defaultTab,
+                onDefaultTabChange = { tab -> viewModel.setDefaultTab(tab) }
+            )
 
-                IconToggleItem(
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_use_blur),
-                    description = when {
-                        com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice() ->
-                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_samsung)
+            IconToggleItem(
+                title = stringResource(R.string.label_use_blur),
+                description = when {
+                    com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice() ->
+                        stringResource(R.string.subtitle_blur_disabled_samsung)
 
-                        uiState.isPowerSaveMode && uiState.isBlurSettingEnabled ->
-                            androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_blur_disabled_power_save)
+                    uiState.isPowerSaveMode && uiState.isBlurSettingEnabled ->
+                        stringResource(R.string.subtitle_blur_disabled_power_save)
 
-                        else -> androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_use_blur)
-                    },
-                    iconRes = R.drawable.rounded_blur_on_24,
-                    isChecked = uiState.isBlurSettingEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setUseBlurEnabled(enabled, context)
-                    },
-                    enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
-                )
+                    else -> stringResource(R.string.subtitle_use_blur)
+                },
+                iconRes = R.drawable.rounded_blur_on_24,
+                isChecked = uiState.isBlurSettingEnabled,
+                onCheckedChange = { enabled: Boolean ->
+                    viewModel.setUseBlurEnabled(enabled, context)
+                },
+                enabled = !com.sameerasw.airsync.utils.DeviceInfoUtil.isBlurProblematicDevice()
+            )
 
-                IconToggleItem(
-                    title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.label_pitch_black_theme),
-                    description = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.subtitle_pitch_black_theme),
-                    iconRes = R.drawable.rounded_dark_mode_24,
-                    isChecked = uiState.isPitchBlackThemeEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setPitchBlackThemeEnabled(enabled)
-                    }
-                )
-
-                IconToggleItem(
-                    title = stringResource(R.string.label_notify_on_crash),
-                    description = stringResource(R.string.subtitle_notify_on_crash),
-                    iconRes = R.drawable.rounded_bug_report_24,
-                    isChecked = uiState.isNotifyOnCrashEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setNotifyOnCrashEnabled(enabled)
-                    }
-                )
-            }
-        }
-
-        // Sync Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCategoryTitle("Sync")
-            RoundedCardContainer {
-                NotificationSyncCard(
-                    isNotificationEnabled = uiState.isNotificationEnabled,
-                    isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
-                    onToggleSync = { enabled ->
-                        viewModel.setNotificationSyncEnabled(enabled)
-                    },
-                    onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
-                )
-
-                if (uiState.isNotificationSyncEnabled && uiState.isNotificationEnabled) {
-                    IconToggleItem(
-                        title = stringResource(R.string.action_select_apps),
-                        description = stringResource(R.string.subtitle_to_be_notified),
-                        iconRes = R.drawable.rounded_notification_settings_24,
-                        showToggle = false,
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            viewModel.loadNotificationApps(context)
-                            showAppSelectionSheet = true
-                        }
-                    )
+            IconToggleItem(
+                title = stringResource(R.string.label_pitch_black_theme),
+                description = stringResource(R.string.subtitle_pitch_black_theme),
+                iconRes = R.drawable.rounded_dark_mode_24,
+                isChecked = uiState.isPitchBlackThemeEnabled,
+                onCheckedChange = { enabled: Boolean ->
+                    viewModel.setPitchBlackThemeEnabled(enabled)
                 }
+            )
 
-                ClipboardFeaturesCard(
-                    isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
-                    onToggleClipboardSync = { enabled: Boolean ->
-                        viewModel.setClipboardSyncEnabled(enabled)
-                    },
-                    isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
-                    onToggleContinueBrowsing = { enabled: Boolean ->
-                        viewModel.setContinueBrowsingEnabled(enabled)
-                    },
-                    isContinueBrowsingToggleEnabled = true,
-                    continueBrowsingSubtitle = "Prompt to open shared links in browser",
-                    isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
-                    onToggleKeepPreviousLink = { enabled: Boolean ->
-                        viewModel.setKeepPreviousLinkEnabled(enabled)
-                    }
-                )
+            IconToggleItem(
+                title = stringResource(R.string.label_notify_on_crash),
+                description = stringResource(R.string.subtitle_notify_on_crash),
+                iconRes = R.drawable.rounded_bug_report_24,
+                isChecked = uiState.isNotifyOnCrashEnabled,
+                onCheckedChange = { enabled: Boolean ->
+                    viewModel.setNotifyOnCrashEnabled(enabled)
+                }
+            )
+        }
 
-                MediaSyncCard(
-                    isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
-                    onToggleSendNowPlaying = { enabled ->
-                        viewModel.setSendNowPlayingEnabled(enabled)
-                    },
-                    isMacMediaControlsEnabled = uiState.isMacMediaControlsEnabled,
-                    onToggleMacMediaControls = { enabled ->
-                        viewModel.setMacMediaControlsEnabled(enabled)
-                    }
-                )
+        // Notifications Section
+        SettingsCategory(title = stringResource(R.string.cat_notifications)) {
+            NotificationSyncCard(
+                isNotificationEnabled = uiState.isNotificationEnabled,
+                isNotificationSyncEnabled = uiState.isNotificationSyncEnabled,
+                onToggleSync = { enabled ->
+                    viewModel.setNotificationSyncEnabled(enabled)
+                },
+                onGrantPermissions = { viewModel.setPermissionDialogVisible(true) }
+            )
 
+            if (uiState.isNotificationSyncEnabled && uiState.isNotificationEnabled) {
                 IconToggleItem(
-                    title = "Quick Share",
-                    description = "Allow receiving files from nearby devices",
-                    iconRes = R.drawable.quick_share,
-                    isChecked = uiState.isQuickShareEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setQuickShareEnabled(context, enabled)
-                    }
-                )
-
-                IconToggleItem(
-                    title = stringResource(R.string.label_file_access),
-                    description = stringResource(R.string.subtitle_file_access),
-                    iconRes = R.drawable.rounded_folder_managed_24,
-                    isChecked = uiState.isFileAccessEnabled,
-                    onCheckedChange = { enabled: Boolean ->
-                        viewModel.setFileAccessEnabled(context, enabled)
+                    title = stringResource(R.string.action_select_apps),
+                    description = stringResource(R.string.subtitle_to_be_notified),
+                    iconRes = R.drawable.rounded_notification_settings_24,
+                    showToggle = false,
+                    onClick = {
+                        HapticUtil.performClick(haptics)
+                        viewModel.loadNotificationApps(context)
+                        showAppSelectionSheet = true
                     }
                 )
             }
         }
 
+        // Clipboard Section
+        SettingsCategory(title = stringResource(R.string.cat_clipboard)) {
+            ClipboardFeaturesCard(
+                isClipboardSyncEnabled = uiState.isClipboardSyncEnabled,
+                onToggleClipboardSync = { enabled: Boolean ->
+                    viewModel.setClipboardSyncEnabled(enabled)
+                },
+                isContinueBrowsingEnabled = uiState.isContinueBrowsingEnabled,
+                onToggleContinueBrowsing = { enabled: Boolean ->
+                    viewModel.setContinueBrowsingEnabled(enabled)
+                },
+                isContinueBrowsingToggleEnabled = true,
+                continueBrowsingSubtitle = "Prompt to open shared links in browser",
+                isKeepPreviousLinkEnabled = uiState.isKeepPreviousLinkEnabled,
+                onToggleKeepPreviousLink = { enabled: Boolean ->
+                    viewModel.setKeepPreviousLinkEnabled(enabled)
+                }
+            )
+        }
+
+        // Media Section
+        SettingsCategory(title = stringResource(R.string.cat_media)) {
+            MediaSyncCard(
+                isSendNowPlayingEnabled = uiState.isSendNowPlayingEnabled,
+                onToggleSendNowPlaying = { enabled ->
+                    viewModel.setSendNowPlayingEnabled(enabled)
+                },
+                isMacMediaControlsEnabled = uiState.isMacMediaControlsEnabled,
+                onToggleMacMediaControls = { enabled ->
+                    viewModel.setMacMediaControlsEnabled(enabled)
+                }
+            )
+        }
+
+        // Files Section
+        SettingsCategory(title = stringResource(R.string.cat_files)) {
+            IconToggleItem(
+                title = "Quick Share",
+                description = "Allow receiving files from nearby devices",
+                iconRes = R.drawable.quick_share,
+                isChecked = uiState.isQuickShareEnabled,
+                onCheckedChange = { enabled: Boolean ->
+                    viewModel.setQuickShareEnabled(context, enabled)
+                }
+            )
+
+            IconToggleItem(
+                title = stringResource(R.string.label_file_access),
+                description = stringResource(R.string.subtitle_file_access),
+                iconRes = R.drawable.rounded_folder_managed_24,
+                isChecked = uiState.isFileAccessEnabled,
+                onCheckedChange = { enabled: Boolean ->
+                    viewModel.setFileAccessEnabled(context, enabled)
+                }
+            )
+        }
 
         // Integration Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCategoryTitle("Integration")
-            RoundedCardContainer {
-                SmartspacerCard(
-                    isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
-                    onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
-                        viewModel.setSmartspacerShowWhenDisconnected(enabled)
+        SettingsCategory(title = "Integration") {
+            SmartspacerCard(
+                isSmartspacerShowWhenDisconnected = uiState.isSmartspacerShowWhenDisconnected,
+                onToggleSmartspacerShowWhenDisconnected = { enabled: Boolean ->
+                    viewModel.setSmartspacerShowWhenDisconnected(enabled)
+                }
+            )
+
+            val isEssentialsInstalled = try {
+                context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
+                true
+            } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
+                false
+            }
+
+            if (isEssentialsInstalled) {
+                IconToggleItem(
+                    title = stringResource(R.string.connect_to_essentials),
+                    description = stringResource(R.string.connect_to_essentials_summary),
+                    iconRes = R.drawable.essentials_icon,
+                    isChecked = uiState.isEssentialsConnectionEnabled,
+                    onCheckedChange = { enabled: Boolean ->
+                        viewModel.setEssentialsConnectionEnabled(enabled)
                     }
                 )
-
-                val isEssentialsInstalled = try {
-                    context.packageManager.getPackageInfo("com.sameerasw.essentials", 0)
-                    true
-                } catch (e: android.content.pm.PackageManager.NameNotFoundException) {
-                    false
-                }
-
-                if (isEssentialsInstalled) {
-                    IconToggleItem(
-                        title = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials),
-                        description = androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.connect_to_essentials_summary),
-                        iconRes = R.drawable.essentials_icon,
-                        isChecked = uiState.isEssentialsConnectionEnabled,
-                        onCheckedChange = { enabled: Boolean ->
-                            viewModel.setEssentialsConnectionEnabled(enabled)
-                        }
-                    )
-                } else {
-                    ListItem(
-                        colors = ListItemDefaults.colors(
-                            containerColor = androidx.compose.ui.graphics.Color.Transparent
-                        ),
-                        headlineContent = { Text(androidx.compose.ui.res.stringResource(com.sameerasw.airsync.R.string.download_essentials)) },
-                        supportingContent = {
-                            Text(
-                                androidx.compose.ui.res.stringResource(
-                                    com.sameerasw.airsync.R.string.download_essentials_summary
-                                )
+            } else {
+                ListItem(
+                    colors = ListItemDefaults.colors(
+                        containerColor = androidx.compose.ui.graphics.Color.Transparent
+                    ),
+                    headlineContent = { Text(stringResource(R.string.download_essentials)) },
+                    supportingContent = {
+                        Text(
+                            stringResource(
+                                R.string.download_essentials_summary
                             )
-                        },
-                        trailingContent = {
-                            Button(
-                                onClick = {
-                                    HapticUtil.performClick(haptics)
-                                    val intent = android.content.Intent(
-                                        android.content.Intent.ACTION_VIEW,
-                                        android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
-                                    )
-                                    intent.flags =
-                                        android.content.Intent.FLAG_ACTIVITY_NEW_TASK
-                                    context.startActivity(intent)
-                                }
-                            ) {
-                                Text("Download")
+                        )
+                    },
+                    trailingContent = {
+                        Button(
+                            onClick = {
+                                HapticUtil.performClick(haptics)
+                                val intent = android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("https://github.com/sameerasw/essentials/releases/latest")
+                                )
+                                intent.flags =
+                                    android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                context.startActivity(intent)
                             }
+                        ) {
+                            Text("Download")
                         }
-                    )
-                }
+                    }
+                )
             }
         }
 
         // Widget Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCategoryTitle("Widget")
-            RoundedCardContainer {
-                com.sameerasw.airsync.presentation.ui.components.sliders.ConfigSliderItem(
-                    title = "Widget Transparency",
-                    value = uiState.widgetTransparency,
-                    onValueChange = { viewModel.setWidgetTransparency(it) }
-                )
-            }
+        SettingsCategory(title = "Widget") {
+            com.sameerasw.airsync.presentation.ui.components.sliders.ConfigSliderItem(
+                title = "Widget Transparency",
+                value = uiState.widgetTransparency,
+                onValueChange = { viewModel.setWidgetTransparency(it) }
+            )
         }
 
         // Connection Section
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            SettingsCategoryTitle("Connection")
-            RoundedCardContainer {
-                DeviceInfoCard(
-                    deviceName = uiState.deviceNameInput,
-                    localIp = deviceInfo.localIp,
-                    onDeviceNameChange = { viewModel.updateDeviceName(it) }
-                )
+        SettingsCategory(title = "Connection") {
+            DeviceInfoCard(
+                deviceName = uiState.deviceNameInput,
+                localIp = deviceInfo.localIp,
+                onDeviceNameChange = { viewModel.updateDeviceName(it) }
+            )
 
-                ExpandNetworkingCard(context)
-            }
+            ExpandNetworkingCard(context)
         }
 
-        // Developer Mode
+        // Advanced / Developer Section
         AnimatedVisibility(
             visible = uiState.isDeveloperModeVisible,
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut()
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SettingsCategoryTitle("Advanced")
-                RoundedCardContainer {
-                    DeveloperModeCard(
-                        isDeveloperMode = uiState.isDeveloperMode,
-                        onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
-                        isLoading = uiState.isLoading,
-                        onSendDeviceInfo = {
-                            val adbPorts = try {
-                                val discoveredServices =
-                                    com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
-                                discoveredServices.map { it.port.toString() }
-                            } catch (_: Exception) {
-                                emptyList()
-                            }
-                            val deviceId =
-                                com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
-                            val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
-                                deviceId,
-                                deviceInfo.name,
-                                deviceInfo.localIp,
-                                uiState.port.toIntOrNull() ?: 6996,
-                                versionName ?: "2.0.0",
-                                adbPorts
-                            )
-                            onSendMessage(message)
-                        },
-                        onSendNotification = {
-                            val testNotification =
-                                com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
+            SettingsCategory(title = "Advanced") {
+                DeveloperModeCard(
+                    isDeveloperMode = uiState.isDeveloperMode,
+                    onToggleDeveloperMode = { viewModel.setDeveloperMode(it) },
+                    isLoading = uiState.isLoading,
+                    onSendDeviceInfo = {
+                        val adbPorts = try {
+                            val discoveredServices =
+                                com.sameerasw.airsync.AdbDiscoveryHolder.getDiscoveredServices()
+                            discoveredServices.map { it.port.toString() }
+                        } catch (_: Exception) {
+                            emptyList()
+                        }
+                        val deviceId =
+                            com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceId(context)
+                        val message = com.sameerasw.airsync.utils.JsonUtil.createDeviceInfoJson(
+                            deviceId,
+                            deviceInfo.name,
+                            deviceInfo.localIp,
+                            uiState.port.toIntOrNull() ?: 6996,
+                            versionName ?: "2.0.0",
+                            adbPorts
+                        )
+                        onSendMessage(message)
+                    },
+                    onSendNotification = {
+                        val testNotification =
+                            com.sameerasw.airsync.utils.TestNotificationUtil.generateRandomNotification()
 
-                            // Store ID for mock dismissal support
-                            com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
-                                testNotification.id
-                            )
+                        // Store ID for mock dismissal support
+                        com.sameerasw.airsync.utils.NotificationDismissalUtil.storeTestNotificationId(
+                            testNotification.id
+                        )
 
-                            val message =
-                                com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
-                                    testNotification.id,
-                                    testNotification.title,
-                                    testNotification.body,
-                                    testNotification.appName,
-                                    testNotification.packageName,
-                                    testNotification.priority,
-                                    testNotification.actions
-                                )
-                            onSendMessage(message)
-                        },
-                        onSendDeviceStatus = {
-                            val message =
-                                com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
-                                    context
-                                )
-                            onSendMessage(message)
-                        },
-                        onExportData = {
-                            viewModel.setLoading(true)
-                            scope.launch(Dispatchers.IO) {
-                                val json = viewModel.exportAllDataToJson(context)
-                                if (json == null) {
-                                    scope.launch(Dispatchers.Main) {
-                                        Toast.makeText(
-                                            context,
-                                            "Export failed",
-                                            Toast.LENGTH_LONG
-                                        ).show()
-                                        viewModel.setLoading(false)
-                                    }
-                                } else {
-                                    scope.launch(Dispatchers.Main) {
-                                        onExport(json)
-                                    }
+                        val message =
+                            com.sameerasw.airsync.utils.JsonUtil.createNotificationJson(
+                                testNotification.id,
+                                testNotification.title,
+                                testNotification.body,
+                                testNotification.appName,
+                                testNotification.packageName,
+                                testNotification.priority,
+                                testNotification.actions
+                            )
+                        onSendMessage(message)
+                    },
+                    onSendDeviceStatus = {
+                        val message =
+                            com.sameerasw.airsync.utils.DeviceInfoUtil.generateDeviceStatusJson(
+                                context
+                            )
+                        onSendMessage(message)
+                    },
+                    onExportData = {
+                        viewModel.setLoading(true)
+                        scope.launch(Dispatchers.IO) {
+                            val json = viewModel.exportAllDataToJson(context)
+                            if (json == null) {
+                                scope.launch(Dispatchers.Main) {
+                                    Toast.makeText(
+                                        context,
+                                        "Export failed",
+                                        Toast.LENGTH_LONG
+                                    ).show()
+                                    viewModel.setLoading(false)
+                                }
+                            } else {
+                                scope.launch(Dispatchers.Main) {
+                                    onExport(json)
                                 }
                             }
-                        },
-                        onImportData = {
-                            onImport()
-                        },
-                        onResetOnboarding = {
-                            onResetOnboarding()
-                        },
-                        isIconSyncLoading = uiState.isIconSyncLoading,
-                        iconSyncMessage = uiState.iconSyncMessage,
-                        onManualSyncIcons = {
-                            viewModel.manualSyncAppIcons(context)
-                        },
-                        onClearIconSyncMessage = {
-                            viewModel.clearIconSyncMessage()
-                        },
-                        isConnected = uiState.isConnected
-                    )
-                }
+                        }
+                    },
+                    onImportData = {
+                        onImport()
+                    },
+                    onResetOnboarding = {
+                        onResetOnboarding()
+                    },
+                    isIconSyncLoading = uiState.isIconSyncLoading,
+                    iconSyncMessage = uiState.iconSyncMessage,
+                    onManualSyncIcons = {
+                        viewModel.manualSyncAppIcons(context)
+                    },
+                    onClearIconSyncMessage = {
+                        viewModel.clearIconSyncMessage()
+                    },
+                    isConnected = uiState.isConnected
+                )
             }
         }
 
@@ -489,3 +479,15 @@ fun SettingsCategoryTitle(title: String) {
     )
 }
 
+@Composable
+fun SettingsCategory(
+    title: String,
+    content: @Composable () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SettingsCategoryTitle(title)
+        RoundedCardContainer {
+            content()
+        }
+    }
+}
