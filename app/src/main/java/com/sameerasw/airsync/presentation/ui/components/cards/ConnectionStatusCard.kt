@@ -158,6 +158,7 @@ fun ConnectionStatusCard(
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
                         AirSyncLoadingAnimation(
+                            isPlus = connectedDevice?.isPlus == true,
                             modifier = Modifier.size(36.dp)
                         )
                     }
