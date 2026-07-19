@@ -88,6 +88,7 @@ dependencies {
     implementation("androidx.compose.material3:material3:1.5.0-alpha10")
     implementation("androidx.compose.material:material-icons-core:1.7.8")
     implementation("androidx.compose.material:material-icons-extended:1.7.8")
+    implementation("com.airbnb.android:lottie-compose:6.4.0")
 
     // DataStore for state persistence
     implementation("androidx.datastore:datastore-preferences:1.1.1")
