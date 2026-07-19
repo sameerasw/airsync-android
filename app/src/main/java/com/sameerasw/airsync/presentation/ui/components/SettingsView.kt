@@ -401,15 +401,19 @@ fun SettingsView(
                     modifier = Modifier.fillMaxWidth().height(headerHeight),
                     contentAlignment = Alignment.Center
                 ) {
-                    if (activeCategory == "Notifications") {
-                        NotifyAnimation(
+                    when (activeCategory) {
+                        "Notifications" -> NotifyAnimation(
                             isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(headerHeight)
                         )
-                    } else {
-                        AirSyncLoadingAnimation(
+                        "Clipboard" -> ClipAnimation(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerHeight)
+                        )
+                        else -> AirSyncLoadingAnimation(
                             isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
                             modifier = Modifier.size(headerHeight)
                         )
