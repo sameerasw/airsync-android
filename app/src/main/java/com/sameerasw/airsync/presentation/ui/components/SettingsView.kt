@@ -413,6 +413,11 @@ fun SettingsView(
                                 .fillMaxWidth()
                                 .height(headerHeight)
                         )
+                        "Media and Files" -> FileAnimation(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerHeight)
+                        )
                         else -> AirSyncLoadingAnimation(
                             isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
                             modifier = Modifier.size(headerHeight)
