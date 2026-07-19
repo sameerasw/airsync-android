@@ -101,32 +101,7 @@ class BleGattServer(private val context: Context) {
             return
         }
 
-        // Set Bluetooth adapter name dynamically based on configured device name to keep BLE matching precise
-        val customName = try {
-            runBlocking { dataStoreManager.getDeviceName().first() }
-        } catch (e: Exception) {
-            ""
-        }
-        val rawName =
-            if (customName.isNotBlank()) customName else com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceName(
-                context
-            )
-        val baseName = rawName
-            .replace("AirSync-AirSync-", "")
-            .replace("AirSync-", "")
-            .replace("airsync-", "")
-            .replace("airsync", "")
-            .trim()
 
-        val bleName = "AirSync-$baseName"
-        try {
-            if (adapter.name != bleName) {
-                adapter.name = bleName
-                Log.d(TAG, "Updated Bluetooth adapter name to: $bleName")
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "Failed to set Bluetooth adapter name: ${e.message}")
-        }
 
         setupGattServer()
     }

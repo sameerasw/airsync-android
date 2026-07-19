@@ -85,7 +85,7 @@ class AirSyncDeviceTarget : SmartspacerTargetProvider() {
         }
 
         // Use DeviceIconResolver for the small icon (shown on right)
-        val iconRes = DeviceIconResolver.getIconRes(lastDevice)
+        val iconRes = R.drawable.outline_battery_full_24
 
         // Use DevicePreviewResolver for the large device preview image (shown on left)
         val deviceImageRes = DevicePreviewResolver.getPreviewRes(lastDevice)

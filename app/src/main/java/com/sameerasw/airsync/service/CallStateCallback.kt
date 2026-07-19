@@ -34,6 +34,8 @@ class CallStateListener(private val context: Context) {
         private var isIncomingCall = false
         private var callStartTime = 0L
         private var currentPhoneNumber: String? = null
+        private var currentCallEventId: String? = null
+        private var heartbeatJob: Job? = null
 
         // Debouncing: wait this long for phone number to arrive after state change
         private const val PHONE_NUMBER_WAIT_MS = 500L
@@ -140,6 +142,8 @@ class CallStateListener(private val context: Context) {
                     isIncomingCall = false
                     callStartTime = 0L
                     currentPhoneNumber = null
+                    currentCallEventId = null
+                    stopHeartbeat()
                 }
             }
 
@@ -227,9 +231,11 @@ class CallStateListener(private val context: Context) {
                 }
             }
 
+            val eventId = currentCallEventId ?: UUID.randomUUID().toString().also { currentCallEventId = it }
+
             // Create call event with all details - strict validation, no fallback values
             val callEvent = CallEvent(
-                eventId = UUID.randomUUID().toString(),
+                eventId = eventId,
                 deviceId = "",
                 timestamp = System.currentTimeMillis(),
                 direction = direction,
@@ -273,15 +279,49 @@ class CallStateListener(private val context: Context) {
                     TAG,
                     "✅ Successfully sent call_event: state=$state, direction=$direction, number=$displayNumber, contact=$contactName, normalized=$normalizedNumber, photo=${if (contactPhoto != null) "yes" else "no"}"
                 )
+                if (state == "ringing" || state == "offhook") {
+                    startHeartbeat(callEvent.eventId)
+                } else {
+                    stopHeartbeat()
+                }
             } else {
                 Log.w(
                     TAG,
                     "❌ Failed to send call_event - WebSocket not connected. Will retry on next broadcast."
                 )
+                stopHeartbeat()
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error sending call event", e)
             e.printStackTrace()
+        }
+    }
+
+    private fun startHeartbeat(eventId: String) {
+        heartbeatJob?.cancel()
+        heartbeatJob = scope.launch {
+            while (true) {
+                delay(5000)
+                sendCallProgress(eventId)
+            }
+        }
+    }
+
+    private fun stopHeartbeat() {
+        heartbeatJob?.cancel()
+        heartbeatJob = null
+    }
+
+    private suspend fun sendCallProgress(eventId: String) {
+        try {
+            val json = JSONObject()
+            json.put("type", "call_progress")
+            val data = JSONObject()
+            data.put("eventId", eventId)
+            json.put("data", data)
+            WebSocketUtil.sendMessage(json.toString())
+        } catch (e: Exception) {
+            Log.e(TAG, "Error sending call progress", e)
         }
     }
 }

@@ -689,13 +689,6 @@ fun PreferencesStepContent(
                     onCheckedChange = { viewModel.setUseBlurEnabled(it, context) },
                     enabled = !isBlurProblematic
                 )
-                IconToggleItem(
-                    iconRes = R.drawable.rounded_security_24,
-                    title = stringResource(R.string.label_error_reporting),
-                    description = stringResource(R.string.subtitle_error_reporting),
-                    isChecked = uiState.isSentryReportingEnabled,
-                    onCheckedChange = { viewModel.setSentryReportingEnabled(it) }
-                )
             }
 
             Spacer(modifier = Modifier.height(32.dp))

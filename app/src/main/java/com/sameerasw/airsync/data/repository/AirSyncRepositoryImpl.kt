@@ -224,13 +224,7 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getDefaultTab()
     }
 
-    override suspend fun setSentryReportingEnabled(enabled: Boolean) {
-        dataStoreManager.setSentryReportingEnabled(enabled)
-    }
 
-    override fun getSentryReportingEnabled(): Flow<Boolean> {
-        return dataStoreManager.getSentryReportingEnabled()
-    }
 
     override suspend fun setWidgetTransparency(alpha: Float) {
         dataStoreManager.setWidgetTransparency(alpha)
@@ -302,5 +296,13 @@ class AirSyncRepositoryImpl(
 
     override fun isFileAccessEnabled(): Flow<Boolean> {
         return dataStoreManager.isFileAccessEnabled()
+    }
+
+    override suspend fun setNotifyOnCrashEnabled(enabled: Boolean) {
+        dataStoreManager.setNotifyOnCrashEnabled(enabled)
+    }
+
+    override fun getNotifyOnCrashEnabled(): Flow<Boolean> {
+        return dataStoreManager.getNotifyOnCrashEnabled()
     }
 }

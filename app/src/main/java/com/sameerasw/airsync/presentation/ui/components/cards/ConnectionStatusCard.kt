@@ -31,7 +31,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
-import com.sameerasw.airsync.presentation.ui.components.SlowlyRotatingAppIcon
+import com.sameerasw.airsync.presentation.ui.components.AirSyncLoadingAnimation
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
@@ -153,9 +153,13 @@ fun ConnectionStatusCard(
                 }
 
                 if (isConnected) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        SlowlyRotatingAppIcon(
-                            modifier = Modifier.size(54.dp)
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        AirSyncLoadingAnimation(
+                            isPlus = connectedDevice?.isPlus == true,
+                            modifier = Modifier.size(36.dp)
                         )
                     }
                 } else if (!isConnecting) {

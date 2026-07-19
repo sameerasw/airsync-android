@@ -33,7 +33,7 @@ fun ExpandNetworkingCard(
         modifier = modifier,
         iconRes = R.drawable.rounded_android_wifi_3_bar_24,
         title = "Expand networking",
-        description = "Allow connecting to device outside the local network",
+        description = "Allow connecting to device in VPN (Tailscale)",
         isChecked = enabled,
         onCheckedChange = { value ->
             enabled = value
