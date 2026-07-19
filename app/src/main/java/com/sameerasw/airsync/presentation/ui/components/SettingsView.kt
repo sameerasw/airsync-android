@@ -31,6 +31,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.unit.Velocity
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -97,10 +109,62 @@ fun SettingsView(
     val haptics = LocalHapticFeedback.current
     var showAppSelectionSheet by remember { mutableStateOf(false) }
 
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    val minHeaderHeight = 120.dp
+    val maxHeaderHeight = 240.dp
+    var headerHeight by remember { mutableStateOf(minHeaderHeight) }
+
+    LaunchedEffect(activeCategory) {
+        headerHeight = minHeaderHeight
+    }
+
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                val delta = available.y
+                if (delta < 0 && headerHeight > minHeaderHeight) {
+                    val oldHeight = headerHeight
+                    headerHeight = with(density) {
+                        (oldHeight.toPx() + delta).toDp()
+                    }.coerceAtLeast(minHeaderHeight)
+                    val consumed = oldHeight - headerHeight
+                    return Offset(0f, with(density) { -consumed.toPx() })
+                }
+                return Offset.Zero
+            }
+
+            override fun onPostScroll(
+                consumed: Offset,
+                available: Offset,
+                source: NestedScrollSource
+            ): Offset {
+                val delta = available.y
+                if (delta > 0) {
+                    val oldHeight = headerHeight
+                    headerHeight = with(density) {
+                        (oldHeight.toPx() + delta).toDp()
+                    }.coerceAtMost(maxHeaderHeight)
+
+                    if (headerHeight == maxHeaderHeight && oldHeight < maxHeaderHeight) {
+                        HapticUtil.performClick(haptics)
+                    }
+
+                    val produced = headerHeight - oldHeight
+                    return Offset(0f, with(density) { produced.toPx() })
+                }
+                return Offset.Zero
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(bottom = innerPaddingBottom)
+            .nestedScroll(nestedScrollConnection)
             .verticalScroll(scrollState)
             .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
@@ -329,19 +393,25 @@ fun SettingsView(
             // Sub-Settings category view
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally,
+                horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
                 // Lottie Preview
-                AirSyncLoadingAnimation(
-                    isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
-                    modifier = Modifier.size(100.dp)
-                )
+                Box(
+                    modifier = Modifier.fillMaxWidth().height(headerHeight),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AirSyncLoadingAnimation(
+                        isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
+                        modifier = Modifier.size(headerHeight)
+                    )
+                }
 
                 Text(
                     text = activeCategory,
                     style = MaterialTheme.typography.headlineMedium,
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 4.dp)
                 )
 
                 RoundedCardContainer {
