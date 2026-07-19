@@ -110,8 +110,8 @@ fun SettingsView(
     var showAppSelectionSheet by remember { mutableStateOf(false) }
 
     val density = androidx.compose.ui.platform.LocalDensity.current
-    val minHeaderHeight = 120.dp
-    val maxHeaderHeight = 240.dp
+    val minHeaderHeight = 200.dp
+    val maxHeaderHeight = 500.dp
     var headerHeight by remember { mutableStateOf(minHeaderHeight) }
 
     LaunchedEffect(activeCategory) {
@@ -396,15 +396,24 @@ fun SettingsView(
                 horizontalAlignment = Alignment.Start,
                 verticalArrangement = Arrangement.spacedBy(24.dp)
             ) {
-                // Lottie Preview
+                // Category header animation
                 Box(
                     modifier = Modifier.fillMaxWidth().height(headerHeight),
                     contentAlignment = Alignment.Center
                 ) {
-                    AirSyncLoadingAnimation(
-                        isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
-                        modifier = Modifier.size(headerHeight)
-                    )
+                    if (activeCategory == "Notifications") {
+                        NotifyAnimation(
+                            isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerHeight)
+                        )
+                    } else {
+                        AirSyncLoadingAnimation(
+                            isPlus = uiState.isConnected && (uiState.lastConnectedDevice?.isPlus == true),
+                            modifier = Modifier.size(headerHeight)
+                        )
+                    }
                 }
 
                 Text(
