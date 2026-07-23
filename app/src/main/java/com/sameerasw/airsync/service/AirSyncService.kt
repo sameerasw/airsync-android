@@ -268,9 +268,11 @@ class AirSyncService : Service() {
                     // Refresh UDP socket to bind to new network interface
                     DiscoveryOrchestrator.refreshSocket()
                     // When network becomes available, do a burst to announce ourselves
-                    if (isScanning) {
+                    if (isScanning && !com.sameerasw.airsync.data.ble.BleGattServer.isAnyAuthenticated()) {
                         DiscoveryOrchestrator.burstBroadcast(applicationContext)
                         WebSocketUtil.requestAutoReconnect(applicationContext)
+                    } else if (isScanning) {
+                        DiscoveryOrchestrator.burstBroadcast(applicationContext)
                     }
                 }
             }

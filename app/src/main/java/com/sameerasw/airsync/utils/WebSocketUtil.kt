@@ -713,25 +713,6 @@ object WebSocketUtil {
                 } catch (_: Exception) {
                 }
             }
-
-            // Send manual disconnect signal over BLE before disconnecting BLE client
-            try {
-                val ble = com.sameerasw.airsync.AirSyncApp.getBleConnectionManager()
-                if (ble != null && ble.isAuthenticated) {
-                    Log.d(TAG, "Sending manual disconnect signal over BLE before disconnecting")
-                    ble.sendChunkedNotification(
-                        BleConstants.CHAR_MAC_CONTROL,
-                        "remote|manual_disconnect"
-                    )
-
-                    CoroutineScope(Dispatchers.IO).launch {
-                        delay(300)
-                        ble.disconnectAllConnectedDevices()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e(TAG, "Error sending manual disconnect signal over BLE: ${e.message}")
-            }
         }
 
         webSocket?.close(1000, "Manual disconnection")
@@ -904,7 +885,9 @@ object WebSocketUtil {
         if (autoReconnectActive.get()) return // already running
         autoReconnectActive.set(true)
         autoReconnectStartTime = System.currentTimeMillis()
-        notifyConnectionStatusListeners(false)
+        if (!com.sameerasw.airsync.data.ble.BleGattServer.isAnyAuthenticated()) {
+            notifyConnectionStatusListeners(false)
+        }
         Log.d(TAG, "Starting Smart Auto-Reconnect strategy")
 
         autoReconnectJob?.cancel()
@@ -913,10 +896,10 @@ object WebSocketUtil {
                 val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
                 acquireWifiLock(context)
 
-                // 1.  Retry Loop (Try last known IPs immediately and periodically)
+                // 1. Retry Loop (Try last known IPs immediately and periodically)
                 launch {
                     var backoffMs = 2000L
-                    while (autoReconnectActive.get() && !isConnected.get()) {
+                    while (autoReconnectActive.get() && !isConnected()) {
                         val manual = ds.getUserManuallyDisconnected().first()
                         val autoEnabled = ds.getAutoReconnectEnabled().first()
 
@@ -969,7 +952,7 @@ object WebSocketUtil {
 
                 // 2. Discovery Monitoring (Listen for presence packets in case IP changed)
                 DiscoveryOrchestrator.discoveredDevices.collect { discoveredList ->
-                    if (!autoReconnectActive.get() || isConnected.get() || isConnecting.get()) return@collect
+                    if (!autoReconnectActive.get() || isConnected() || isConnecting.get()) return@collect
 
                     val last = ds.getLastConnectedDevice().first() ?: return@collect
 
@@ -1010,7 +993,7 @@ object WebSocketUtil {
     // Public wrapper to request auto-reconnect from app logic (e.g., network changes)
     fun requestAutoReconnect(context: Context) {
         // Only if not already connected or connecting
-        if (isConnected.get() || isConnecting.get()) return
+        if (isConnected() || isConnecting.get()) return
         tryStartAutoReconnect(context)
     }
 }
