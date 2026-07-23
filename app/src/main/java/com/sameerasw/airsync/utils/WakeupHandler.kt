@@ -32,8 +32,8 @@ object WakeupHandler {
 
             val dataStoreManager = DataStoreManager.getInstance(context)
 
-            if (WebSocketUtil.isConnected()) {
-                Log.d(TAG, "Already connected, ignoring wake-up request")
+            if (WebSocketUtil.isWifiConnected()) {
+                Log.d(TAG, "Already connected via Wi-Fi, ignoring wake-up request")
                 return
             }
 
@@ -115,22 +115,39 @@ object WakeupHandler {
         try {
             val networkDevices = dataStoreManager.getAllNetworkDeviceConnections().first()
             val ourIp = DeviceInfoUtil.getWifiIpAddress(context)
+            val cleanMacName = cleanDeviceName(macName)
 
             if (ourIp != null) {
                 val networkDevice = networkDevices.firstOrNull { device ->
-                    device.deviceName == macName && device.getClientIpForNetwork(ourIp) == macIp
+                    cleanDeviceName(device.deviceName) == cleanMacName && device.getClientIpForNetwork(ourIp) == macIp
                 }
                 if (networkDevice?.symmetricKey != null) return networkDevice.symmetricKey
             }
 
             val lastConnectedDevice = dataStoreManager.getLastConnectedDevice().first()
-            if (lastConnectedDevice?.name == macName && lastConnectedDevice.symmetricKey != null) {
+            if (lastConnectedDevice?.symmetricKey != null &&
+                (cleanDeviceName(lastConnectedDevice.name) == cleanMacName || networkDevices.size <= 1)
+            ) {
                 return lastConnectedDevice.symmetricKey
             }
 
-            return networkDevices.firstOrNull { it.deviceName == macName }?.symmetricKey
+            val matchedDevice = networkDevices.firstOrNull { cleanDeviceName(it.deviceName) == cleanMacName }
+            if (matchedDevice?.symmetricKey != null) return matchedDevice.symmetricKey
+
+            if (networkDevices.size == 1) {
+                return networkDevices.first().symmetricKey
+            }
+
+            return null
         } catch (e: Exception) {
             return null
         }
+    }
+
+    private fun cleanDeviceName(name: String): String {
+        return name
+            .replace("’", "'")
+            .trim()
+            .lowercase()
     }
 }

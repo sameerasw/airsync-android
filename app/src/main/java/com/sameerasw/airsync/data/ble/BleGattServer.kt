@@ -42,16 +42,23 @@ class BleGattServer(private val context: Context) {
         fun isAnyAuthenticated(): Boolean = instance?.isAuthenticated ?: false
     }
 
-    init {
-        instance = this
-    }
-
     private val bluetoothManager =
         context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
     private val adapter = bluetoothManager.adapter
     private var gattServer: BluetoothGattServer? = null
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val dataStoreManager = DataStoreManager(context)
+
+    private var isBleSyncEnabled = true
+
+    init {
+        instance = this
+        scope.launch {
+            dataStoreManager.getBleSyncEnabled().collect { enabled ->
+                isBleSyncEnabled = enabled
+            }
+        }
+    }
 
     private val _connectionState = MutableStateFlow(BleConnectionState.DISCONNECTED)
     val connectionState = _connectionState.asStateFlow()
@@ -91,12 +98,7 @@ class BleGattServer(private val context: Context) {
             return
         }
 
-        val isEnabled = try {
-            runBlocking { dataStoreManager.getBleSyncEnabled().first() }
-        } catch (e: Exception) {
-            false
-        }
-        if (!isEnabled) {
+        if (!isBleSyncEnabled) {
             Log.d(TAG, "BLE Sync is disabled in settings, skipping start")
             return
         }
@@ -292,12 +294,7 @@ class BleGattServer(private val context: Context) {
                         if (gattServer != null) BleConnectionState.ADVERTISING else BleConnectionState.DISCONNECTED
                     isAuthenticated = false
                     if (gattServer != null) {
-                        val isEnabled = try {
-                            runBlocking { dataStoreManager.getBleSyncEnabled().first() }
-                        } catch (e: Exception) {
-                            false
-                        }
-                        if (isEnabled) {
+                        if (isBleSyncEnabled) {
                             if (!isAdvertisingPaused) {
                                 startAdvertising()
                             }

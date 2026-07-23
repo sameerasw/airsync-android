@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 
 object DiscoveryOrchestrator {
     private const val TAG = "DiscoveryOrchestrator"
@@ -145,32 +146,35 @@ object DiscoveryOrchestrator {
             return
         }
 
-        val ds = DataStoreManager.getInstance(context)
-        val expandNetworkingEnabled = try {
-            runBlocking { ds.getExpandNetworkingEnabled().first() }
-        } catch (e: Exception) {
-            true
-        }
+        CoroutineScope(Dispatchers.IO).launch {
+            val ds = DataStoreManager.getInstance(context)
+            val expandNetworkingEnabled = try {
+                ds.getExpandNetworkingEnabled().first()
+            } catch (e: Exception) {
+                true
+            }
 
-        // Configure backend modes
-        mdnsBackend.setModeWithContext(context, currentMode)
-        udpBackend.setModeWithContext(context, currentMode)
+            withContext(Dispatchers.Main) {
+                // Configure backend modes
+                mdnsBackend.setModeWithContext(context, currentMode)
+                udpBackend.setModeWithContext(context, currentMode)
 
-        // API 32+ gets the clean mDNS flow as primary
-        if (android.os.Build.VERSION.SDK_INT >= 32) {
-            mdnsBackend.start(context)
-        } else {
-            // Older APIs run mDNS passively for discovery only (no advertiser registration)
-            mdnsBackend.setModeWithContext(context, DiscoveryMode.PASSIVE)
-            mdnsBackend.start(context)
-        }
+                // API 32+ gets the clean mDNS flow as primary
+                if (android.os.Build.VERSION.SDK_INT >= 32) {
+                    mdnsBackend.start(context)
+                } else {
+                    // Older APIs run mDNS passively for discovery only (no advertiser registration)
+                    mdnsBackend.setModeWithContext(context, DiscoveryMode.PASSIVE)
+                    mdnsBackend.start(context)
+                }
 
-        // Start UDP if API is low OR Tailscale is enabled
-        val shouldStartUdp = expandNetworkingEnabled || android.os.Build.VERSION.SDK_INT < 32
-        if (shouldStartUdp) {
-            udpBackend.start(context)
-        } else {
-            udpBackend.stop(context)
+                // UDP runs if expand networking is enabled
+                if (expandNetworkingEnabled) {
+                    udpBackend.start(context)
+                } else {
+                    udpBackend.stop(context)
+                }
+            }
         }
     }
 }

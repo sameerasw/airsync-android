@@ -439,8 +439,7 @@ object WebSocketMessageHandler {
 
     private fun handleDisconnectRequest(context: Context) {
         try {
-            // Mark as intentional disconnect to prevent auto-reconnect
-            kotlinx.coroutines.runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val dataStoreManager = DataStoreManager(context)
                     dataStoreManager.setUserManuallyDisconnected(true)

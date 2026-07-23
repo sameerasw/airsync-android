@@ -335,40 +335,28 @@ object WebSocketUtil {
                                         updateConnectedStatus(true)
                                         isConnecting.set(false)
                                         handshakeTimeoutJob?.cancel()
-                                        try {
-                                            val ds =
-                                                com.sameerasw.airsync.data.local.DataStoreManager(
-                                                    context
-                                                )
-                                            kotlinx.coroutines.runBlocking {
-                                                ds.setUserManuallyDisconnected(
-                                                    false
-                                                )
-                                            }
-                                        } catch (_: Exception) {
-                                        }
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                             try {
+                                                 val ds =
+                                                     com.sameerasw.airsync.data.local.DataStoreManager.getInstance(
+                                                         context
+                                                     )
+                                                 ds.setUserManuallyDisconnected(false)
+                                                 val lastDevice = ds.getLastConnectedDevice().first()
+                                                 com.sameerasw.airsync.service.AirSyncService.start(
+                                                     context,
+                                                     lastDevice?.name
+                                                 )
+                                             } catch (e: Exception) {
+                                                 Log.e(
+                                                     TAG,
+                                                     "Error starting AirSyncService: ${e.message}"
+                                                 )
+                                             }
+                                         }
                                         try {
                                             SyncManager.startPeriodicSync(context)
                                         } catch (_: Exception) {
-                                        }
-
-                                        try {
-                                            val ds =
-                                                com.sameerasw.airsync.data.local.DataStoreManager(
-                                                    context
-                                                )
-                                            val lastDevice = kotlinx.coroutines.runBlocking {
-                                                ds.getLastConnectedDevice().first()
-                                            }
-                                            com.sameerasw.airsync.service.AirSyncService.start(
-                                                context,
-                                                lastDevice?.name
-                                            )
-                                        } catch (e: Exception) {
-                                            Log.e(
-                                                TAG,
-                                                "Error starting AirSyncService: ${e.message}"
-                                            )
                                         }
 
                                         onConnectionStatusChanged?.invoke(true)
@@ -718,12 +706,12 @@ object WebSocketUtil {
         // Set manual disconnect flag
         val ctx = context ?: appContext
         ctx?.let { c ->
-            try {
-                val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
-                kotlinx.coroutines.runBlocking {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
                     ds.setUserManuallyDisconnected(true)
+                } catch (_: Exception) {
                 }
-            } catch (_: Exception) {
             }
 
             // Send manual disconnect signal over BLE before disconnecting BLE client
