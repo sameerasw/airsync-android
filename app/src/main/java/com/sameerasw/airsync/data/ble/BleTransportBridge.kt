@@ -72,9 +72,14 @@ object BleTransportBridge {
         gattServer?.sendChunkedNotification(BleConstants.CHAR_NOTIFICATION_DISMISS_NOTIFY, id)
     }
 
-    fun sendDeviceName() {
-        val name = android.os.Build.MODEL
-        gattServer?.sendChunkedNotification(BleConstants.CHAR_DEVICE_NAME, name)
+    fun sendDeviceName(context: android.content.Context? = null) {
+        val ctx = context ?: com.sameerasw.airsync.AirSyncApp.getContext() ?: return
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            val dataStoreManager = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(ctx)
+            val persistedName = dataStoreManager.getDeviceName().first().ifBlank { null }
+            val name = persistedName ?: com.sameerasw.airsync.utils.DeviceInfoUtil.getDeviceName(ctx)
+            gattServer?.sendChunkedNotification(BleConstants.CHAR_DEVICE_NAME, name)
+        }
     }
 
     // --- Inbound (Mac -> Android) ---

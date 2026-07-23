@@ -12,6 +12,7 @@ class AirSyncApp : Application() {
 
     companion object {
         private var instance: AirSyncApp? = null
+        fun getContext(): Application? = instance
         fun isAppForeground(): Boolean = instance?.isForeground() ?: false
         fun getBleConnectionManager(): com.sameerasw.airsync.data.ble.BleConnectionManager? =
             instance?.bleConnectionManager
