@@ -853,9 +853,11 @@ class AirSyncViewModel(
                         val target = hasNetworkAwareMappingForLastDevice()
 
                         if (currentIp == "No Wi-Fi" || currentIp == "Unknown") {
-                            // No usable Wi‑Fi: ensure we stop any active connection and do not attempt reconnect
+                            // No usable Wi‑Fi: ensure we stop any active Wi-Fi WebSocket connection without affecting BLE
                             try {
-                                WebSocketUtil.disconnect(context)
+                                if (WebSocketUtil.isWifiConnected()) {
+                                    WebSocketUtil.disconnect(context)
+                                }
                             } catch (_: Exception) {
                             }
                             // Stop service if needed
@@ -875,8 +877,8 @@ class AirSyncViewModel(
                             updatePort(target.port)
                             updateSymmetricKey(target.symmetricKey)
 
-                            // If connected/connecting to old network, disconnect first to force a clean switch
-                            if (WebSocketUtil.isConnected() || WebSocketUtil.isConnecting()) {
+                            // If Wi-Fi WebSocket is connected to old network, disconnect it first
+                            if (WebSocketUtil.isWifiConnected()) {
                                 try {
                                     WebSocketUtil.disconnect(context)
                                 } catch (_: Exception) {
