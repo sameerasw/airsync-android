@@ -454,6 +454,33 @@ class MediaNotificationListener : NotificationListenerService() {
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start AirSyncService from listener", e)
         }
+
+        // Re-register notifications that were already in the shade before this
+        // process started. Without this, actions and dismissals coming from the
+        // client fail with "not found" for every notification that predates the
+        // listener connecting. The persisted key->id mapping recovers the exact
+        // ID the client already holds even when the notification was updated
+        // since (its postTime — embedded in generated IDs — changes on update,
+        // while sbn.key stays stable).
+        try {
+            val currentKeys = mutableSetOf<String>()
+            activeNotifications?.forEach { sbn ->
+                currentKeys.add(sbn.key)
+                val title = sbn.notification?.extras?.getString(Notification.EXTRA_TITLE) ?: ""
+                val notificationId = NotificationDismissalUtil.getIdBySystemKey(sbn.key)
+                    ?: NotificationDismissalUtil.getPersistedIdBySystemKey(sbn.key)
+                    ?: NotificationDismissalUtil.generateNotificationId(
+                        sbn.packageName,
+                        title,
+                        sbn.postTime
+                    )
+                NotificationDismissalUtil.storeNotification(notificationId, sbn)
+            }
+            NotificationDismissalUtil.prunePersistedMappings(currentKeys)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to restore active notifications on listener connect", e)
+        }
+
         updateMediaInfo()
     }
 
@@ -656,8 +683,10 @@ class MediaNotificationListener : NotificationListenerService() {
                         return@launch
                     }
 
-                    // Retrieve existing notification ID or generate a new one
+                    // Retrieve existing notification ID (in-memory, then persisted
+                    // from a previous process) or generate a new one
                     val notificationId = NotificationDismissalUtil.getIdBySystemKey(sbn.key)
+                        ?: NotificationDismissalUtil.getPersistedIdBySystemKey(sbn.key)
                         ?: NotificationDismissalUtil.generateNotificationId(
                             sbn.packageName,
                             title,
