@@ -30,7 +30,13 @@ object CallControlUtil {
                         context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
                     if (telecomManager != null) {
                         Log.d(TAG, "Accepting ringing call via TelecomManager")
-                        telecomManager.acceptRingingCall()
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            @Suppress("DEPRECATION")
+                            telecomManager.acceptRingingCall(android.telecom.VideoProfile.STATE_AUDIO_ONLY)
+                        } else {
+                            @Suppress("DEPRECATION")
+                            telecomManager.acceptRingingCall()
+                        }
                         return
                     }
                 } catch (e: Exception) {
@@ -65,6 +71,7 @@ object CallControlUtil {
                         context.getSystemService(Context.TELECOM_SERVICE) as? TelecomManager
                     if (telecomManager != null) {
                         Log.d(TAG, "Ending/declining call via TelecomManager")
+                        @Suppress("DEPRECATION")
                         val success = telecomManager.endCall()
                         Log.d(TAG, "TelecomManager.endCall returned: $success")
                         if (success) {

@@ -237,8 +237,15 @@ class QuickShareService : Service() {
             }
 
             else -> {
-                // Remove the startForeground/createNotification call from here
-                server.start()
+                serviceScope.launch {
+                    val enabled = dataStoreManager.isQuickShareEnabled().first()
+                    if (enabled) {
+                        server.start()
+                    } else {
+                        Log.d(TAG, "Service restarted by system but Quick Share is disabled, stopping")
+                        stopDiscovery()
+                    }
+                }
             }
         }
         return START_STICKY

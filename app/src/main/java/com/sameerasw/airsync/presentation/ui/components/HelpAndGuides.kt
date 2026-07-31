@@ -49,7 +49,7 @@ fun HelpAndGuidesContent() {
             HelpSection(
                 title = "Permissions & Usage",
                 iconRes = R.drawable.rounded_security_24,
-                content = "• Notification Access: Required to sync alerts/media. For sideloaded installs, enable 'Restricted Settings' in App Info.\n• Post Notifications: For the ongoing connection indicator.\n• Background Usage: Keeps the connection alive.\n• Storage: Required for wallpaper sync (still images only).",
+                content = "• Notification Access: Required to sync alerts/media. For sideloaded installs, enable 'Restricted Settings' in App Info.\n• Post Notifications: For the ongoing connection indicator.\n• Background Usage: Keeps the connection alive.\n• Storage: Required for wallpaper sync.\n• Location & Phone State: Required to sync cellular network status to your Mac.",
                 links = listOf("Privacy Policy" to "https://www.sameerasw.com/airsync/privacy")
             ),
             HelpSection(

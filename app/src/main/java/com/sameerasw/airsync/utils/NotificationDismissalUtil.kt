@@ -198,7 +198,7 @@ object NotificationDismissalUtil {
         return suppressedIds.remove(notificationId)
     }
 
-    /** Remove from caches when we it's gone. */
+    /** Remove from caches when it's gone. */
     fun removeFromCaches(id: String) {
         activeNotifications.remove(id)?.let { sbn ->
             keyToId.remove(sbn.key)

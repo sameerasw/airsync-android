@@ -37,7 +37,7 @@ import com.sameerasw.airsync.utils.KeyguardHelper
 import com.sameerasw.airsync.utils.NotesRoleManager
 import com.sameerasw.airsync.utils.PermissionUtil
 import com.sameerasw.airsync.utils.ShortcutUtil
-import com.sameerasw.airsync.utils.UDPDiscoveryManager
+import com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator
 import com.sameerasw.airsync.utils.WebSocketUtil
 import com.canerture.exceptionreport.handler.ExceptionReport
 import com.sameerasw.airsync.crash.CrashHandler
@@ -173,7 +173,7 @@ class MainActivity : ComponentActivity() {
         // Install and configure the splash screen before any UI rendering
         val splashScreen = installSplashScreen()
 
-        // Make activity draw behind system bars - let the theme handles the colors
+        // Make activity draw behind system bars - let the theme handle the colors
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
         super.onCreate(savedInstanceState)
@@ -218,7 +218,7 @@ class MainActivity : ComponentActivity() {
                 if (splashIcon is ImageView && deviceIconRes != null) {
                     // Fade out the original app icon
                     val fadeOutIcon = ObjectAnimator.ofFloat(splashIcon, "alpha", 1f, 0f).apply {
-                        duration = 150 // 0.5 seconds
+                        duration = 150 // 0.15 seconds
                     }
 
                     fadeOutIcon.doOnEnd {
@@ -237,7 +237,7 @@ class MainActivity : ComponentActivity() {
                             // Fade in the new device icon
                             val fadeInIcon =
                                 ObjectAnimator.ofFloat(splashIcon, "alpha", 0f, 1f).apply {
-                                    duration = 350 // 0.5 seconds
+                                    duration = 350 // 0.35 seconds
                                 }
 
                             fadeInIcon.doOnEnd {
@@ -249,7 +249,7 @@ class MainActivity : ComponentActivity() {
                                             splashIcon,
                                             splashScreenViewProvider
                                         )
-                                    }, 250) // 0.5 second hold
+                                    }, 250) // 0.25 second hold
                                 } catch (e: Exception) {
                                     Log.e(
                                         "MainActivity",
@@ -583,8 +583,8 @@ class MainActivity : ComponentActivity() {
             val isDiscoveryEnabled = runBlocking {
                 ds.getDeviceDiscoveryEnabled().first()
             }
-            UDPDiscoveryManager.start(this, isDiscoveryEnabled)
-            UDPDiscoveryManager.burstBroadcast(this)
+            DiscoveryOrchestrator.start(this, isDiscoveryEnabled)
+            DiscoveryOrchestrator.burstBroadcast(this)
         }
     }
 

@@ -642,10 +642,17 @@ class BleGattServer(private val context: Context) {
         isSending[uuid] = true
 
         val characteristic = findCharacteristic(uuid) ?: return
-        characteristic.value = data
-
-        connectedDevices.forEach { device ->
-            gattServer?.notifyCharacteristicChanged(device, characteristic, false)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            connectedDevices.forEach { device ->
+                gattServer?.notifyCharacteristicChanged(device, characteristic, false, data)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            characteristic.value = data
+            connectedDevices.forEach { device ->
+                @Suppress("DEPRECATION")
+                gattServer?.notifyCharacteristicChanged(device, characteristic, false)
+            }
         }
     }
 
