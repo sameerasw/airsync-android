@@ -186,9 +186,13 @@ object BleTransportBridge {
         if (parts.size >= 2) {
             val id = parts[0]
             val actionName = parts[1]
+            // Reply text is optional and was previously dropped, so inline replies
+            // never worked over BLE. Empty means "plain button", not an empty reply.
+            val replyText = parts.getOrNull(2)?.takeIf { it.isNotEmpty() }
             com.sameerasw.airsync.utils.NotificationDismissalUtil.performNotificationAction(
                 id,
-                actionName
+                actionName,
+                replyText
             )
         }
     }

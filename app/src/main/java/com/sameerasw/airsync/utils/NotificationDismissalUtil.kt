@@ -11,6 +11,11 @@ import java.util.concurrent.ConcurrentHashMap
 object NotificationDismissalUtil {
     private const val TAG = "NotificationDismissalUtil"
 
+    // Persisted sbn.key -> generated ID mappings. IDs embed postTime, which
+    // changes when a notification is updated, while sbn.key stays stable —
+    // so this is what keeps client-held IDs valid across process restarts.
+    private const val ID_MAP_PREFS = "notification_id_mappings"
+
     // Store active notifications with their IDs for dismissal or actions
     private val activeNotifications = ConcurrentHashMap<String, StatusBarNotification>()
 
@@ -38,6 +43,7 @@ object NotificationDismissalUtil {
         // Keep reverse lookup so we can map sbn.key -> id on removal
         try {
             keyToId[notification.key] = id
+            idMapPrefs()?.edit()?.putString(notification.key, id)?.apply()
         } catch (_: Exception) {
         }
         Log.d(TAG, "Stored notification with ID: $id")
@@ -48,6 +54,7 @@ object NotificationDismissalUtil {
             oldestKeys.forEach { oldId ->
                 activeNotifications.remove(oldId)?.let { sbn ->
                     keyToId.remove(sbn.key)
+                    idMapPrefs()?.edit()?.remove(sbn.key)?.apply()
                 }
             }
         }
@@ -76,6 +83,7 @@ object NotificationDismissalUtil {
                     // Cleanup maps after cancel is requested (onNotificationRemoved may also do this)
                     activeNotifications.remove(notificationId)
                     keyToId.remove(notification.key)
+                    idMapPrefs()?.edit()?.remove(notification.key)?.apply()
                     Log.d(TAG, "Successfully dismissed notification: $notificationId")
                     true
                 } else {
@@ -132,7 +140,7 @@ object NotificationDismissalUtil {
             }
 
             val pendingIntent = target.actionIntent
-            if (replyText != null) {
+            if (!replyText.isNullOrEmpty()) {
                 // Inline reply path
                 val remoteInputs = target.remoteInputs
                 if (remoteInputs.isNullOrEmpty()) {
@@ -181,6 +189,33 @@ object NotificationDismissalUtil {
     }
 
     /**
+     * Lookup a generated ID persisted from a previous process, by system key.
+     */
+    fun getPersistedIdBySystemKey(systemKey: String): String? = try {
+        idMapPrefs()?.getString(systemKey, null)
+    } catch (_: Exception) {
+        null
+    }
+
+    /**
+     * Drop persisted mappings whose notifications are no longer active.
+     * Called after re-registering on listener connect.
+     */
+    fun prunePersistedMappings(activeKeys: Set<String>) {
+        try {
+            val prefs = idMapPrefs() ?: return
+            val editor = prefs.edit()
+            prefs.all.keys.filter { it !in activeKeys }.forEach { editor.remove(it) }
+            editor.apply()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun idMapPrefs(): android.content.SharedPreferences? =
+        getNotificationListenerService()?.applicationContext
+            ?.getSharedPreferences(ID_MAP_PREFS, android.content.Context.MODE_PRIVATE)
+
+    /**
      * Lookup generated ID by StatusBarNotification
      */
     fun getIdForSbn(sbn: StatusBarNotification?): String? {
@@ -202,6 +237,7 @@ object NotificationDismissalUtil {
     fun removeFromCaches(id: String) {
         activeNotifications.remove(id)?.let { sbn ->
             keyToId.remove(sbn.key)
+            idMapPrefs()?.edit()?.remove(sbn.key)?.apply()
         }
         testNotificationIds.remove(id)
     }
