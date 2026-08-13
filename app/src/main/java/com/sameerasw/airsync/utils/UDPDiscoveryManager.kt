@@ -28,10 +28,10 @@ data class DiscoveredDevice(
     val lastSeen: Long = System.currentTimeMillis(),
     val discoverySource: DiscoverySource = DiscoverySource.UDP
 ) {
-    //check if it has a local IP (non-Tailscale)
+    // check if it has a local IP (non-Tailscale)
     fun hasLocalIp(): Boolean = ips.any { !it.startsWith("100.") }
 
-    //check if it has a Tailscale IP
+    // check if it has a Tailscale IP
     fun hasTailscaleIp(): Boolean = ips.any { it.startsWith("100.") }
 
     // Best IP for connection
