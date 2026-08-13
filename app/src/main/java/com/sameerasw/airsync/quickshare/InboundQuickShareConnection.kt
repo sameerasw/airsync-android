@@ -88,10 +88,10 @@ class InboundQuickShareConnection(
         val firstFrame = readFrame()
         Log.d(TAG, "Read first frame: ${firstFrame.size} bytes")
         val offlineFrame = OfflineFrame.ADAPTER.decode(firstFrame)
-        if (offlineFrame.v1!!.type != V1Frame.FrameType.CONNECTION_REQUEST) {
+        if (offlineFrame.v1?.type != V1Frame.FrameType.CONNECTION_REQUEST) {
             throw IllegalStateException("Expected CONNECTION_REQUEST, got ${offlineFrame.v1!!.type}")
         }
-        val connectionRequest = offlineFrame.v1!!.connection_request
+        val connectionRequest = offlineFrame.v1.connection_request
         endpointName = connectionRequest!!.endpoint_name
         Log.d(TAG, "Received connection request from $endpointName")
 
@@ -144,7 +144,7 @@ class InboundQuickShareConnection(
         val responseFrameData = readFrame()
         Log.d(TAG, "Read ConnectionResponse: ${responseFrameData.size} bytes")
         val responseFrame = OfflineFrame.ADAPTER.decode(responseFrameData)
-        if (responseFrame.v1!!.type != V1Frame.FrameType.CONNECTION_RESPONSE) {
+        if (responseFrame.v1?.type != V1Frame.FrameType.CONNECTION_RESPONSE) {
             throw IllegalStateException("Expected CONNECTION_RESPONSE, got ${responseFrame.v1!!.type}")
         }
 
@@ -284,7 +284,7 @@ class InboundQuickShareConnection(
 
                 when (offlineFrame.v1?.type) {
                     V1Frame.FrameType.PAYLOAD_TRANSFER -> {
-                        val transfer = offlineFrame.v1!!.payload_transfer!!
+                        val transfer = offlineFrame.v1.payload_transfer!!
                         val header = transfer.payload_header
                         val chunk = transfer.payload_chunk
 
@@ -333,10 +333,11 @@ class InboundQuickShareConnection(
         val v1Frame = frame.v1 ?: return
         when (v1Frame.type) {
             SharingV1.FrameType.INTRODUCTION -> {
-                introduction = v1Frame.introduction
-                Log.d(TAG, "Received introduction: ${introduction?.file_metadata?.size} files")
-                prepareFiles(v1Frame.introduction!!)
-                onIntroductionReceived?.invoke(v1Frame.introduction!!)
+                val intro = v1Frame.introduction ?: return
+                introduction = intro
+                Log.d(TAG, "Received introduction: ${intro.file_metadata.size} files")
+                prepareFiles(intro)
+                onIntroductionReceived?.invoke(intro)
             }
 
             SharingV1.FrameType.CANCEL -> {

@@ -25,6 +25,7 @@ data class UiState(
     val manualIsPlus: Boolean = false,
     val isContinueBrowsingEnabled: Boolean = true,
     val isSendNowPlayingEnabled: Boolean = true,
+    val excludedMediaPackages: Set<String> = emptySet(),
     val isKeepPreviousLinkEnabled: Boolean = true,
     val isSmartspacerShowWhenDisconnected: Boolean = false,
     val isMacMediaControlsEnabled: Boolean = true,

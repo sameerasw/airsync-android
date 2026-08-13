@@ -70,22 +70,22 @@ open class QuickShareConnection(
         // 1. Verify HMAC
         val mac = Mac.getInstance("HmacSHA256")
         mac.init(SecretKeySpec(context.receiveHmacKey, "HmacSHA256"))
-        val hbBytes = smsg.header_and_body!!.toByteArray()
+        val hbBytes = smsg.header_and_body.toByteArray()
         val calculatedHmac = mac.doFinal(hbBytes)
-        if (!calculatedHmac.contentEquals(smsg.signature!!.toByteArray())) {
+        if (!calculatedHmac.contentEquals(smsg.signature.toByteArray())) {
             throw SecurityException("SecureMessage HMAC mismatch")
         }
 
         // 2. Decrypt HeaderAndBody
-        val hb = HeaderAndBody.ADAPTER.decode(smsg.header_and_body!!)
-        val iv = hb.header_!!.iv!!.toByteArray()
+        val hb = HeaderAndBody.ADAPTER.decode(smsg.header_and_body)
+        val iv = hb.header_.iv!!.toByteArray()
         val cipher = Cipher.getInstance("AES/CBC/PKCS5Padding")
         cipher.init(
             Cipher.DECRYPT_MODE,
             SecretKeySpec(context.decryptKey, "AES"),
             IvParameterSpec(iv)
         )
-        val decryptedData = cipher.doFinal(hb.body!!.toByteArray())
+        val decryptedData = cipher.doFinal(hb.body.toByteArray())
 
         // 3. Parse DeviceToDeviceMessage
         val d2dMsg = DeviceToDeviceMessage.ADAPTER.decode(decryptedData)

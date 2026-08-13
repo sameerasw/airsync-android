@@ -85,7 +85,7 @@ object WebSocketUtil {
             .connectTimeout(5, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.SECONDS) // Keep connection alive
-            .pingInterval(20, TimeUnit.SECONDS)
+            .pingInterval(5, TimeUnit.SECONDS)
             .build()
     }
 
@@ -750,6 +750,17 @@ object WebSocketUtil {
             }
         }
 
+        // Disconnect any active BLE transport connections
+        try {
+            val bleManager = com.sameerasw.airsync.AirSyncApp.getBleConnectionManager()
+            if (bleManager != null && bleManager.isAuthenticated) {
+                BleTransportBridge.sendManualDisconnect()
+            }
+            bleManager?.disconnectAllConnectedDevices()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disconnecting BLE devices: ${e.message}")
+        }
+
         // Update widgets to reflect new state
         ctx?.let { c ->
             try {
@@ -894,11 +905,11 @@ object WebSocketUtil {
         autoReconnectJob = CoroutineScope(Dispatchers.IO).launch {
             try {
                 val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context)
-                acquireWifiLock(context)
 
                 // 1. Retry Loop (Try last known IPs immediately and periodically)
                 launch {
                     var backoffMs = 2000L
+                    var failedStreak = 0
                     while (autoReconnectActive.get() && !isConnected()) {
                         val manual = ds.getUserManuallyDisconnected().first()
                         val autoEnabled = ds.getAutoReconnectEnabled().first()
@@ -912,7 +923,18 @@ object WebSocketUtil {
                             break
                         }
 
-                        if (!isConnecting.get()) {
+                        // Check network capabilities before attempting Wi-Fi socket reconnect
+                        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+                        val activeNetwork = cm?.activeNetwork
+                        val caps = cm?.getNetworkCapabilities(activeNetwork)
+                        val hasWifiOrVpn = caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI) == true ||
+                                caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_VPN) == true ||
+                                caps?.hasTransport(android.net.NetworkCapabilities.TRANSPORT_ETHERNET) == true
+
+                        val expandNetworking = ds.getExpandNetworkingEnabled().first()
+                        val canAttemptWifiSocket = hasWifiOrVpn || expandNetworking
+
+                        if (!isConnecting.get() && canAttemptWifiSocket) {
                             val last = ds.getLastConnectedDevice().first()
                             if (last != null) {
                                 val all = ds.getAllNetworkDeviceConnections().first()
@@ -924,6 +946,7 @@ object WebSocketUtil {
                                         targetConnection.networkConnections.values.joinToString(",")
                                     val port = targetConnection.port.toIntOrNull() ?: 6996
 
+                                    acquireWifiLock(context)
                                     Log.d(
                                         TAG,
                                         "Proactive retry to $ips:$port (backoff: ${backoffMs}ms)"
@@ -937,16 +960,22 @@ object WebSocketUtil {
                                         onConnectionStatus = { connected ->
                                             if (connected) {
                                                 cancelAutoReconnect()
+                                            } else {
+                                                releaseWifiLock()
                                             }
                                         }
                                     )
                                 }
                             }
+                        } else {
+                            releaseWifiLock()
                         }
 
                         delay(backoffMs)
-                        // Exponential backoff capped at 10 seconds
-                        backoffMs = (backoffMs * 1.5).toLong().coerceAtMost(10_000L)
+                        failedStreak++
+                        // Exponential backoff capped at 30 seconds after extended failures
+                        val maxCap = if (failedStreak > 10) 30_000L else 10_000L
+                        backoffMs = (backoffMs * 1.5).toLong().coerceAtMost(maxCap)
                     }
                 }
 

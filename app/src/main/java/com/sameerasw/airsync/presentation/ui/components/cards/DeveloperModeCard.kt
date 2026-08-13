@@ -44,6 +44,7 @@ fun DeveloperModeCard(
     onManualSyncIcons: () -> Unit,
     onClearIconSyncMessage: () -> Unit,
     isConnected: Boolean,
+    onRestartBleServer: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
@@ -142,6 +143,18 @@ fun DeveloperModeCard(
                         enabled = !isLoading
                     ) {
                         Text("Reset Onboarding")
+                    }
+
+                    onRestartBleServer?.let { restartBle ->
+                        Button(
+                            onClick = {
+                                HapticUtil.performClick(haptics)
+                                restartBle()
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Restart BLE Server")
+                        }
                     }
 
                     Spacer(modifier = Modifier.height(8.dp))

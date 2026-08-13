@@ -73,6 +73,9 @@ interface AirSyncRepository {
     suspend fun setSendNowPlayingEnabled(enabled: Boolean)
     fun getSendNowPlayingEnabled(): Flow<Boolean>
 
+    suspend fun setExcludedMediaPackages(packages: Set<String>)
+    fun getExcludedMediaPackages(): Flow<Set<String>>
+
     // Keep previous link settings
     suspend fun setKeepPreviousLinkEnabled(enabled: Boolean)
     fun getKeepPreviousLinkEnabled(): Flow<Boolean>

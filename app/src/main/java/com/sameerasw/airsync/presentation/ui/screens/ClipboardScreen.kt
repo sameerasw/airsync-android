@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.sameerasw.airsync.presentation.ui.screens
 
 import android.content.ClipDescription

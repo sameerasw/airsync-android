@@ -8,6 +8,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.sameerasw.airsync.MainActivity
+import com.sameerasw.airsync.data.ble.BleGattServer
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
 import com.sameerasw.airsync.utils.WebSocketUtil
@@ -86,7 +87,9 @@ class AirSyncTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
-            val isConnected = WebSocketUtil.isConnected()
+            val isWsConnected = WebSocketUtil.isConnected()
+            val isBleConnected = BleGattServer.isAnyAuthenticated()
+            val isConnected = isWsConnected || isBleConnected
             val isAuto = WebSocketUtil.isAutoReconnecting()
 
             if (isAuto && !isConnected) {

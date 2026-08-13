@@ -38,8 +38,8 @@ import java.util.concurrent.ConcurrentLinkedQueue
 class BleGattServer(private val context: Context) {
     companion object {
         private const val TAG = "BleGattServer"
-        private var instance: BleGattServer? = null
-        fun isAnyAuthenticated(): Boolean = instance?.isAuthenticated ?: false
+        private val authenticatedFlag = java.util.concurrent.atomic.AtomicBoolean(false)
+        fun isAnyAuthenticated(): Boolean = authenticatedFlag.get()
     }
 
     private val bluetoothManager =
@@ -52,7 +52,6 @@ class BleGattServer(private val context: Context) {
     private var isBleSyncEnabled = true
 
     init {
-        instance = this
         scope.launch {
             dataStoreManager.getBleSyncEnabled().collect { enabled ->
                 isBleSyncEnabled = enabled
@@ -121,6 +120,7 @@ class BleGattServer(private val context: Context) {
         pendingServices.clear()
         _connectionState.value = BleConnectionState.DISCONNECTED
         isAuthenticated = false
+        authenticatedFlag.set(false)
         isAdvertisingPaused = false
     }
 
@@ -293,6 +293,7 @@ class BleGattServer(private val context: Context) {
                     _connectionState.value =
                         if (gattServer != null) BleConnectionState.ADVERTISING else BleConnectionState.DISCONNECTED
                     isAuthenticated = false
+                    authenticatedFlag.set(false)
                     if (gattServer != null) {
                         if (isBleSyncEnabled) {
                             if (!isAdvertisingPaused) {
@@ -497,12 +498,14 @@ class BleGattServer(private val context: Context) {
                 if (token.contentEquals(expectedToken.toByteArray(Charsets.UTF_8))) {
                     Log.i(TAG, "BLE Auth Success!")
                     isAuthenticated = true
+                    authenticatedFlag.set(true)
                     _connectionState.value = BleConnectionState.AUTHENTICATED
                     sendNotification(
                         BleConstants.CHAR_AUTH_RESULT,
                         byteArrayOf(BleConstants.AUTH_SUCCESS)
                     )
                     BleTransportBridge.sendDeviceName()
+                    dataStoreManager.setUserManuallyDisconnected(false)
                     startHeartbeat()
                 } else {
                     Log.w(TAG, "BLE Auth Failed! Token mismatch.")
@@ -642,10 +645,17 @@ class BleGattServer(private val context: Context) {
         isSending[uuid] = true
 
         val characteristic = findCharacteristic(uuid) ?: return
-        characteristic.value = data
-
-        connectedDevices.forEach { device ->
-            gattServer?.notifyCharacteristicChanged(device, characteristic, false)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
+            connectedDevices.forEach { device ->
+                gattServer?.notifyCharacteristicChanged(device, characteristic, false, data)
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            characteristic.value = data
+            connectedDevices.forEach { device ->
+                @Suppress("DEPRECATION")
+                gattServer?.notifyCharacteristicChanged(device, characteristic, false)
+            }
         }
     }
 
@@ -698,6 +708,7 @@ class BleGattServer(private val context: Context) {
             }
         }
         isAuthenticated = false
+        authenticatedFlag.set(false)
         _connectionState.value = BleConnectionState.DISCONNECTED
     }
 }

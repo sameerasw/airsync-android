@@ -241,6 +241,21 @@ class AirSyncViewModel(
             }
         }
 
+        // Observe Send now playing preference
+        viewModelScope.launch {
+            repository.getSendNowPlayingEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isSendNowPlayingEnabled = enabled)
+            }
+        }
+
+        // Observe Excluded media packages preference
+        viewModelScope.launch {
+            repository.getExcludedMediaPackages().collect { packages ->
+                _uiState.value = _uiState.value.copy(excludedMediaPackages = packages)
+                com.sameerasw.airsync.service.MediaNotificationListener.setExcludedMediaPackages(packages)
+            }
+        }
+
         // Observe Notify on Crash preference
         viewModelScope.launch {
             repository.getNotifyOnCrashEnabled().collect { enabled ->
@@ -1195,6 +1210,57 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isOnboardingCompleted = completed)
         viewModelScope.launch {
             repository.setFirstRun(!completed)
+        }
+    }
+
+    private val _mediaApps =
+        MutableStateFlow<List<com.sameerasw.airsync.domain.model.NotificationApp>>(emptyList())
+    val mediaApps: StateFlow<List<com.sameerasw.airsync.domain.model.NotificationApp>> =
+        _mediaApps.asStateFlow()
+
+    fun loadMediaApps(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val installed = com.sameerasw.airsync.utils.AppUtil.getInstalledApps(context)
+                val excluded = _uiState.value.excludedMediaPackages
+                val mapped = installed.map { app ->
+                    app.copy(isEnabled = excluded.contains(app.packageName))
+                }
+                _mediaApps.value = mapped
+            } catch (e: Exception) {
+                Log.e("AirSyncViewModel", "Failed to load media apps: ${e.message}")
+            }
+        }
+    }
+
+    fun toggleExcludedMediaPackage(packageName: String, isExcluded: Boolean) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val currentExcluded = _uiState.value.excludedMediaPackages.toMutableSet()
+                if (isExcluded) {
+                    currentExcluded.add(packageName)
+                } else {
+                    currentExcluded.remove(packageName)
+                }
+                repository.setExcludedMediaPackages(currentExcluded)
+                _mediaApps.value = _mediaApps.value.map { app ->
+                    if (app.packageName == packageName) app.copy(isEnabled = isExcluded) else app
+                }
+            } catch (e: Exception) {
+                Log.e("AirSyncViewModel", "Failed to toggle excluded media package: ${e.message}")
+            }
+        }
+    }
+
+    fun saveAllMediaApps(apps: List<com.sameerasw.airsync.domain.model.NotificationApp>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val excluded = apps.filter { it.isEnabled }.map { it.packageName }.toSet()
+                repository.setExcludedMediaPackages(excluded)
+                _mediaApps.value = apps
+            } catch (e: Exception) {
+                Log.e("AirSyncViewModel", "Failed to save all media apps: ${e.message}")
+            }
         }
     }
 

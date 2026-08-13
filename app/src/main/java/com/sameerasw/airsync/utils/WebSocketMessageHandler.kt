@@ -393,7 +393,9 @@ object WebSocketMessageHandler {
 
             // We accept either "name" or legacy "action" for action name
             val actionName = data.optString("name", data.optString("action", "")).ifEmpty { "" }
-            val replyText = data.optString("text")
+            // Absent "text" must stay null: an empty string would be taken as an
+            // inline reply and plain action buttons would never be invoked.
+            val replyText = data.optString("text").takeIf { it.isNotEmpty() }
 
             if (actionName.isEmpty()) {
                 sendNotificationActionResponse(
@@ -411,7 +413,7 @@ object WebSocketMessageHandler {
                 replyText
             )
             val message = if (success) {
-                if (replyText.isNotEmpty()) "Reply sent" else "Action invoked"
+                if (!replyText.isNullOrEmpty()) "Reply sent" else "Action invoked"
             } else {
                 "Failed to perform action or notification not found"
             }
@@ -428,10 +430,6 @@ object WebSocketMessageHandler {
             // Reply immediately with lightweight pong message to keep session active
             val pongJson = "{\"type\":\"pong\",\"data\":{}}"
             WebSocketUtil.sendMessage(pongJson)
-
-            // Respond to ping with current device status to keep connection alive
-            // We must force sync here because the server expects a response to every ping
-            SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
         }
