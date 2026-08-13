@@ -167,6 +167,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getSendNowPlayingEnabled()
     }
 
+    override suspend fun setExcludedMediaPackages(packages: Set<String>) {
+        dataStoreManager.setExcludedMediaPackages(packages)
+    }
+
+    override fun getExcludedMediaPackages(): Flow<Set<String>> {
+        return dataStoreManager.getExcludedMediaPackages()
+    }
+
     // New: Keep previous link setting
     override suspend fun setKeepPreviousLinkEnabled(enabled: Boolean) {
         dataStoreManager.setKeepPreviousLinkEnabled(enabled)

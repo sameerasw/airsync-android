@@ -61,6 +61,9 @@ class DataStoreManager(private val context: Context) {
         // Send now playing toggle
         private val SEND_NOW_PLAYING_ENABLED = booleanPreferencesKey("send_now_playing_enabled")
 
+        // Excluded media packages preference
+        private val EXCLUDED_MEDIA_PACKAGES = stringPreferencesKey("excluded_media_packages")
+
         // Keep previous link toggle
         private val KEEP_PREVIOUS_LINK_ENABLED = booleanPreferencesKey("keep_previous_link_enabled")
 
@@ -247,6 +250,20 @@ class DataStoreManager(private val context: Context) {
     fun getSendNowPlayingEnabled(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[SEND_NOW_PLAYING_ENABLED] != false // Default to enabled
+        }
+    }
+
+    // Excluded media packages
+    suspend fun setExcludedMediaPackages(packages: Set<String>) {
+        context.dataStore.edit { preferences ->
+            preferences[EXCLUDED_MEDIA_PACKAGES] = packages.joinToString(",")
+        }
+    }
+
+    fun getExcludedMediaPackages(): Flow<Set<String>> {
+        return context.dataStore.data.map { preferences ->
+            val raw = preferences[EXCLUDED_MEDIA_PACKAGES] ?: ""
+            if (raw.isBlank()) emptySet() else raw.split(",").toSet()
         }
     }
 

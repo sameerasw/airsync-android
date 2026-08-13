@@ -105,6 +105,8 @@
     <string name="permission_answer_calls_button">Grant Answer Calls Access</string>
     <string name="action_select_apps">Select apps</string>
     <string name="subtitle_to_be_notified">To be notified</string>
+    <string name="action_exclude_media_apps">Exclude media apps</string>
+    <string name="subtitle_exclude_media_apps">Apps excluded from now playing sync</string>
 
     <!-- Crash Reporting Strings -->
     <string name="label_notify_on_crash">Notify on crash</string>

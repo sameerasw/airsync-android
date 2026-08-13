@@ -46,6 +46,15 @@ class MediaNotificationListener : NotificationListenerService() {
         @Volatile
         private var isNowPlayingEnabled: Boolean = true
 
+        // Excluded media packages
+        @Volatile
+        private var excludedMediaPackages: Set<String> = emptySet()
+
+        fun setExcludedMediaPackages(packages: Set<String>) {
+            excludedMediaPackages = packages
+            Log.d(TAG, "Updated excluded media packages: ${packages.size} apps excluded")
+        }
+
         fun setNowPlayingEnabled(context: Context, enabled: Boolean) {
             isNowPlayingEnabled = enabled
             if (!enabled) {
@@ -119,8 +128,7 @@ class MediaNotificationListener : NotificationListenerService() {
                 if (activeSessions.isNotEmpty()) {
                     for (controller in activeSessions) {
                         try {
-                            if (controller.packageName == context.packageName) {
-                                // Log.d(TAG, "Skipping own media session from package: ${controller.packageName}")
+                            if (controller.packageName == context.packageName || excludedMediaPackages.contains(controller.packageName)) {
                                 continue
                             }
                         } catch (_: Exception) {
