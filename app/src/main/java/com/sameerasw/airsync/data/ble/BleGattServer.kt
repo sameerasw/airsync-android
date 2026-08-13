@@ -505,6 +505,7 @@ class BleGattServer(private val context: Context) {
                         byteArrayOf(BleConstants.AUTH_SUCCESS)
                     )
                     BleTransportBridge.sendDeviceName()
+                    dataStoreManager.setUserManuallyDisconnected(false)
                     startHeartbeat()
                 } else {
                     Log.w(TAG, "BLE Auth Failed! Token mismatch.")
