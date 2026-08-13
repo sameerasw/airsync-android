@@ -1,3 +1,4 @@
+@file:Suppress("DEPRECATION")
 package com.sameerasw.airsync.presentation.ui.components
 
 import android.view.HapticFeedbackConstants

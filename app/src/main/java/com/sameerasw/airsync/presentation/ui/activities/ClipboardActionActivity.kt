@@ -299,24 +299,7 @@ private fun ClipboardActionScreenContent(
                                 )
                             }
 
-                            else -> {
-                                // Default/Idle icon
-                                val iconPainter = when (shortcutAction) {
-                                    ShortcutUtil.DASH_ACTION_LOCK -> painterResource(id = R.drawable.rounded_lock_24)
-                                    ShortcutUtil.DASH_ACTION_DISCONNECT -> painterResource(id = R.drawable.rounded_mimo_disconnect_24)
-                                    ShortcutUtil.DASH_ACTION_RECONNECT -> painterResource(id = R.drawable.rounded_devices_24)
-                                    ShortcutUtil.DASH_ACTION_REMOTE -> painterResource(id = R.drawable.rounded_compare_arrows_24)
-                                    ShortcutUtil.DASH_ACTION_CLIPBOARD -> painterResource(id = R.drawable.ic_clipboard_24)
-                                    android.content.Intent.ACTION_SEND -> painterResource(id = R.drawable.rounded_sync_desktop_24)
-                                    else -> painterResource(id = R.drawable.ic_clipboard_24)
-                                }
-                                Icon(
-                                    painter = iconPainter,
-                                    contentDescription = "Sync",
-                                    modifier = Modifier.size(24.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
+
                         }
                     }
                 }
