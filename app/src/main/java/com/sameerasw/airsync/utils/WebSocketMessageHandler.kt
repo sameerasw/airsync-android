@@ -428,10 +428,6 @@ object WebSocketMessageHandler {
             // Reply immediately with lightweight pong message to keep session active
             val pongJson = "{\"type\":\"pong\",\"data\":{}}"
             WebSocketUtil.sendMessage(pongJson)
-
-            // Respond to ping with current device status to keep connection alive
-            // We must force sync here because the server expects a response to every ping
-            SyncManager.checkAndSyncDeviceStatus(context, forceSync = true)
         } catch (e: Exception) {
             Log.e(TAG, "Error handling ping: ${e.message}")
         }
