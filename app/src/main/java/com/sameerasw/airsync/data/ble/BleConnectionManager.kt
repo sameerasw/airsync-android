@@ -44,21 +44,21 @@ class BleConnectionManager(private val context: Context) {
         scope.launch {
             combine(
                 dataStoreManager.getBleSyncEnabled(),
-                dataStoreManager.getBleAutoConnectEnabled(),
+                dataStoreManager.getUserManuallyDisconnected(),
                 WebSocketUtil.connectionState
-            ) { enabled, auto, wsConnected ->
-                Triple(enabled, auto, wsConnected)
-            }.collectLatest { (enabled, _, wsConnected) ->
+            ) { enabled, manuallyDisconnected, wsConnected ->
+                Triple(enabled, manuallyDisconnected, wsConnected)
+            }.collectLatest { (enabled, manuallyDisconnected, wsConnected) ->
                 isBleEnabled = enabled
-                updateBleState(regularConnectionActive = wsConnected)
+                updateBleState(regularConnectionActive = wsConnected, manuallyDisconnected = manuallyDisconnected)
             }
         }
     }
 
-    private fun updateBleState(regularConnectionActive: Boolean) {
-        if (!isBleEnabled) {
-            Log.d(TAG, "BLE disabled, stopping server")
-            bleServer?.stop()
+    private fun updateBleState(regularConnectionActive: Boolean, manuallyDisconnected: Boolean) {
+        if (!isBleEnabled || manuallyDisconnected) {
+            Log.d(TAG, "BLE disabled or user manually disconnected, stopping/pausing server")
+            bleServer?.pauseAdvertising()
             return
         }
 
@@ -92,5 +92,16 @@ class BleConnectionManager(private val context: Context) {
 
     fun disconnectAllConnectedDevices() {
         bleServer?.disconnectAllConnectedDevices()
+    }
+
+    fun restartServer() {
+        Log.d(TAG, "Restarting BLE GATT server...")
+        bleServer?.stop()
+        bleServer = BleGattServer(context)
+        _serverFlow.value = bleServer
+        BleTransportBridge.initialize(bleServer!!)
+        if (isBleEnabled) {
+            bleServer?.start()
+        }
     }
 }

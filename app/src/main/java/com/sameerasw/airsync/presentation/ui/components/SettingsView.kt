@@ -381,7 +381,11 @@ fun SettingsView(
                         onClearIconSyncMessage = {
                             viewModel.clearIconSyncMessage()
                         },
-                        isConnected = uiState.isConnected
+                        isConnected = uiState.isConnected,
+                        onRestartBleServer = {
+                            com.sameerasw.airsync.AirSyncApp.getBleConnectionManager()?.restartServer()
+                            Toast.makeText(context, "BLE GATT Server restarted", Toast.LENGTH_SHORT).show()
+                        }
                     )
                 }
             }

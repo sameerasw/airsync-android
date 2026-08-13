@@ -72,6 +72,10 @@ object BleTransportBridge {
         gattServer?.sendChunkedNotification(BleConstants.CHAR_NOTIFICATION_DISMISS_NOTIFY, id)
     }
 
+    fun sendManualDisconnect() {
+        gattServer?.sendChunkedNotification(BleConstants.CHAR_MAC_CONTROL, "remote|manual_disconnect")
+    }
+
     fun sendDeviceName(context: android.content.Context? = null) {
         val ctx = context ?: com.sameerasw.airsync.AirSyncApp.getContext() ?: return
         kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {

@@ -750,6 +750,17 @@ object WebSocketUtil {
             }
         }
 
+        // Disconnect any active BLE transport connections
+        try {
+            val bleManager = com.sameerasw.airsync.AirSyncApp.getBleConnectionManager()
+            if (bleManager != null && bleManager.isAuthenticated) {
+                BleTransportBridge.sendManualDisconnect()
+            }
+            bleManager?.disconnectAllConnectedDevices()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error disconnecting BLE devices: ${e.message}")
+        }
+
         // Update widgets to reflect new state
         ctx?.let { c ->
             try {
