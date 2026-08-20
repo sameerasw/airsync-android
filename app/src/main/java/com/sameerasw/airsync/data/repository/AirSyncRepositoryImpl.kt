@@ -313,4 +313,12 @@ class AirSyncRepositoryImpl(
     override fun getNotifyOnCrashEnabled(): Flow<Boolean> {
         return dataStoreManager.getNotifyOnCrashEnabled()
     }
+
+    override suspend fun setAppEnabled(enabled: Boolean) {
+        dataStoreManager.setAppEnabled(enabled)
+    }
+
+    override fun getAppEnabled(): Flow<Boolean> {
+        return dataStoreManager.getAppEnabled()
+    }
 }

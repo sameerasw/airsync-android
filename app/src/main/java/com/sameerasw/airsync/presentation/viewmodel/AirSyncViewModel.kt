@@ -390,6 +390,7 @@ class AirSyncViewModel(
             val isBlurProblematic = DeviceInfoUtil.isBlurProblematicDevice()
             val isQuickShareEnabled = repository.isQuickShareEnabled().first()
             val isNotifyOnCrashEnabled = repository.getNotifyOnCrashEnabled().first()
+            val isAppEnabled = repository.getAppEnabled().first()
 
             // Replicate Essentials logic for initial state
             val isBlurEnabled = isBlurEnabledSetting && !isPowerSaveMode && !isBlurProblematic
@@ -452,7 +453,8 @@ class AirSyncViewModel(
                 isBlurEnabled = isBlurEnabled,
                 isOnboardingCompleted = !isFirstRun,
                 isQuickShareEnabled = isQuickShareEnabled,
-                isNotifyOnCrashEnabled = isNotifyOnCrashEnabled
+                isNotifyOnCrashEnabled = isNotifyOnCrashEnabled,
+                isAppEnabled = isAppEnabled
             )
 
             updateRatingPromptDisplay()
@@ -744,6 +746,17 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isDeviceDiscoveryEnabled = enabled)
         viewModelScope.launch {
             repository.setDeviceDiscoveryEnabled(enabled)
+            ServiceManager.updateServiceState(context)
+        }
+    }
+
+    fun setAppEnabled(context: Context, enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isAppEnabled = enabled)
+        viewModelScope.launch {
+            repository.setAppEnabled(enabled)
+            if (!enabled) {
+                WebSocketUtil.disconnect(context)
+            }
             ServiceManager.updateServiceState(context)
         }
     }

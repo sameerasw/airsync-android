@@ -125,6 +125,15 @@ object WebSocketUtil {
         // Cache application context for future cleanup even if callers don't pass context on disconnect
         appContext = context.applicationContext
 
+        val isAppEnabled = kotlinx.coroutines.runBlocking {
+            com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context).getAppEnabled().first()
+        }
+        if (!isAppEnabled) {
+            Log.d(TAG, "Skipping connection attempt: AirSync is globally disabled.")
+            onConnectionStatus?.invoke(false)
+            return
+        }
+
         if (isConnecting.get() || isConnected.get()) {
             Log.d(TAG, "Already connected or connecting")
             return
@@ -1023,6 +1032,14 @@ object WebSocketUtil {
     fun requestAutoReconnect(context: Context) {
         // Only if not already connected or connecting
         if (isConnected() || isConnecting.get()) return
+
+        val isAppEnabled = kotlinx.coroutines.runBlocking {
+            com.sameerasw.airsync.data.local.DataStoreManager.getInstance(context).getAppEnabled().first()
+        }
+        if (!isAppEnabled) {
+            Log.d(TAG, "Skipping auto-reconnect request: AirSync is globally disabled.")
+            return
+        }
         tryStartAutoReconnect(context)
     }
 }

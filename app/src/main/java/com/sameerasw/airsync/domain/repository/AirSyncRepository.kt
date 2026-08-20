@@ -140,4 +140,8 @@ interface AirSyncRepository {
 
     suspend fun setNotifyOnCrashEnabled(enabled: Boolean)
     fun getNotifyOnCrashEnabled(): Flow<Boolean>
+
+    // Global Active Toggle
+    suspend fun setAppEnabled(enabled: Boolean)
+    fun getAppEnabled(): Flow<Boolean>
 }
