@@ -13,6 +13,8 @@ Min : Android 11
 - Cross-device clipboard synchronization
 - **Cellular Network Monitoring**: View your Android's cellular status (LTE, 5G, No Signal) directly from your Mac's menu bar.
 - **Auto-Start Support**: Enhanced background stability with auto-start helpers for various Android OEMs (Xiaomi, OPPO, Vivo, Letv, etc.).
+- **AirSync Active Toggle**: Adds a global switch in the settings panel to stop background scanning and connection loops completely to conserve battery life.
+
 
 ## How to connect?
 Use your built-in camera or Google Lens or anything that can scan a QR code. It will prompt you to open the app. Once authorized, the last device will be saved on the mobile for now for easier reconnection.
