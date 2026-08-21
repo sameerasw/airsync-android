@@ -133,7 +133,6 @@
             android:name=".presentation.ui.activities.QRScannerActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:screenOrientation="portrait"
             android:theme="@style/Theme.AirSync">
             <!-- Allow external apps to launch the scanner -->
             <intent-filter>

@@ -11,6 +11,7 @@ import android.widget.ImageView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -173,8 +174,8 @@ class MainActivity : ComponentActivity() {
         // Install and configure the splash screen before any UI rendering
         val splashScreen = installSplashScreen()
 
-        // Make activity draw behind system bars - let the theme handle the colors
-        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
+        // Enable edge-to-edge for Android 15+ and backward compatibility
+        enableEdgeToEdge()
 
         super.onCreate(savedInstanceState)
 

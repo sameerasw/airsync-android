@@ -145,12 +145,29 @@ object ContactPhotoUtil {
      */
     private fun loadBitmap(context: Context, uri: Uri): Bitmap? {
         return try {
-            context.contentResolver.openInputStream(uri).use { inputStream ->
-                if (inputStream != null) {
-                    BitmapFactory.decodeStream(inputStream)
-                } else {
-                    null
+            val targetSize = 256
+            val boundsOptions = BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, boundsOptions)
+            }
+
+            var inSampleSize = 1
+            if (boundsOptions.outHeight > targetSize || boundsOptions.outWidth > targetSize) {
+                val halfHeight = boundsOptions.outHeight / 2
+                val halfWidth = boundsOptions.outWidth / 2
+                while ((halfHeight / inSampleSize) >= targetSize && (halfWidth / inSampleSize) >= targetSize) {
+                    inSampleSize *= 2
                 }
+            }
+
+            val decodeOptions = BitmapFactory.Options().apply {
+                this.inSampleSize = inSampleSize
+            }
+
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                BitmapFactory.decodeStream(inputStream, null, decodeOptions)
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error loading bitmap: ${e.message}")

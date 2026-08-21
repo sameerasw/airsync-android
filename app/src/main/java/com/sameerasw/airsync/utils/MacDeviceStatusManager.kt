@@ -209,7 +209,25 @@ object MacDeviceStatusManager {
         return try {
             if (base64String.isNotEmpty()) {
                 val decodedBytes = Base64.decode(base64String, Base64.DEFAULT)
-                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size)
+                val boundsOptions = BitmapFactory.Options().apply {
+                    inJustDecodeBounds = true
+                }
+                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size, boundsOptions)
+
+                val targetSize = 512
+                var inSampleSize = 1
+                if (boundsOptions.outHeight > targetSize || boundsOptions.outWidth > targetSize) {
+                    val halfHeight = boundsOptions.outHeight / 2
+                    val halfWidth = boundsOptions.outWidth / 2
+                    while ((halfHeight / inSampleSize) >= targetSize && (halfWidth / inSampleSize) >= targetSize) {
+                        inSampleSize *= 2
+                    }
+                }
+
+                val decodeOptions = BitmapFactory.Options().apply {
+                    this.inSampleSize = inSampleSize
+                }
+                BitmapFactory.decodeByteArray(decodedBytes, 0, decodedBytes.size, decodeOptions)
             } else {
                 null
             }
