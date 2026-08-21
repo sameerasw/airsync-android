@@ -14,7 +14,7 @@ android {
     defaultConfig {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
-        versionCode = 31
+        versionCode = 32
         versionName = "4.0.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -22,17 +22,16 @@ android {
 
     buildTypes {
 //        optimized dev build
-//          debug {
-//             isMinifyEnabled = true
-//             isShrinkResources = true
-//             isDebuggable = false
-//
-//             proguardFiles(
-//                 getDefaultProguardFile("proguard-android-optimize.txt"),
-//                 "proguard-rules.pro"
-//             )
-//          }
-// end
+//           debug {
+//              isMinifyEnabled = true
+//              isShrinkResources = true
+//              isDebuggable = false
+//              proguardFiles(
+//                  getDefaultProguardFile("proguard-android-optimize.txt"),
+//                  "proguard-rules.pro"
+//              )
+//           }
+//        end
 
         release {
             isMinifyEnabled = true

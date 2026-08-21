@@ -709,6 +709,11 @@ class BleGattServer(private val context: Context) {
         }
         isAuthenticated = false
         authenticatedFlag.set(false)
-        _connectionState.value = BleConnectionState.DISCONNECTED
+        stopHeartbeat()
+        _connectionState.value = if (gattServer != null) BleConnectionState.ADVERTISING else BleConnectionState.DISCONNECTED
+        isAdvertisingPaused = false
+        if (gattServer != null && isBleSyncEnabled) {
+            startAdvertising()
+        }
     }
 }

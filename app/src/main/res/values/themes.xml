@@ -12,10 +12,6 @@
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
 
-        <!-- Edge-to-edge transparency -->
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
-
         <!-- Light icons true for light theme (black icons) -->
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowLightNavigationBar">true</item>
@@ -30,8 +26,5 @@
         <item name="android:windowIsFloating">false</item>
 
         <item name="android:windowAnimationStyle">@android:style/Animation</item>
-
-        <item name="android:statusBarColor">@android:color/transparent</item>
-        <item name="android:navigationBarColor">@android:color/transparent</item>
     </style>
 </resources>
