@@ -51,7 +51,7 @@ private const val DEFAULT_ROTATION_X = 12f
 fun InteractiveMacFidgetModel(
     modifier: Modifier = Modifier,
     modelPath: String = "models/macbook.glb",
-    scaleToUnits: Float = 1.55f,
+    scaleToUnits: Float = 1.45f,
     isConnected: Boolean = true,
     onModelLoadFailed: (() -> Unit)? = null
 ) {
@@ -209,7 +209,7 @@ fun MacDevicePreview(
     is3dEnabled: Boolean = true,
     isConnected: Boolean = true,
     isPageVisible: Boolean = true,
-    height: Dp = 290.dp
+    height: Dp = 340.dp
 ) {
     var has3dError by remember { mutableStateOf(false) }
 
