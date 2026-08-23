@@ -1,6 +1,7 @@
 package com.sameerasw.airsync.presentation.ui.components
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -34,6 +35,7 @@ import com.sameerasw.airsync.utils.DevicePreviewResolver
 import dev.romainguy.kotlin.math.Float3
 import io.github.sceneview.SceneView
 import io.github.sceneview.SurfaceType
+import io.github.sceneview.node.ModelNode
 import io.github.sceneview.rememberCameraNode
 import io.github.sceneview.rememberEngine
 import io.github.sceneview.rememberMainLightNode
@@ -50,12 +52,14 @@ fun InteractiveMacFidgetModel(
     modifier: Modifier = Modifier,
     modelPath: String = "models/macbook.glb",
     scaleToUnits: Float = 1.55f,
+    isConnected: Boolean = true,
     onModelLoadFailed: (() -> Unit)? = null
 ) {
     val engine = rememberEngine()
     val modelLoader = rememberModelLoader(engine)
 
     var modelInstance by remember { mutableStateOf<FilamentInstance?>(null) }
+    var modelNodeRef by remember { mutableStateOf<ModelNode?>(null) }
     var isReadyForFadeIn by remember { mutableStateOf(false) }
 
     val alphaAnim by animateFloatAsState(
@@ -64,7 +68,10 @@ fun InteractiveMacFidgetModel(
         label = "MacModelFadeIn"
     )
 
-    // auto-center
+    // Keyframe Animation Progress (0f = start / disconnected closed, 1f = end / connected open)
+    val animationProgress = remember { Animatable(if (isConnected) 1f else 0f) }
+
+    // Smooth auto-centering animation states
     val coroutineScope = rememberCoroutineScope()
     val animRotationY = remember { Animatable(DEFAULT_ROTATION_Y) }
     val animRotationX = remember { Animatable(DEFAULT_ROTATION_X) }
@@ -80,7 +87,7 @@ fun InteractiveMacFidgetModel(
         isShadowCaster = false
     }
 
-    // Load 3D
+    // Load 3D model instance asynchronously
     LaunchedEffect(modelPath) {
         try {
             val instance = modelLoader.loadModelInstance(modelPath)
@@ -94,6 +101,15 @@ fun InteractiveMacFidgetModel(
         } catch (e: Exception) {
             onModelLoadFailed?.invoke()
         }
+    }
+
+    // Handle forward / reverse keyframe transitions on connect/disconnect
+    LaunchedEffect(isConnected, modelNodeRef) {
+        val target = if (isConnected) 1f else 0f
+        animationProgress.animateTo(
+            targetValue = target,
+            animationSpec = tween(durationMillis = 800, easing = FastOutSlowInEasing)
+        )
     }
 
     Box(
@@ -156,6 +172,16 @@ fun InteractiveMacFidgetModel(
             cameraNode = cameraNode,
             mainLightNode = mainLight,
             isOpaque = false,
+            onFrame = {
+                modelNodeRef?.animator?.let { animator ->
+                    val count = animator.animationCount
+                    for (i in 0 until count) {
+                        val duration = animator.getAnimationDuration(i)
+                        animator.applyAnimation(i, animationProgress.value * duration)
+                    }
+                    animator.updateBoneMatrices()
+                }
+            },
             content = {
                 modelInstance?.let { instance ->
                     ModelNode(
@@ -166,6 +192,8 @@ fun InteractiveMacFidgetModel(
                         apply = {
                             isShadowCaster = false
                             isShadowReceiver = false
+                            playingAnimations.clear()
+                            modelNodeRef = this
                         }
                     )
                 }
@@ -179,6 +207,7 @@ fun MacDevicePreview(
     connectedDevice: ConnectedDevice?,
     modifier: Modifier = Modifier,
     is3dEnabled: Boolean = true,
+    isConnected: Boolean = true,
     isPageVisible: Boolean = true,
     height: Dp = 290.dp
 ) {
@@ -196,6 +225,7 @@ fun MacDevicePreview(
                     .fillMaxWidth()
                     .height(height),
                 modelPath = "models/macbook.glb",
+                isConnected = isConnected,
                 onModelLoadFailed = {
                     has3dError = true
                 }

@@ -104,7 +104,6 @@ import com.sameerasw.airsync.presentation.ui.components.FloatingMediaPlayer
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
-import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
@@ -789,7 +788,6 @@ fun AirSyncMainScreen(
                                     }
 
 
-                                    // Connection Status Card
                                     ConnectionStatusCard(
                                         isConnected = uiState.isConnected,
                                         isConnecting = uiState.isConnecting,
@@ -797,10 +795,36 @@ fun AirSyncMainScreen(
                                         connectedDevice = uiState.lastConnectedDevice,
                                         lastConnected = uiState.lastConnectedDevice != null,
                                         uiState = uiState,
+                                        isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
+                                        onToggleAutoReconnect = { enabled ->
+                                            viewModel.setAutoReconnectEnabled(enabled)
+                                        },
+                                        onQuickConnect = {
+                                            uiState.lastConnectedDevice?.let { device ->
+                                                val networkAwareDevice = viewModel.getNetworkAwareLastConnectedDevice()
+                                                if (networkAwareDevice != null) {
+                                                    viewModel.updateIpAddress(networkAwareDevice.ipAddress)
+                                                    viewModel.updatePort(networkAwareDevice.port)
+                                                    connect(
+                                                        ipAddress = networkAwareDevice.ipAddress,
+                                                        port = networkAwareDevice.port,
+                                                        symmetricKey = networkAwareDevice.symmetricKey
+                                                    )
+                                                } else {
+                                                    viewModel.updateIpAddress(device.ipAddress)
+                                                    viewModel.updatePort(device.port)
+                                                    viewModel.updateSymmetricKey(device.symmetricKey)
+                                                    connect(
+                                                        ipAddress = device.ipAddress,
+                                                        port = device.port,
+                                                        symmetricKey = device.symmetricKey
+                                                    )
+                                                }
+                                            }
+                                        },
                                         isPageVisible = (page == 0),
                                     )
 
-                                    // Remote Functions Card (Lock Screen, etc.)
                                     AnimatedVisibility(
                                         visible = uiState.isConnected,
                                         enter = expandVertically() + fadeIn(),
@@ -813,52 +837,7 @@ fun AirSyncMainScreen(
                                 }
 
                                 RoundedCardContainer {
-                                    // Nearby Devices (UDP Discovery)
                                     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
-
-                                    // Last Connected Device Section
-                                    AnimatedVisibility(
-                                        visible = !uiState.isConnected && uiState.lastConnectedDevice != null,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
-                                        uiState.lastConnectedDevice?.let { device ->
-                                            LastConnectedDeviceCard(
-                                                device = device,
-                                                isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
-                                                onToggleAutoReconnect = { enabled ->
-                                                    viewModel.setAutoReconnectEnabled(
-                                                        enabled
-                                                    )
-                                                },
-                                                onQuickConnect = {
-                                                    // Check if we can use network-aware connection first
-                                                    val networkAwareDevice =
-                                                        viewModel.getNetworkAwareLastConnectedDevice()
-                                                    if (networkAwareDevice != null) {
-                                                        // Use network-aware device IP for current network
-                                                        viewModel.updateIpAddress(networkAwareDevice.ipAddress)
-                                                        viewModel.updatePort(networkAwareDevice.port)
-                                                        connect(
-                                                            ipAddress = networkAwareDevice.ipAddress,
-                                                            port = networkAwareDevice.port,
-                                                            symmetricKey = networkAwareDevice.symmetricKey
-                                                        )
-                                                    } else {
-                                                        // Fallback to legacy stored device
-                                                        viewModel.updateIpAddress(device.ipAddress)
-                                                        viewModel.updatePort(device.port)
-                                                        viewModel.updateSymmetricKey(device.symmetricKey)
-                                                        connect(
-                                                            ipAddress = device.ipAddress,
-                                                            port = device.port,
-                                                            symmetricKey = device.symmetricKey
-                                                        )
-                                                    }
-                                                }
-                                            )
-                                        }
-                                    }
 
                                     AnimatedVisibility(
                                         visible = !uiState.isConnected,
