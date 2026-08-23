@@ -797,6 +797,7 @@ fun AirSyncMainScreen(
                                         connectedDevice = uiState.lastConnectedDevice,
                                         lastConnected = uiState.lastConnectedDevice != null,
                                         uiState = uiState,
+                                        isPageVisible = (page == 0),
                                     )
 
                                     // Remote Functions Card (Lock Screen, etc.)

@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.presentation.ui.components.AirSyncLoadingAnimation
+import com.sameerasw.airsync.presentation.ui.components.MacDevicePreview
 import com.sameerasw.airsync.utils.DevicePreviewResolver
 import com.sameerasw.airsync.utils.HapticUtil
 
@@ -44,6 +45,7 @@ fun ConnectionStatusCard(
     connectedDevice: ConnectedDevice? = null,
     lastConnected: Boolean,
     uiState: UiState,
+    isPageVisible: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -64,15 +66,11 @@ fun ConnectionStatusCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // 1) Device image at the top (only when connected)
             if (isConnected) {
-                val previewRes = DevicePreviewResolver.getPreviewRes(connectedDevice)
-                Image(
-                    painter = painterResource(id = previewRes),
-                    contentDescription = "Connected Mac preview",
-                    modifier = Modifier.fillMaxWidth(0.75f),
-                    contentScale = ContentScale.Fit,
-                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(MaterialTheme.colorScheme.primary)
+                MacDevicePreview(
+                    connectedDevice = connectedDevice,
+                    isPageVisible = isPageVisible,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
 

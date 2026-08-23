@@ -22,9 +22,11 @@ bouncycastle = "1.78.1"
 ktor = "2.3.12"
 appcompat = "1.7.1"
 exceptionreport = "2.0.0"
+sceneview = "4.32.0"
 
 
 [libraries]
+sceneview = { group = "io.github.sceneview", name = "sceneview", version.ref = "sceneview" }
 exceptionreport = { group = "com.github.cnrture", name = "ExceptionReport", version.ref = "exceptionreport" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
