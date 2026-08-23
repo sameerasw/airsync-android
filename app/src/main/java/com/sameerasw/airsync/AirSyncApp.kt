@@ -22,7 +22,8 @@ class AirSyncApp : Application() {
         super.onCreate()
         instance = this
 
-        CrashNotificationHelper.createChannel(this)
+        com.sameerasw.airsync.crash.CrashNotificationHelper.createChannel(this)
+        com.sameerasw.airsync.utils.MacModelMapper.init(this)
 
         bleConnectionManager = com.sameerasw.airsync.data.ble.BleConnectionManager(this)
         bleConnectionManager.start()

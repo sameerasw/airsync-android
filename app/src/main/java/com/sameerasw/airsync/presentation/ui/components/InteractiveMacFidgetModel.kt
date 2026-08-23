@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.google.android.filament.gltfio.FilamentInstance
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.utils.DevicePreviewResolver
+import com.sameerasw.airsync.utils.MacModelMapper
 import dev.romainguy.kotlin.math.Float3
 import io.github.sceneview.SceneView
 import io.github.sceneview.SurfaceType
@@ -50,7 +51,7 @@ private const val DEFAULT_ROTATION_X = 12f
 @Composable
 fun InteractiveMacFidgetModel(
     modifier: Modifier = Modifier,
-    modelPath: String = "models/macbook.glb",
+    modelPath: String = "models/macbook_pro.glb",
     scaleToUnits: Float = 1.45f,
     isConnected: Boolean = true,
     onModelLoadFailed: (() -> Unit)? = null
@@ -212,6 +213,9 @@ fun MacDevicePreview(
     height: Dp = 340.dp
 ) {
     var has3dError by remember { mutableStateOf(false) }
+    val model3dPath = remember(connectedDevice) {
+        MacModelMapper.get3DModelPath(connectedDevice)
+    }
 
     Box(
         modifier = modifier
@@ -219,12 +223,12 @@ fun MacDevicePreview(
             .height(height),
         contentAlignment = Alignment.Center
     ) {
-        if (is3dEnabled && isPageVisible && !has3dError) {
+        if (is3dEnabled && isPageVisible && !has3dError && model3dPath != null) {
             InteractiveMacFidgetModel(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(height),
-                modelPath = "models/macbook.glb",
+                modelPath = model3dPath,
                 isConnected = isConnected,
                 onModelLoadFailed = {
                     has3dError = true
