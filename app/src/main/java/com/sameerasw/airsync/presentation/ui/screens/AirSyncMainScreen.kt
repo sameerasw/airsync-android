@@ -1297,7 +1297,8 @@ fun AirSyncMainScreen(
                                         sendRemoteAction("vol_mute")
                                         isMuted = !isMuted
                                     },
-                                    onMediaAction = { sendRemoteAction(it) }
+                                    onMediaAction = { sendRemoteAction(it) },
+                                    isRippleEnabled = uiState.isRippleSettingEnabled
                                 )
                             }
 
@@ -1359,7 +1360,8 @@ fun AirSyncMainScreen(
                                         sendRemoteAction("vol_mute")
                                         isMuted = !isMuted
                                     },
-                                    onMediaAction = { sendRemoteAction(it) }
+                                    onMediaAction = { sendRemoteAction(it) },
+                                    isRippleEnabled = uiState.isRippleSettingEnabled
                                 )
                             }
 

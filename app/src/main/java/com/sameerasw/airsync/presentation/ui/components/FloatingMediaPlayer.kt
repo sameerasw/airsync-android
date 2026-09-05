@@ -57,9 +57,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -67,6 +71,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.domain.model.MacMusicInfo
+import com.sameerasw.airsync.presentation.ui.modifiers.liquidRipple
 import com.sameerasw.airsync.utils.HapticUtil
 import kotlinx.coroutines.launch
 
@@ -82,6 +87,7 @@ fun FloatingMediaPlayer(
     onVolumeChange: (Float) -> Unit,
     onToggleMute: () -> Unit,
     onMediaAction: (String) -> Unit,
+    isRippleEnabled: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val density = LocalDensity.current
@@ -137,13 +143,35 @@ fun FloatingMediaPlayer(
         (currentOffset / -(expandedPx - collapsedPx)).coerceIn(0f, 1f)
     }
 
+    var playerRippleTrigger by remember { mutableStateOf(0) }
+    var playerRippleOrigin by remember { mutableStateOf(Offset.Zero) }
+    var cardPositionInRoot by remember { mutableStateOf(Offset.Zero) }
+    var collapsedPlayButtonCenter by remember { mutableStateOf(Offset.Zero) }
+    var expandedPlayButtonCenter by remember { mutableStateOf(Offset.Zero) }
+
+    val cardShape = RoundedCornerShape(lerp(64f, 24f, progress).dp)
+
     Card(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .height(collapsedHeight + (expandedHeight - collapsedHeight) * progress)
-            .anchoredDraggable<DragValue>(anchoredDraggableState, Orientation.Vertical),
-        shape = RoundedCornerShape(lerp(64f, 24f, progress).dp),
+            .anchoredDraggable<DragValue>(anchoredDraggableState, Orientation.Vertical)
+            .onGloballyPositioned { coords ->
+                cardPositionInRoot = coords.positionInRoot()
+            }
+            .clip(cardShape)
+            .liquidRipple(
+                trigger = playerRippleTrigger,
+                origin = playerRippleOrigin,
+                enabled = isRippleEnabled,
+                durationMillis = 2000,
+                amplitudeDp = 22f,
+                frequency = 14f,
+                decay = 5f,
+                speedDp = 1200f
+            ),
+        shape = cardShape,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
         )
@@ -218,7 +246,23 @@ fun FloatingMediaPlayer(
 
                     // Play/Pause Button
                     FilledIconButton(
-                        onClick = { onMediaAction("media_play_pause") },
+                        onClick = {
+                            playerRippleOrigin = collapsedPlayButtonCenter
+                            playerRippleTrigger++
+                            onMediaAction("media_play_pause")
+                        },
+                        modifier = Modifier.onGloballyPositioned { coords ->
+                            val buttonRootPos = coords.positionInRoot()
+                            val size = coords.size
+                            val centerInRoot = Offset(
+                                buttonRootPos.x + size.width / 2f,
+                                buttonRootPos.y + size.height / 2f
+                            )
+                            collapsedPlayButtonCenter = Offset(
+                                centerInRoot.x - cardPositionInRoot.x,
+                                centerInRoot.y - cardPositionInRoot.y
+                            )
+                        }
                     ) {
                         Icon(
                             imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
@@ -349,10 +393,26 @@ fun FloatingMediaPlayer(
                                 }
 
                                 FilledIconButton(
-                                    onClick = { onMediaAction("media_play_pause") },
+                                    onClick = {
+                                        playerRippleOrigin = expandedPlayButtonCenter
+                                        playerRippleTrigger++
+                                        onMediaAction("media_play_pause")
+                                    },
                                     modifier = Modifier
                                         .weight(1.5f)
                                         .fillMaxHeight()
+                                        .onGloballyPositioned { coords ->
+                                            val buttonRootPos = coords.positionInRoot()
+                                            val size = coords.size
+                                            val centerInRoot = Offset(
+                                                buttonRootPos.x + size.width / 2f,
+                                                buttonRootPos.y + size.height / 2f
+                                            )
+                                            expandedPlayButtonCenter = Offset(
+                                                centerInRoot.x - cardPositionInRoot.x,
+                                                centerInRoot.y - cardPositionInRoot.y
+                                            )
+                                        }
                                 ) {
                                     Icon(
                                         imageVector = if (musicInfo?.isPlaying == true) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
