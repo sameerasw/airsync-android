@@ -205,6 +205,10 @@ object PermissionUtil {
             missing.add("Bluetooth Access")
         }
 
+        if (!isLocationPermissionGranted(context)) {
+            missing.add("Location Access")
+        }
+
         if (Build.VERSION.SDK_INT >= 37 && !isLocalNetworkPermissionGranted(context)) {
             missing.add("Local Network Access")
         }
@@ -228,6 +232,10 @@ object PermissionUtil {
         // Notification listener is critical for the app's main functionality
         if (!isNotificationListenerEnabled(context)) {
             critical.add("Notification Access")
+        }
+
+        if (!isLocationPermissionGranted(context)) {
+            critical.add("Location Access")
         }
 
         return critical
@@ -348,5 +356,15 @@ object PermissionUtil {
         } else {
             true
         }
+    }
+
+    /**
+     * Check if ACCESS_FINE_LOCATION permission is granted
+     */
+    fun isLocationPermissionGranted(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 }
