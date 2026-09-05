@@ -8,6 +8,7 @@ import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
 import android.util.Log
 import com.sameerasw.airsync.MainActivity
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.ble.BleGattServer
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
@@ -87,6 +88,26 @@ class AirSyncTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
+            val isPaused = dataStoreManager.isAppPaused().first()
+            if (isPaused) {
+                val intent = Intent(this@AirSyncTileService, MainActivity::class.java).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val pendingIntent = PendingIntent.getActivity(
+                        this@AirSyncTileService,
+                        0,
+                        intent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    startActivityAndCollapse(pendingIntent)
+                } else {
+                    @Suppress("DEPRECATION")
+                    startActivityAndCollapse(intent)
+                }
+                return@launch
+            }
+
             val isWsConnected = WebSocketUtil.isConnected()
             val isBleConnected = BleGattServer.isAnyAuthenticated()
             val isConnected = isWsConnected || isBleConnected
@@ -186,11 +207,17 @@ class AirSyncTileService : TileService() {
             val macStatus = MacDeviceStatusManager.macDeviceStatus.value
 
             qsTile?.apply {
+                val isPaused = dataStoreManager.isAppPaused().first()
+
                 val dynamicIcon =
                     com.sameerasw.airsync.utils.DeviceIconResolver.getTileIconRes(lastDevice)
                 icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
 
-                if (isConnected && lastDevice != null) {
+                if (isPaused) {
+                    state = Tile.STATE_INACTIVE
+                    label = "AirSync"
+                    subtitle = getString(R.string.paused)
+                } else if (isConnected && lastDevice != null) {
                     // Connected state
                     state = Tile.STATE_ACTIVE
                     label = lastDevice.name

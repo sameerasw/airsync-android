@@ -417,18 +417,32 @@ class AirSyncService : Service() {
         fun isRunning(): Boolean = serviceInstance != null
 
         fun startScanning(context: Context) {
-            val intent = Intent(context, AirSyncService::class.java).apply {
-                action = ACTION_START_SCANNING
+            runBlocking {
+                val dataStoreManager = DataStoreManager.getInstance(context)
+                if (dataStoreManager.isAppPaused().first()) {
+                    Log.d(TAG, "App is paused, ignoring startScanning")
+                    return@runBlocking
+                }
+                val intent = Intent(context, AirSyncService::class.java).apply {
+                    action = ACTION_START_SCANNING
+                }
+                startAction(context, intent)
             }
-            startAction(context, intent)
         }
 
         fun start(context: Context, deviceName: String?) {
-            val intent = Intent(context, AirSyncService::class.java).apply {
-                action = ACTION_START_SYNC
-                putExtra(EXTRA_DEVICE_NAME, deviceName)
+            runBlocking {
+                val dataStoreManager = DataStoreManager.getInstance(context)
+                if (dataStoreManager.isAppPaused().first()) {
+                    Log.d(TAG, "App is paused, ignoring start")
+                    return@runBlocking
+                }
+                val intent = Intent(context, AirSyncService::class.java).apply {
+                    action = ACTION_START_SYNC
+                    putExtra(EXTRA_DEVICE_NAME, deviceName)
+                }
+                startAction(context, intent)
             }
-            startAction(context, intent)
         }
 
         fun notifyAppForeground(context: Context) {

@@ -57,6 +57,27 @@ class ClipboardTileService : TileService() {
         super.onClick()
 
         serviceScope.launch {
+            val dataStoreManager = DataStoreManager.getInstance(this@ClipboardTileService)
+            val isPaused = dataStoreManager.isAppPaused().first()
+            if (isPaused) {
+                val mainIntent = android.content.Intent(this@ClipboardTileService, com.sameerasw.airsync.MainActivity::class.java).apply {
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    val pendingIntent = PendingIntent.getActivity(
+                        this@ClipboardTileService,
+                        0,
+                        mainIntent,
+                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+                    )
+                    startActivityAndCollapse(pendingIntent)
+                } else {
+                    @Suppress("DEPRECATION")
+                    startActivityAndCollapse(mainIntent)
+                }
+                return@launch
+            }
+
             val isConnected = WebSocketUtil.isConnected()
             if (isConnected) {
                 try {
@@ -103,17 +124,25 @@ class ClipboardTileService : TileService() {
         serviceScope.launch {
             try {
                 val dataStoreManager = DataStoreManager.getInstance(this@ClipboardTileService)
+                val isPaused = dataStoreManager.isAppPaused().first()
                 val connectedDevice = dataStoreManager.getLastConnectedDevice().first()
                 val deviceName = connectedDevice?.name ?: getString(R.string.your_mac)
 
                 qsTile?.apply {
-                    state = if (isConnected) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+                    state = if (isConnected && !isPaused) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                        subtitle = if (isConnected) deviceName else getString(R.string.disconnected)
+                        subtitle = when {
+                            isPaused -> getString(R.string.paused)
+                            isConnected -> deviceName
+                            else -> getString(R.string.disconnected)
+                        }
                     } else {
-                        val labelText =
-                            if (isConnected) "Send Clipboard ($deviceName)" else "Not Connected"
+                        val labelText = when {
+                            isPaused -> "Clipboard (Paused)"
+                            isConnected -> "Send Clipboard ($deviceName)"
+                            else -> "Not Connected"
+                        }
                         label = labelText
                     }
 

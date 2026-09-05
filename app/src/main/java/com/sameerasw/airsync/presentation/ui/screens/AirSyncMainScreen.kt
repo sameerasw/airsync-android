@@ -828,6 +828,10 @@ fun AirSyncMainScreen(
                                         connectedDevice = uiState.lastConnectedDevice,
                                         lastConnected = uiState.lastConnectedDevice != null,
                                         uiState = uiState,
+                                        isPaused = uiState.isAppPaused,
+                                        onTogglePause = {
+                                            viewModel.setAppPaused(context, !uiState.isAppPaused)
+                                        }
                                     )
 
                                     // Remote Functions Card (Lock Screen, etc.)
@@ -843,7 +847,7 @@ fun AirSyncMainScreen(
                                 }
 
                                 AnimatedVisibility(
-                                    visible = !uiState.isConnected,
+                                    visible = !uiState.isConnected && !uiState.isAppPaused,
                                     enter = expandVertically() + fadeIn(),
                                     exit = shrinkVertically() + fadeOut()
                                 ) {
@@ -1109,42 +1113,48 @@ fun AirSyncMainScreen(
                                 }
                             }
 
-                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    ListExpandToggleButton(
-                                        isExpanded = showConfigureLastDevice,
-                                        onToggle = { showConfigureLastDevice = !showConfigureLastDevice },
-                                        title = R.string.action_configure,
-                                        iconRes = R.drawable.rounded_settings_24
-                                    )
+                                AnimatedVisibility(
+                                    visible = !uiState.isAppPaused,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        ListExpandToggleButton(
+                                            isExpanded = showConfigureLastDevice,
+                                            onToggle = { showConfigureLastDevice = !showConfigureLastDevice },
+                                            title = R.string.action_configure,
+                                            iconRes = R.drawable.rounded_settings_24
+                                        )
 
-                                    AnimatedVisibility(
-                                        visible = showConfigureLastDevice,
-                                        enter = expandVertically() + fadeIn(),
-                                        exit = shrinkVertically() + fadeOut()
-                                    ) {
-                                        RoundedCardContainer {
-                                            IconToggleItem(
-                                                iconRes = R.drawable.rounded_sync_desktop_24,
-                                                title = stringResource(R.string.setting_auto_reconnect_title),
-                                                description = stringResource(R.string.setting_auto_reconnect_desc),
-                                                isChecked = uiState.isAutoReconnectEnabled,
-                                                onCheckedChange = { enabled ->
-                                                    viewModel.setAutoReconnectEnabled(enabled)
-                                                }
-                                            )
-
-                                            IconToggleItem(
-                                                iconRes = R.drawable.rounded_bluetooth_24,
-                                                title = stringResource(R.string.setting_nearby_connection_title),
-                                                description = stringResource(R.string.setting_nearby_connection_desc),
-                                                isChecked = bleSyncEnabled,
-                                                onCheckedChange = { enabled ->
-                                                    scope.launch {
-                                                        dataStoreManager.setBleSyncEnabled(enabled)
-                                                        dataStoreManager.setBleAutoConnectEnabled(enabled)
+                                        AnimatedVisibility(
+                                            visible = showConfigureLastDevice,
+                                            enter = expandVertically() + fadeIn(),
+                                            exit = shrinkVertically() + fadeOut()
+                                        ) {
+                                            RoundedCardContainer {
+                                                IconToggleItem(
+                                                    iconRes = R.drawable.rounded_sync_desktop_24,
+                                                    title = stringResource(R.string.setting_auto_reconnect_title),
+                                                    description = stringResource(R.string.setting_auto_reconnect_desc),
+                                                    isChecked = uiState.isAutoReconnectEnabled,
+                                                    onCheckedChange = { enabled ->
+                                                        viewModel.setAutoReconnectEnabled(enabled)
                                                     }
-                                                }
-                                            )
+                                                )
+
+                                                IconToggleItem(
+                                                    iconRes = R.drawable.rounded_bluetooth_24,
+                                                    title = stringResource(R.string.setting_nearby_connection_title),
+                                                    description = stringResource(R.string.setting_nearby_connection_desc),
+                                                    isChecked = bleSyncEnabled,
+                                                    onCheckedChange = { enabled ->
+                                                        scope.launch {
+                                                            dataStoreManager.setBleSyncEnabled(enabled)
+                                                            dataStoreManager.setBleAutoConnectEnabled(enabled)
+                                                        }
+                                                    }
+                                                )
+                                            }
                                         }
                                     }
                                 }
@@ -1321,6 +1331,7 @@ fun AirSyncMainScreen(
                                     MainFAB(
                                         currentTab = tabs.getOrNull(pagerState.currentPage),
                                         isConnected = uiState.isConnected,
+                                        isAppPaused = uiState.isAppPaused,
                                         activeSettingsCategory = activeSettingsCategory,
                                         onAction = { action ->
                                             when (action) {
@@ -1329,6 +1340,7 @@ fun AirSyncMainScreen(
                                                 "disconnect" -> disconnect()
                                                 "scan" -> launchScanner(context)
                                                 "back" -> activeSettingsCategory = null
+                                                "resume" -> viewModel.setAppPaused(context, false)
                                             }
                                         }
                                     )
@@ -1384,6 +1396,7 @@ fun AirSyncMainScreen(
                                     MainFAB(
                                         currentTab = tabs.getOrNull(pagerState.currentPage),
                                         isConnected = uiState.isConnected,
+                                        isAppPaused = uiState.isAppPaused,
                                         activeSettingsCategory = activeSettingsCategory,
                                         onAction = { action ->
                                             when (action) {
@@ -1392,6 +1405,7 @@ fun AirSyncMainScreen(
                                                 "disconnect" -> disconnect()
                                                 "scan" -> launchScanner(context)
                                                 "back" -> activeSettingsCategory = null
+                                                "resume" -> viewModel.setAppPaused(context, false)
                                             }
                                         }
                                     )
@@ -1451,6 +1465,7 @@ fun AirSyncMainScreen(
 private fun MainFAB(
     currentTab: AirSyncTab?,
     isConnected: Boolean,
+    isAppPaused: Boolean,
     activeSettingsCategory: String?,
     onAction: (String) -> Unit
 ) {
@@ -1466,7 +1481,13 @@ private fun MainFAB(
                     R.string.tab_remote -> onAction("keyboard")
                     R.string.tab_clipboard -> onAction("clear_history")
                     else -> {
-                        if (isConnected) onAction("disconnect") else onAction("scan")
+                        if (isConnected) {
+                            onAction("disconnect")
+                        } else if (isAppPaused) {
+                            onAction("resume")
+                        } else {
+                            onAction("scan")
+                        }
                     }
                 }
             }
@@ -1487,6 +1508,8 @@ private fun MainFAB(
                 else -> {
                     if (isConnected) {
                         Icon(imageVector = Icons.Filled.LinkOff, contentDescription = "Disconnect")
+                    } else if (isAppPaused) {
+                        Icon(painter = painterResource(R.drawable.rounded_play_arrow_24), contentDescription = stringResource(R.string.resume))
                     } else {
                         Icon(imageVector = Icons.Filled.QrCodeScanner, contentDescription = "Scan QR")
                     }

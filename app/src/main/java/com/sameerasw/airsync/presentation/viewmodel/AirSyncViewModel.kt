@@ -225,6 +225,12 @@ class AirSyncViewModel(
             }
         }
 
+        viewModelScope.launch {
+            repository.isAppPaused().collect { paused ->
+                _uiState.value = _uiState.value.copy(isAppPaused = paused)
+            }
+        }
+
 
 
         // Observe widget transparency preference
@@ -837,6 +843,32 @@ class AirSyncViewModel(
     // Awaitable variant used when ordering matters (e.g., ensure flag is persisted before disconnect)
     suspend fun setUserManuallyDisconnectedAwait(disconnected: Boolean) {
         repository.setUserManuallyDisconnected(disconnected)
+    }
+
+    fun setAppPaused(context: Context, paused: Boolean) {
+        viewModelScope.launch {
+            repository.setAppPaused(paused)
+            if (paused) {
+                repository.setUserManuallyDisconnected(true)
+                WebSocketUtil.stopAutoReconnect(context)
+                WebSocketUtil.disconnect(context)
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(context)
+                com.sameerasw.airsync.service.AirSyncService.stop(context)
+                _uiState.value = _uiState.value.copy(
+                    isConnected = false,
+                    isConnecting = false,
+                    response = "Paused"
+                )
+                ShortcutUtil.refreshShortcuts(context, false)
+            } else {
+                repository.setUserManuallyDisconnected(false)
+                val isDiscovery = repository.getDeviceDiscoveryEnabled().first()
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.start(context, isDiscovery)
+                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+                WebSocketUtil.requestAutoReconnect(context)
+                ShortcutUtil.refreshShortcuts(context, false)
+            }
+        }
     }
 
     private fun hasNetworkAwareMappingForLastDevice(): ConnectedDevice? {

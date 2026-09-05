@@ -208,6 +208,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getUserManuallyDisconnected()
     }
 
+    override suspend fun setAppPaused(paused: Boolean) {
+        dataStoreManager.setAppPaused(paused)
+    }
+
+    override fun isAppPaused(): Flow<Boolean> {
+        return dataStoreManager.isAppPaused()
+    }
+
     override suspend fun setMacMediaControlsEnabled(enabled: Boolean) {
         dataStoreManager.setMacMediaControlsEnabled(enabled)
     }

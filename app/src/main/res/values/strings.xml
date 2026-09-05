@@ -26,6 +26,9 @@
     <string name="failed_to_send_clipboard">Failed to Send Clipboard</string>
     <string name="your_mac">Your Mac</string>
     <string name="disconnected">Disconnected</string>
+    <string name="paused">Paused</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
 
     <!-- Tab Titles -->
     <string name="tab_connect">AirSync</string>

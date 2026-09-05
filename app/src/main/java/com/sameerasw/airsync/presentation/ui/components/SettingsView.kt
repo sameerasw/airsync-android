@@ -226,7 +226,7 @@ fun SettingsView(
             }
 
             AnimatedVisibility(
-                visible = !uiState.isConnected,
+                visible = !uiState.isConnected && !uiState.isAppPaused,
                 enter = expandVertically() + fadeIn(),
                 exit = shrinkVertically() + fadeOut()
             ) {

@@ -52,6 +52,7 @@ class DataStoreManager(private val context: Context) {
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
         private val LAST_ICON_SYNC_DATE = stringPreferencesKey("last_icon_sync_date")
         private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
+        private val APP_PAUSED = booleanPreferencesKey("app_paused")
 
         // Auto reconnect toggle
         private val AUTO_RECONNECT_ENABLED = booleanPreferencesKey("auto_reconnect_enabled")
@@ -629,6 +630,18 @@ class DataStoreManager(private val context: Context) {
     fun getUserManuallyDisconnected(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[USER_MANUALLY_DISCONNECTED] == true // Default to false
+        }
+    }
+
+    suspend fun setAppPaused(paused: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_PAUSED] = paused
+        }
+    }
+
+    fun isAppPaused(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[APP_PAUSED] == true
         }
     }
 

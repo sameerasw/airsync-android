@@ -29,6 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.res.stringResource
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.domain.model.ConnectedDevice
 import com.sameerasw.airsync.domain.model.UiState
 import com.sameerasw.airsync.presentation.ui.components.AirSyncLoadingAnimation
@@ -44,6 +51,8 @@ fun ConnectionStatusCard(
     connectedDevice: ConnectedDevice? = null,
     lastConnected: Boolean,
     uiState: UiState,
+    isPaused: Boolean = false,
+    onTogglePause: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
@@ -135,6 +144,24 @@ fun ConnectionStatusCard(
                 }
             }
 
+            AnimatedVisibility(
+                visible = isPaused,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp)
+                ) {
+                    AirSyncLoadingAnimation(
+                        isPlus = connectedDevice?.isPlus == true,
+                        modifier = Modifier.size(110.dp)
+                    )
+                }
+            }
+
             // 3) Connection status row last
             Row(
                 modifier = Modifier
@@ -143,9 +170,10 @@ fun ConnectionStatusCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val statusText = when {
+                    isPaused -> stringResource(R.string.paused)
                     isConnecting -> "Connecting..."
                     isConnected -> "Syncing"
-                    else -> "Disconnected"
+                    else -> stringResource(R.string.disconnected)
                 }
 
                 if (isConnecting) {
@@ -164,10 +192,10 @@ fun ConnectionStatusCard(
                     }
                 } else if (!isConnecting) {
                     Icon(
-                        painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_off_24),
-                        contentDescription = "Disconnected",
+                        painter = painterResource(id = if (isPaused) R.drawable.rounded_pause_24 else R.drawable.rounded_devices_off_24),
+                        contentDescription = statusText,
                         modifier = Modifier.padding(end = 8.dp),
-                        tint = MaterialTheme.colorScheme.error
+                        tint = if (isPaused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 }
 
@@ -190,13 +218,37 @@ fun ConnectionStatusCard(
                         modifier = Modifier.height(48.dp)
                     ) {
                         Icon(
-                            painter = painterResource(id = com.sameerasw.airsync.R.drawable.rounded_devices_off_24),
+                            painter = painterResource(id = R.drawable.rounded_devices_off_24),
                             contentDescription = null,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.size(6.dp))
                         Text(
                             text = "Disconnect",
+                            style = MaterialTheme.typography.labelLarge,
+                            maxLines = 1
+                        )
+                    }
+                } else if (!isConnecting && onTogglePause != null) {
+                    Button(
+                        onClick = {
+                            HapticUtil.performClick(haptics)
+                            onTogglePause()
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if (isPaused) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHighest,
+                            contentColor = if (isPaused) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSecondaryContainer
+                        ),
+                        modifier = Modifier.height(48.dp)
+                    ) {
+                        Icon(
+                            painter = painterResource(id = if (isPaused) R.drawable.rounded_play_arrow_24 else R.drawable.rounded_pause_24),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.size(6.dp))
+                        Text(
+                            text = if (isPaused) stringResource(R.string.resume) else stringResource(R.string.pause),
                             style = MaterialTheme.typography.labelLarge,
                             maxLines = 1
                         )

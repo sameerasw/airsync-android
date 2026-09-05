@@ -53,5 +53,6 @@ data class UiState(
     val isQuickShareEnabled: Boolean = false,
     val isFileAccessEnabled: Boolean = true,
     val isNotifyOnCrashEnabled: Boolean = true,
+    val isAppPaused: Boolean = false,
     val bleConnectionState: com.sameerasw.airsync.data.ble.BleGattServer.BleConnectionState = com.sameerasw.airsync.data.ble.BleGattServer.BleConnectionState.DISCONNECTED
 )
