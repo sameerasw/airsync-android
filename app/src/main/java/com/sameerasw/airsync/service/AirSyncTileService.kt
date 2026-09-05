@@ -11,7 +11,9 @@ import com.sameerasw.airsync.MainActivity
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.ble.BleGattServer
 import com.sameerasw.airsync.data.local.DataStoreManager
+import com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator
 import com.sameerasw.airsync.utils.MacDeviceStatusManager
+import com.sameerasw.airsync.utils.ShortcutUtil
 import com.sameerasw.airsync.utils.WebSocketUtil
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -90,21 +92,15 @@ class AirSyncTileService : TileService() {
         serviceScope.launch {
             val isPaused = dataStoreManager.isAppPaused().first()
             if (isPaused) {
-                val intent = Intent(this@AirSyncTileService, MainActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-                }
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    val pendingIntent = PendingIntent.getActivity(
-                        this@AirSyncTileService,
-                        0,
-                        intent,
-                        PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-                    )
-                    startActivityAndCollapse(pendingIntent)
-                } else {
-                    @Suppress("DEPRECATION")
-                    startActivityAndCollapse(intent)
-                }
+                // Resume AirSync
+                dataStoreManager.setAppPaused(false)
+                dataStoreManager.setUserManuallyDisconnected(false)
+                val isDiscovery = dataStoreManager.getDeviceDiscoveryEnabled().first()
+                DiscoveryOrchestrator.start(this@AirSyncTileService, isDiscovery)
+                AirSyncService.startScanning(this@AirSyncTileService)
+                WebSocketUtil.requestAutoReconnect(this@AirSyncTileService)
+                ShortcutUtil.refreshShortcuts(this@AirSyncTileService, false)
+                updateTileState()
                 return@launch
             }
 
@@ -209,49 +205,52 @@ class AirSyncTileService : TileService() {
             qsTile?.apply {
                 val isPaused = dataStoreManager.isAppPaused().first()
 
-                val dynamicIcon =
-                    com.sameerasw.airsync.utils.DeviceIconResolver.getTileIconRes(lastDevice)
-                icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
-
                 if (isPaused) {
+                    icon = Icon.createWithResource(this@AirSyncTileService, R.drawable.rounded_devices_off_24)
                     state = Tile.STATE_INACTIVE
                     label = "AirSync"
                     subtitle = getString(R.string.paused)
-                } else if (isConnected && lastDevice != null) {
-                    // Connected state
-                    state = Tile.STATE_ACTIVE
-                    label = lastDevice.name
-
-                    // Show battery percent (and Charging) if available; otherwise fallback to "Connected"
-                    subtitle = macStatus?.let { status ->
-                        val level = status.battery.level
-                        if (level >= 0) {
-                            val pct = level.coerceIn(0, 100)
-                            if (status.battery.isCharging) "$pct% Charging" else "$pct%"
-                        } else {
-                            "Connected"
-                        }
-                    } ?: "Connected"
-                } else if (com.sameerasw.airsync.data.ble.BleGattServer.isAnyAuthenticated() && lastDevice != null) {
-                    // BLE Connected state
-                    state = Tile.STATE_ACTIVE
-                    label = lastDevice.name
-                    subtitle = "Connected BT"
-                } else if (isAuto) {
-                    // Auto-reconnect in progress or waiting
-                    state = if (isConnecting) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
-                    label = "Trying to reconnect"
-                    subtitle = "Tap to stop"
-                } else if (lastDevice != null) {
-                    // Disconnected but has last device
-                    state = Tile.STATE_INACTIVE
-                    label = "Reconnect"
-                    subtitle = lastDevice.name
                 } else {
-                    // No last device
-                    state = Tile.STATE_INACTIVE
-                    label = "AirSync"
-                    subtitle = "Tap to setup"
+                    val dynamicIcon =
+                        com.sameerasw.airsync.utils.DeviceIconResolver.getTileIconRes(lastDevice)
+                    icon = Icon.createWithResource(this@AirSyncTileService, dynamicIcon)
+
+                    if (isConnected && lastDevice != null) {
+                        // Connected state
+                        state = Tile.STATE_ACTIVE
+                        label = lastDevice.name
+
+                        // Show battery percent (and Charging) if available; otherwise fallback to "Connected"
+                        subtitle = macStatus?.let { status ->
+                            val level = status.battery.level
+                            if (level >= 0) {
+                                val pct = level.coerceIn(0, 100)
+                                if (status.battery.isCharging) "$pct% Charging" else "$pct%"
+                            } else {
+                                "Connected"
+                            }
+                        } ?: "Connected"
+                    } else if (com.sameerasw.airsync.data.ble.BleGattServer.isAnyAuthenticated() && lastDevice != null) {
+                        // BLE Connected state
+                        state = Tile.STATE_ACTIVE
+                        label = lastDevice.name
+                        subtitle = "Connected BT"
+                    } else if (isAuto) {
+                        // Auto-reconnect in progress or waiting
+                        state = if (isConnecting) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE
+                        label = "Trying to reconnect"
+                        subtitle = "Tap to stop"
+                    } else if (lastDevice != null) {
+                        // Disconnected but has last device
+                        state = Tile.STATE_INACTIVE
+                        label = "Reconnect"
+                        subtitle = lastDevice.name
+                    } else {
+                        // No last device
+                        state = Tile.STATE_INACTIVE
+                        label = "AirSync"
+                        subtitle = "Tap to setup"
+                    }
                 }
 
                 updateTile()

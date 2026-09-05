@@ -341,10 +341,16 @@ class MainActivity : ComponentActivity() {
             val ds = DataStoreManager.getInstance(applicationContext)
             val isPaused = runBlocking { ds.isAppPaused().first() }
             if (!isPaused && !WebSocketUtil.isConnected()) {
-                // Not connected and not paused, open QR scanner instead
-                val qrScannerIntent = Intent(this, QRScannerActivity::class.java)
-                qrScannerLauncher.launch(qrScannerIntent)
-                return
+                // Not connected and not paused: pause the app on QS tile long-press
+                runBlocking {
+                    ds.setAppPaused(true)
+                    ds.setUserManuallyDisconnected(true)
+                }
+                WebSocketUtil.stopAutoReconnect(this)
+                WebSocketUtil.disconnect(this)
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(this)
+                com.sameerasw.airsync.service.AirSyncService.stop(this)
+                ShortcutUtil.refreshShortcuts(this, false)
             }
         }
 
@@ -568,14 +574,17 @@ class MainActivity : ComponentActivity() {
         if (intent?.action == "android.service.quicksettings.action.QS_TILE_PREFERENCES") {
             val ds = DataStoreManager.getInstance(applicationContext)
             val isPaused = runBlocking { ds.isAppPaused().first() }
-            // Check if device is connected and not paused
+            // Check if device is disconnected and not paused
             if (!isPaused && !WebSocketUtil.isConnected()) {
-                // Not connected, open QR scanner
-                val qrScannerIntent = Intent(this, QRScannerActivity::class.java).apply {
-                    flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                runBlocking {
+                    ds.setAppPaused(true)
+                    ds.setUserManuallyDisconnected(true)
                 }
-                startActivity(qrScannerIntent)
-                finish()
+                WebSocketUtil.stopAutoReconnect(this)
+                WebSocketUtil.disconnect(this)
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(this)
+                com.sameerasw.airsync.service.AirSyncService.stop(this)
+                ShortcutUtil.refreshShortcuts(this, false)
             }
         }
     }

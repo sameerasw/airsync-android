@@ -2,6 +2,7 @@ package com.sameerasw.airsync.presentation.ui.components.cards
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
@@ -58,7 +59,18 @@ fun ConnectionStatusCard(
     val haptics = androidx.compose.ui.platform.LocalHapticFeedback.current
 
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .then(
+                if (isPaused && onTogglePause != null) {
+                    Modifier.clickable {
+                        HapticUtil.performClick(haptics)
+                        onTogglePause()
+                    }
+                } else {
+                    Modifier
+                }
+            ),
         shape = MaterialTheme.shapes.extraSmall,
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceBright
