@@ -65,7 +65,7 @@ fun ListExpandToggleButton(
                 HapticUtil.performClick(haptics)
                 onToggle()
             },
-            modifier = Modifier.padding(start = 4.dp, top = 4.dp),
+            modifier = Modifier.padding(start = 4.dp),
             colors =
                 ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.surfaceBright,

@@ -103,10 +103,8 @@ import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
 import com.sameerasw.airsync.presentation.ui.components.FloatingMediaPlayer
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
-import com.sameerasw.airsync.presentation.ui.components.buttons.ListExpandToggleButton
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
-import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
 import com.sameerasw.airsync.presentation.ui.components.dialogs.ConnectionDialog
@@ -240,7 +238,6 @@ fun AirSyncMainScreen(
     var showKeyboard by remember { mutableStateOf(false) } // State for Keyboard Sheet in Remote Tab
     var showHelpSheet by remember { mutableStateOf(false) }
     val onDismissHelp = { showHelpSheet = false }
-    var showManualConnection by remember { mutableStateOf(false) }
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
 
     // Initial tab navigation logic
@@ -1075,48 +1072,6 @@ fun AirSyncMainScreen(
                                                         }
                                                     }
                                                 }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                AnimatedVisibility(
-                                    visible = !uiState.isConnected,
-                                    enter = expandVertically() + fadeIn(),
-                                    exit = shrinkVertically() + fadeOut()
-                                ) {
-                                    Column(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                                    ) {
-                                        ListExpandToggleButton(
-                                            isExpanded = showManualConnection,
-                                            onToggle = { showManualConnection = !showManualConnection },
-                                            title = R.string.action_manual_connection,
-                                        )
-
-                                        AnimatedVisibility(
-                                            visible = showManualConnection,
-                                            enter = expandVertically() + fadeIn(),
-                                            exit = shrinkVertically() + fadeOut()
-                                        ) {
-                                            RoundedCardContainer {
-                                                ManualConnectionCard(
-                                                    isConnected = uiState.isConnected,
-                                                    lastConnected = uiState.lastConnectedDevice != null,
-                                                    uiState = uiState,
-                                                    onIpChange = { viewModel.updateIpAddress(it) },
-                                                    onPortChange = { viewModel.updatePort(it) },
-                                                    onPcNameChange = { viewModel.updateManualPcName(it) },
-                                                    onIsPlusChange = { viewModel.updateManualIsPlus(it) },
-                                                    onSymmetricKeyChange = {
-                                                        viewModel.updateSymmetricKey(
-                                                            it
-                                                        )
-                                                    },
-                                                    onConnect = { viewModel.prepareForManualConnection() },
-                                                    onQrScanClick = { launchScanner(context) }
-                                                )
                                             }
                                         }
                                     }

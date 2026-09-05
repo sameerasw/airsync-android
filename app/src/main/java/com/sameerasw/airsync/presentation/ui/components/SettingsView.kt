@@ -51,12 +51,14 @@ import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.domain.model.DeviceInfo
 import com.sameerasw.airsync.domain.model.UiState
+import com.sameerasw.airsync.presentation.ui.components.buttons.ListExpandToggleButton
 import com.sameerasw.airsync.presentation.ui.components.cards.ClipboardFeaturesCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem
+import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.MediaSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
@@ -109,6 +111,7 @@ fun SettingsView(
     val haptics = LocalHapticFeedback.current
     var showAppSelectionSheet by remember { mutableStateOf(false) }
     var showMediaAppSelectionSheet by remember { mutableStateOf(false) }
+    var showManualConnection by remember { mutableStateOf(false) }
 
     val density = androidx.compose.ui.platform.LocalDensity.current
     val minHeaderHeight = 200.dp
@@ -218,6 +221,42 @@ fun SettingsView(
                 )
 
                 ExpandNetworkingCard(context)
+            }
+
+            AnimatedVisibility(
+                visible = !uiState.isConnected,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ListExpandToggleButton(
+                        isExpanded = showManualConnection,
+                        onToggle = { showManualConnection = !showManualConnection },
+                        title = R.string.action_manual_connection,
+                    )
+
+                    AnimatedVisibility(
+                        visible = showManualConnection,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        RoundedCardContainer {
+                            ManualConnectionCard(
+                                isConnected = uiState.isConnected,
+                                lastConnected = uiState.lastConnectedDevice != null,
+                                uiState = uiState,
+                                onIpChange = { viewModel.updateIpAddress(it) },
+                                onPortChange = { viewModel.updatePort(it) },
+                                onPcNameChange = { viewModel.updateManualPcName(it) },
+                                onIsPlusChange = { viewModel.updateManualIsPlus(it) },
+                                onSymmetricKeyChange = {
+                                    viewModel.updateSymmetricKey(it)
+                                },
+                                onConnect = { viewModel.prepareForManualConnection() }
+                            )
+                        }
+                    }
+                }
             }
 
             // Settings Categories Section
