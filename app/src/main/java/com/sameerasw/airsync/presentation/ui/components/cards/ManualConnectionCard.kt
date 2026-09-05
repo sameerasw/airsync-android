@@ -1,6 +1,5 @@
 package com.sameerasw.airsync.presentation.ui.components.cards
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,14 +17,11 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
@@ -47,7 +43,6 @@ fun ManualConnectionCard(
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
-    var expanded by remember { mutableStateOf(false) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -56,97 +51,80 @@ fun ManualConnectionCard(
             containerColor = MaterialTheme.colorScheme.surfaceBright
         )
     ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            IconToggleItem(
-                iconRes = R.drawable.rounded_devices_24,
-                title = "Manual Connection",
-                description = if (expanded) "Hide connection details" else "Enter connection details manually",
-                showToggle = false,
-                onClick = {
-                    HapticUtil.performLightTick(haptics)
-                    expanded = !expanded
-                },
-                trailingIcon = if (expanded) R.drawable.outline_expand_circle_up_24 else R.drawable.outline_expand_circle_down_24
-            )
-
-            AnimatedVisibility(visible = expanded) {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp)
+        ) {
+            if (onQrScanClick != null) {
+                Button(
+                    onClick = {
+                        HapticUtil.performClick(haptics)
+                        onQrScanClick()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    if (onQrScanClick != null) {
-                        Button(
-                            onClick = {
-                                HapticUtil.performClick(haptics)
-                                onQrScanClick()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.rounded_qr_code_scanner_24),
-                                contentDescription = "Scan QR Code",
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .padding(end = 8.dp)
-                            )
-                            Text("Scan QR Code")
-                        }
-                    }
-                    OutlinedTextField(
-                        value = uiState.ipAddress,
-                        onValueChange = onIpChange,
-                        label = { Text("IP Address") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                    Icon(
+                        painter = painterResource(id = R.drawable.rounded_qr_code_scanner_24),
+                        contentDescription = stringResource(R.string.scan_qr_code),
+                        modifier = Modifier
+                            .size(20.dp)
+                            .padding(end = 8.dp)
                     )
-                    OutlinedTextField(
-                        value = uiState.port,
-                        onValueChange = onPortChange,
-                        label = { Text("Port") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                    )
-                    OutlinedTextField(
-                        value = uiState.manualPcName,
-                        onValueChange = onPcNameChange,
-                        label = { Text("PC Name (Optional)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                    )
-                    OutlinedTextField(
-                        value = uiState.symmetricKey ?: "",
-                        onValueChange = onSymmetricKeyChange,
-                        label = { Text("Encryption Key") },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                    )
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("AirSync+", color = MaterialTheme.colorScheme.onSurface)
-                        Spacer(Modifier.weight(1f))
-                        Switch(
-                            checked = uiState.manualIsPlus,
-                            onCheckedChange = { enabled ->
-                                if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
-                                    haptics
-                                )
-                                onIsPlusChange(enabled)
-                            }
-                        )
-                    }
-                    Button(
-                        onClick = {
-                            HapticUtil.performClick(haptics)
-                            onConnect()
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Connect")
-                    }
+                    Text(stringResource(R.string.scan_qr_code))
                 }
+            }
+            OutlinedTextField(
+                value = uiState.ipAddress,
+                onValueChange = onIpChange,
+                label = { Text(stringResource(R.string.label_ip_address)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            OutlinedTextField(
+                value = uiState.port,
+                onValueChange = onPortChange,
+                label = { Text(stringResource(R.string.label_port)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            OutlinedTextField(
+                value = uiState.manualPcName,
+                onValueChange = onPcNameChange,
+                label = { Text(stringResource(R.string.label_pc_name_optional)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+            )
+            OutlinedTextField(
+                value = uiState.symmetricKey ?: "",
+                onValueChange = onSymmetricKeyChange,
+                label = { Text(stringResource(R.string.label_encryption_key)) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(stringResource(R.string.label_airsync_plus), color = MaterialTheme.colorScheme.onSurface)
+                Spacer(Modifier.weight(1f))
+                Switch(
+                    checked = uiState.manualIsPlus,
+                    onCheckedChange = { enabled ->
+                        if (enabled) HapticUtil.performToggleOn(haptics) else HapticUtil.performToggleOff(
+                            haptics
+                        )
+                        onIsPlusChange(enabled)
+                    }
+                )
+            }
+            Button(
+                onClick = {
+                    HapticUtil.performClick(haptics)
+                    onConnect()
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.connect))
             }
         }
     }
 }
-

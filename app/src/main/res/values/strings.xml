@@ -127,4 +127,13 @@
     <string name="crash_file_saved">Log saved to Downloads</string>
     <string name="crash_github_hint">Please attach the log from Downloads to the issue</string>
     <string name="crash_file_save_failed">Failed to save log file</string>
+
+    <string name="action_manual_connection">Manual connection</string>
+    <string name="scan_qr_code">Scan QR Code</string>
+    <string name="connect">Connect</string>
+    <string name="label_ip_address">IP Address</string>
+    <string name="label_port">Port</string>
+    <string name="label_pc_name_optional">PC Name (Optional)</string>
+    <string name="label_encryption_key">Encryption Key</string>
+    <string name="label_airsync_plus">AirSync+</string>
 </resources>
