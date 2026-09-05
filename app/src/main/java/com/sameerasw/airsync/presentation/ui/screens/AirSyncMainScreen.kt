@@ -88,6 +88,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
@@ -98,12 +99,15 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.presentation.ui.activities.QRScannerActivity
 import com.sameerasw.airsync.presentation.ui.components.AirSyncFloatingToolbar
 import com.sameerasw.airsync.presentation.ui.components.FloatingMediaPlayer
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.SettingsView
+import com.sameerasw.airsync.presentation.ui.components.buttons.ListExpandToggleButton
 import com.sameerasw.airsync.presentation.ui.components.cards.ConnectionStatusCard
+import com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem
 import com.sameerasw.airsync.presentation.ui.components.cards.LastConnectedDeviceCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RateAppCard
 import com.sameerasw.airsync.presentation.ui.components.cards.RemoteFunctionsCard
@@ -149,6 +153,9 @@ fun AirSyncMainScreen(
     onTitleChange: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
+    val dataStoreManager = remember { DataStoreManager.getInstance(context) }
+    val bleSyncEnabled by dataStoreManager.getBleSyncEnabled().collectAsState(initial = false)
+    var showConfigureLastDevice by rememberSaveable { mutableStateOf(false) }
     val viewModel: AirSyncViewModel = androidx.lifecycle.viewmodel.compose.viewModel {
         AirSyncViewModel.create(context)
     }
@@ -810,7 +817,12 @@ fun AirSyncMainScreen(
                                     }
                                 }
 
-                                RoundedCardContainer {
+                                AnimatedVisibility(
+                                    visible = !uiState.isConnected,
+                                    enter = expandVertically() + fadeIn(),
+                                    exit = shrinkVertically() + fadeOut()
+                                ) {
+                                    RoundedCardContainer {
                                     // Nearby Devices (UDP Discovery)
                                     val discoveredDevices by viewModel.discoveredDevices.collectAsState()
 
@@ -823,12 +835,6 @@ fun AirSyncMainScreen(
                                         uiState.lastConnectedDevice?.let { device ->
                                             LastConnectedDeviceCard(
                                                 device = device,
-                                                isAutoReconnectEnabled = uiState.isAutoReconnectEnabled,
-                                                onToggleAutoReconnect = { enabled ->
-                                                    viewModel.setAutoReconnectEnabled(
-                                                        enabled
-                                                    )
-                                                },
                                                 onQuickConnect = {
                                                     // Check if we can use network-aware connection first
                                                     val networkAwareDevice =
@@ -883,7 +889,7 @@ fun AirSyncMainScreen(
                                                     verticalAlignment = Alignment.CenterVertically
                                                 ) {
                                                     Text(
-                                                        text = "Available Devices",
+                                                        text = stringResource(R.string.label_device_discovery),
                                                         style = MaterialTheme.typography.titleMedium,
                                                         color = MaterialTheme.colorScheme.primary
                                                     )
@@ -1076,8 +1082,49 @@ fun AirSyncMainScreen(
                                         }
                                     }
                                 }
+                            }
 
-                                Spacer(modifier = Modifier.height(140.dp))
+                                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    ListExpandToggleButton(
+                                        isExpanded = showConfigureLastDevice,
+                                        onToggle = { showConfigureLastDevice = !showConfigureLastDevice },
+                                        title = R.string.action_configure,
+                                        iconRes = R.drawable.rounded_settings_24
+                                    )
+
+                                    AnimatedVisibility(
+                                        visible = showConfigureLastDevice,
+                                        enter = expandVertically() + fadeIn(),
+                                        exit = shrinkVertically() + fadeOut()
+                                    ) {
+                                        RoundedCardContainer {
+                                            IconToggleItem(
+                                                iconRes = R.drawable.rounded_sync_desktop_24,
+                                                title = stringResource(R.string.setting_auto_reconnect_title),
+                                                description = stringResource(R.string.setting_auto_reconnect_desc),
+                                                isChecked = uiState.isAutoReconnectEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    viewModel.setAutoReconnectEnabled(enabled)
+                                                }
+                                            )
+
+                                            IconToggleItem(
+                                                iconRes = R.drawable.rounded_bluetooth_24,
+                                                title = stringResource(R.string.setting_nearby_connection_title),
+                                                description = stringResource(R.string.setting_nearby_connection_desc),
+                                                isChecked = bleSyncEnabled,
+                                                onCheckedChange = { enabled ->
+                                                    scope.launch {
+                                                        dataStoreManager.setBleSyncEnabled(enabled)
+                                                        dataStoreManager.setBleAutoConnectEnabled(enabled)
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(200.dp))
                             }
                         }
 

@@ -136,4 +136,6 @@
     <string name="label_pc_name_optional">PC Name (Optional)</string>
     <string name="label_encryption_key">Encryption Key</string>
     <string name="label_airsync_plus">AirSync+</string>
+    <string name="action_configure">Configure</string>
+    <string name="label_device_discovery">Device discovery</string>
 </resources>
