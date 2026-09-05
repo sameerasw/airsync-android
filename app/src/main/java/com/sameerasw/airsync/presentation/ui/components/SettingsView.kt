@@ -330,6 +330,11 @@ fun SettingsView(
                 )
             }
 
+            AboutSection(
+                onAvatarLongClick = onToggleDeveloperMode,
+                onAvatarLongClickWithPosition = onAvatarLongClickWithPosition
+            )
+
             // Advanced / Developer Section
             AnimatedVisibility(
                 visible = uiState.isDeveloperModeVisible,
@@ -431,11 +436,6 @@ fun SettingsView(
                     )
                 }
             }
-
-            AboutSection(
-                onAvatarLongClick = onToggleDeveloperMode,
-                onAvatarLongClickWithPosition = onAvatarLongClickWithPosition
-            )
         } else {
             // Sub-Settings category view
             Column(
@@ -682,7 +682,7 @@ fun SettingsView(
             }
         }
 
-        Spacer(modifier = Modifier.height(180.dp))
+        Spacer(modifier = Modifier.height(220.dp))
     }
 
     if (showAppSelectionSheet) {

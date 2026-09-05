@@ -27,6 +27,9 @@ interface AirSyncRepository {
     suspend fun setDeveloperMode(enabled: Boolean)
     fun getDeveloperMode(): Flow<Boolean>
 
+    suspend fun setDeveloperModeVisible(visible: Boolean)
+    fun getDeveloperModeVisible(): Flow<Boolean>
+
     suspend fun saveLastConnectedDevice(device: ConnectedDevice)
     fun getLastConnectedDevice(): Flow<ConnectedDevice?>
 

@@ -46,6 +46,7 @@ class DataStoreManager(private val context: Context) {
         private val MAC_WIDGET_REFRESH_AT = longPreferencesKey("mac_widget_refresh_at")
         private val NOTIFICATION_SYNC_ENABLED = booleanPreferencesKey("notification_sync_enabled")
         private val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
+        private val DEVELOPER_MODE_VISIBLE = booleanPreferencesKey("developer_mode_visible")
         private val CLIPBOARD_SYNC_ENABLED = booleanPreferencesKey("clipboard_sync_enabled")
         private val CLIPBOARD_HISTORY_ENABLED = booleanPreferencesKey("clipboard_history_enabled")
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
@@ -604,6 +605,18 @@ class DataStoreManager(private val context: Context) {
     fun getDeveloperMode(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[DEVELOPER_MODE] == true // Default to disabled
+        }
+    }
+
+    suspend fun setDeveloperModeVisible(visible: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DEVELOPER_MODE_VISIBLE] = visible
+        }
+    }
+
+    fun getDeveloperModeVisible(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[DEVELOPER_MODE_VISIBLE] == true // Default to hidden
         }
     }
 

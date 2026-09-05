@@ -218,6 +218,13 @@ class AirSyncViewModel(
             }
         }
 
+        
+        viewModelScope.launch {
+            repository.getDeveloperModeVisible().collect { visible ->
+                _uiState.value = _uiState.value.copy(isDeveloperModeVisible = visible)
+            }
+        }
+
 
 
         // Observe widget transparency preference
@@ -675,9 +682,13 @@ class AirSyncViewModel(
     }
 
     fun toggleDeveloperModeVisibility() {
+        val newVisibility = !_uiState.value.isDeveloperModeVisible
         _uiState.value = _uiState.value.copy(
-            isDeveloperModeVisible = !_uiState.value.isDeveloperModeVisible
+            isDeveloperModeVisible = newVisibility
         )
+        viewModelScope.launch {
+            repository.setDeveloperModeVisible(newVisibility)
+        }
     }
 
     fun setClipboardSyncEnabled(enabled: Boolean) {

@@ -67,6 +67,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getDeveloperMode()
     }
 
+    override suspend fun setDeveloperModeVisible(visible: Boolean) {
+        dataStoreManager.setDeveloperModeVisible(visible)
+    }
+
+    override fun getDeveloperModeVisible(): Flow<Boolean> {
+        return dataStoreManager.getDeveloperModeVisible()
+    }
+
     override suspend fun saveLastConnectedDevice(device: ConnectedDevice) {
         dataStoreManager.saveLastConnectedDevice(device)
     }
