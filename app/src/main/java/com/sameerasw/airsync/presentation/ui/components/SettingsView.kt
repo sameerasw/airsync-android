@@ -106,7 +106,9 @@ fun SettingsView(
     onImport: () -> Unit = {},
     onResetOnboarding: () -> Unit = {},
     onShowHelp: () -> Unit = {},
-    onToggleDeveloperMode: () -> Unit = {}
+    onToggleDeveloperMode: () -> Unit = {},
+    onAvatarLongClickWithPosition: ((Offset) -> Unit)? = null,
+    onRippleToggleEnabledWithPosition: ((Offset) -> Unit)? = null
 ) {
     val haptics = LocalHapticFeedback.current
     var showAppSelectionSheet by remember { mutableStateOf(false) }
@@ -431,7 +433,8 @@ fun SettingsView(
             }
 
             AboutSection(
-                onAvatarLongClick = onToggleDeveloperMode
+                onAvatarLongClick = onToggleDeveloperMode,
+                onAvatarLongClickWithPosition = onAvatarLongClickWithPosition
             )
         } else {
             // Sub-Settings category view
@@ -504,8 +507,21 @@ fun SettingsView(
                             )
 
                             IconToggleItem(
+                                title = stringResource(R.string.label_ripple_animation),
+                                iconRes = R.drawable.rounded_blur_linear_24,
+                                isChecked = uiState.isRippleSettingEnabled,
+                                onCheckedChange = { enabled: Boolean ->
+                                    viewModel.setUseRippleEnabled(enabled)
+                                },
+                                onCheckedChangeWithPosition = { isChecked, pos ->
+                                    if (isChecked) {
+                                        onRippleToggleEnabledWithPosition?.invoke(pos)
+                                    }
+                                }
+                            )
+
+                            IconToggleItem(
                                 title = stringResource(R.string.label_pitch_black_theme),
-                                description = stringResource(R.string.subtitle_pitch_black_theme),
                                 iconRes = R.drawable.rounded_dark_mode_24,
                                 isChecked = uiState.isPitchBlackThemeEnabled,
                                 onCheckedChange = { enabled: Boolean ->

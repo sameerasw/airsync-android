@@ -84,11 +84,14 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.core.net.toUri
@@ -116,6 +119,7 @@ import com.sameerasw.airsync.presentation.ui.components.sheets.HelpSupportBottom
 import com.sameerasw.airsync.presentation.ui.composables.WelcomeScreen
 import com.sameerasw.airsync.presentation.ui.models.AirSyncTab
 import com.sameerasw.airsync.presentation.ui.modifiers.BlurDirection
+import com.sameerasw.airsync.presentation.ui.modifiers.liquidRipple
 import com.sameerasw.airsync.presentation.ui.modifiers.progressiveBlur
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.utils.ClipboardSyncManager
@@ -246,6 +250,21 @@ fun AirSyncMainScreen(
     var showHelpSheet by remember { mutableStateOf(false) }
     val onDismissHelp = { showHelpSheet = false }
     var loadingHapticsJob by remember { mutableStateOf<Job?>(null) }
+
+    var rippleTrigger by remember { mutableStateOf(0) }
+    var rippleOrigin by remember { mutableStateOf(Offset.Zero) }
+    var rootSize by remember { mutableStateOf(IntSize.Zero) }
+
+    var wasConnected by remember { mutableStateOf(uiState.isConnected) }
+    LaunchedEffect(uiState.isConnected) {
+        if (uiState.isConnected && !wasConnected) {
+            val originX = if (rootSize.width > 0) rootSize.width / 2f else 500f
+            val originY = if (rootSize.height > 0) rootSize.height * 0.25f else 400f
+            rippleOrigin = Offset(originX, originY)
+            rippleTrigger++
+        }
+        wasConnected = uiState.isConnected
+    }
 
     // Initial tab navigation logic
     LaunchedEffect(Unit) {
@@ -745,10 +764,16 @@ fun AirSyncMainScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onSizeChanged { rootSize = it }
             ) {
                 HorizontalPager(
                     modifier = modifier
                         .fillMaxSize()
+                        .liquidRipple(
+                            trigger = rippleTrigger,
+                            origin = rippleOrigin,
+                            enabled = uiState.isRippleSettingEnabled
+                        )
                         .progressiveBlur(
                             blurRadius = if (uiState.isBlurEnabled) 40f else 0f,
                             height = statusBarHeightPx * 1.15f,
@@ -1159,7 +1184,15 @@ fun AirSyncMainScreen(
                                         createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                                     },
                                     onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                                    onShowHelp = { showHelpSheet = true }
+                                    onShowHelp = { showHelpSheet = true },
+                                    onAvatarLongClickWithPosition = { pos ->
+                                        rippleOrigin = pos
+                                        rippleTrigger++
+                                    },
+                                    onRippleToggleEnabledWithPosition = { pos ->
+                                        rippleOrigin = pos
+                                        rippleTrigger++
+                                    }
                                 )
                             }
                         }
@@ -1208,7 +1241,15 @@ fun AirSyncMainScreen(
                                     createDocLauncher.launch("airsync_settings_${System.currentTimeMillis()}.json")
                                 },
                                 onImport = { openDocLauncher.launch(arrayOf("application/json")) },
-                                onShowHelp = { showHelpSheet = true }
+                                onShowHelp = { showHelpSheet = true },
+                                onAvatarLongClickWithPosition = { pos ->
+                                    rippleOrigin = pos
+                                    rippleTrigger++
+                                },
+                                onRippleToggleEnabledWithPosition = { pos ->
+                                    rippleOrigin = pos
+                                    rippleTrigger++
+                                }
                             )
                         }
                     }
@@ -1467,7 +1508,9 @@ private fun SettingsNavHost(
     onSendMessage: (String) -> Unit,
     pendingExportJson: (String) -> Unit,
     onImport: () -> Unit,
-    onShowHelp: () -> Unit
+    onShowHelp: () -> Unit,
+    onAvatarLongClickWithPosition: ((Offset) -> Unit)? = null,
+    onRippleToggleEnabledWithPosition: ((Offset) -> Unit)? = null
 ) {
     var predictiveBackScale by remember { androidx.compose.runtime.mutableFloatStateOf(1f) }
     var predictiveBackOffset by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
@@ -1513,7 +1556,9 @@ private fun SettingsNavHost(
             onImport = onImport,
             onResetOnboarding = { viewModel.resetOnboarding() },
             onShowHelp = onShowHelp,
-            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
+            onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() },
+            onAvatarLongClickWithPosition = onAvatarLongClickWithPosition,
+            onRippleToggleEnabledWithPosition = onRippleToggleEnabledWithPosition
         )
 
         // Detail sub-page
@@ -1561,7 +1606,9 @@ private fun SettingsNavHost(
                         onImport = onImport,
                         onResetOnboarding = { viewModel.resetOnboarding() },
                         onShowHelp = onShowHelp,
-                        onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() }
+                        onToggleDeveloperMode = { viewModel.toggleDeveloperModeVisibility() },
+                        onAvatarLongClickWithPosition = onAvatarLongClickWithPosition,
+                        onRippleToggleEnabledWithPosition = onRippleToggleEnabledWithPosition
                     )
                 }
             }

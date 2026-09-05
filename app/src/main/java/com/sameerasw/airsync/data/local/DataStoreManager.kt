@@ -92,6 +92,7 @@ class DataStoreManager(private val context: Context) {
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
         private val USE_BLUR = booleanPreferencesKey("use_blur")
+        private val USE_RIPPLE = booleanPreferencesKey("use_ripple")
         private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
         private val QUICK_SHARE_ENABLED = booleanPreferencesKey("quick_share_enabled")
         private val FILE_ACCESS_ENABLED = booleanPreferencesKey("file_access_enabled")
@@ -1060,4 +1061,11 @@ class DataStoreManager(private val context: Context) {
 
     fun getBleAutoConnectEnabled(): Flow<Boolean> =
         context.dataStore.data.map { it[BLE_AUTO_CONNECT_ENABLED] ?: true }
+
+    suspend fun setUseRippleEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[USE_RIPPLE] = enabled }
+    }
+
+    fun getUseRippleEnabled(): Flow<Boolean> =
+        context.dataStore.data.map { it[USE_RIPPLE] ?: true }
 }

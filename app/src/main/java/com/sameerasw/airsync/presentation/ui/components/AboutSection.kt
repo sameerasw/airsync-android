@@ -35,7 +35,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -54,6 +57,7 @@ import com.sameerasw.airsync.R
 fun AboutSection(
     modifier: Modifier = Modifier,
     onAvatarLongClick: () -> Unit = {},
+    onAvatarLongClickWithPosition: ((Offset) -> Unit)? = null,
     appName: String = "AirSync",
     developerName: String = "Sameera Wijerathna",
     description: String = "AirSync enables seamless synchronization between your Android device and Mac. Share notifications, clipboard content, and device status wirelessly over your local network."
@@ -61,6 +65,7 @@ fun AboutSection(
     val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
     var showAppLogo by remember { mutableStateOf(false) }
+    var avatarCenterOffset by remember { mutableStateOf(Offset.Zero) }
 
     val versionName = try {
         context.packageManager.getPackageInfo(context.packageName, 0).versionName
@@ -103,9 +108,20 @@ fun AboutSection(
                         haptics = haptics,
                         modifier = Modifier
                             .size(200.dp)
+                            .onGloballyPositioned { coords ->
+                                val pos = coords.positionInRoot()
+                                val size = coords.size
+                                avatarCenterOffset = Offset(
+                                    x = pos.x + (size.width / 2f),
+                                    y = pos.y + (size.height / 2f)
+                                )
+                            }
                             .combinedClickable(
                                 onClick = { showAppLogo = false },
-                                onLongClick = { onAvatarLongClick() }
+                                onLongClick = {
+                                    onAvatarLongClick()
+                                    onAvatarLongClickWithPosition?.invoke(avatarCenterOffset)
+                                }
                             ),
                         isVisible = true
                     )
@@ -116,11 +132,22 @@ fun AboutSection(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(120.dp)
+                            .onGloballyPositioned { coords ->
+                                val pos = coords.positionInRoot()
+                                val size = coords.size
+                                avatarCenterOffset = Offset(
+                                    x = pos.x + (size.width / 2f),
+                                    y = pos.y + (size.height / 2f)
+                                )
+                            }
                             .clip(RoundedCornerShape(32.dp))
                             .background(MaterialTheme.colorScheme.primary)
                             .combinedClickable(
                                 onClick = { showAppLogo = true },
-                                onLongClick = { onAvatarLongClick() }
+                                onLongClick = {
+                                    onAvatarLongClick()
+                                    onAvatarLongClickWithPosition?.invoke(avatarCenterOffset)
+                                }
                             )
                     )
                 }

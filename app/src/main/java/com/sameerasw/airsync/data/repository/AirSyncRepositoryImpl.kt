@@ -224,6 +224,14 @@ class AirSyncRepositoryImpl(
         return dataStoreManager.getPitchBlackThemeEnabled()
     }
 
+    override suspend fun setUseRippleEnabled(enabled: Boolean) {
+        dataStoreManager.setUseRippleEnabled(enabled)
+    }
+
+    override fun getUseRippleEnabled(): Flow<Boolean> {
+        return dataStoreManager.getUseRippleEnabled()
+    }
+
     override suspend fun setDefaultTab(tab: String) {
         dataStoreManager.setDefaultTab(tab)
     }

@@ -100,6 +100,10 @@ interface AirSyncRepository {
     suspend fun setPitchBlackThemeEnabled(enabled: Boolean)
     fun getPitchBlackThemeEnabled(): Flow<Boolean>
 
+    // Ripple animation settings
+    suspend fun setUseRippleEnabled(enabled: Boolean)
+    fun getUseRippleEnabled(): Flow<Boolean>
+
     // Default tab settings
     suspend fun setDefaultTab(tab: String)
     fun getDefaultTab(): Flow<String>

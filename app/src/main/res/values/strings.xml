@@ -138,4 +138,5 @@
     <string name="label_airsync_plus">AirSync+</string>
     <string name="action_configure">Configure</string>
     <string name="label_device_discovery">Device discovery</string>
+    <string name="label_ripple_animation">Ripple animation</string>
 </resources>

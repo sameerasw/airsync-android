@@ -211,6 +211,13 @@ class AirSyncViewModel(
             }
         }
 
+        // Observe ripple preference
+        viewModelScope.launch {
+            repository.getUseRippleEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isRippleSettingEnabled = enabled)
+            }
+        }
+
 
 
         // Observe widget transparency preference
@@ -384,6 +391,7 @@ class AirSyncViewModel(
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isRippleEnabledSetting = repository.getUseRippleEnabled().first()
             val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
             val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
@@ -447,6 +455,7 @@ class AirSyncViewModel(
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
                 isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
                 isBlurSettingEnabled = isBlurEnabledSetting,
+                isRippleSettingEnabled = isRippleEnabledSetting,
                 isPowerSaveMode = isPowerSaveMode,
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
@@ -1193,6 +1202,13 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isBlurEnabled = finalEnabled)
         viewModelScope.launch {
             repository.setUseBlurEnabled(enabled)
+        }
+    }
+
+    fun setUseRippleEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isRippleSettingEnabled = enabled)
+        viewModelScope.launch {
+            repository.setUseRippleEnabled(enabled)
         }
     }
 
