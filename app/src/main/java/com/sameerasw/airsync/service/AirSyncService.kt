@@ -82,6 +82,8 @@ class AirSyncService : Service() {
                 updateNotification()
             }
         }
+
+        promoteToForeground()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -176,35 +178,36 @@ class AirSyncService : Service() {
         }
     }
 
-    private fun handleAppForeground() {
-        if (isScanning) {
-            Log.d(TAG, "App in foreground, switching to ACTIVE discovery")
-            DiscoveryOrchestrator.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
+    private fun promoteToForeground() {
+        try {
+            val notification = buildNotification()
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
                     NOTIFICATION_ID,
-                    buildNotification(),
+                    notification,
                     ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
                 )
             } else {
-                startForeground(NOTIFICATION_ID, buildNotification())
+                startForeground(NOTIFICATION_ID, notification)
             }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error promoting to foreground", e)
+        }
+    }
+
+    private fun handleAppForeground() {
+        promoteToForeground()
+        if (isScanning) {
+            Log.d(TAG, "App in foreground, switching to ACTIVE discovery")
+            DiscoveryOrchestrator.setDiscoveryMode(this, DiscoveryMode.ACTIVE)
         }
     }
 
     private fun handleAppBackground() {
+        promoteToForeground()
         if (isScanning) {
             Log.d(TAG, "App in background, switching to PASSIVE discovery")
             DiscoveryOrchestrator.setDiscoveryMode(this, DiscoveryMode.PASSIVE)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                startForeground(
-                    NOTIFICATION_ID,
-                    buildNotification(),
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE
-                )
-            } else {
-                startForeground(NOTIFICATION_ID, buildNotification())
-            }
         }
     }
 
@@ -429,6 +432,7 @@ class AirSyncService : Service() {
         }
 
         fun notifyAppForeground(context: Context) {
+            if (!isRunning()) return
             val intent = Intent(context, AirSyncService::class.java).apply {
                 action = ACTION_APP_FOREGROUND
             }
@@ -436,6 +440,7 @@ class AirSyncService : Service() {
         }
 
         fun notifyAppBackground(context: Context) {
+            if (!isRunning()) return
             val intent = Intent(context, AirSyncService::class.java).apply {
                 action = ACTION_APP_BACKGROUND
             }
