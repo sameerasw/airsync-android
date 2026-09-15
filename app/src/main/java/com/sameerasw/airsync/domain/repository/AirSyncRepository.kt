@@ -27,6 +27,9 @@ interface AirSyncRepository {
     suspend fun setDeveloperMode(enabled: Boolean)
     fun getDeveloperMode(): Flow<Boolean>
 
+    suspend fun setDeveloperModeVisible(visible: Boolean)
+    fun getDeveloperModeVisible(): Flow<Boolean>
+
     suspend fun saveLastConnectedDevice(device: ConnectedDevice)
     fun getLastConnectedDevice(): Flow<ConnectedDevice?>
 
@@ -88,6 +91,10 @@ interface AirSyncRepository {
     suspend fun setUserManuallyDisconnected(disconnected: Boolean)
     fun getUserManuallyDisconnected(): Flow<Boolean>
 
+    // App paused mode
+    suspend fun setAppPaused(paused: Boolean)
+    fun isAppPaused(): Flow<Boolean>
+
     // Mac Media controls
     suspend fun setMacMediaControlsEnabled(enabled: Boolean)
     fun getMacMediaControlsEnabled(): Flow<Boolean>
@@ -99,6 +106,10 @@ interface AirSyncRepository {
     // Pitch Black Theme settings
     suspend fun setPitchBlackThemeEnabled(enabled: Boolean)
     fun getPitchBlackThemeEnabled(): Flow<Boolean>
+
+    // Ripple animation settings
+    suspend fun setUseRippleEnabled(enabled: Boolean)
+    fun getUseRippleEnabled(): Flow<Boolean>
 
     // Default tab settings
     suspend fun setDefaultTab(tab: String)

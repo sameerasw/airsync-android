@@ -211,6 +211,26 @@ class AirSyncViewModel(
             }
         }
 
+        // Observe ripple preference
+        viewModelScope.launch {
+            repository.getUseRippleEnabled().collect { enabled ->
+                _uiState.value = _uiState.value.copy(isRippleSettingEnabled = enabled)
+            }
+        }
+
+        
+        viewModelScope.launch {
+            repository.getDeveloperModeVisible().collect { visible ->
+                _uiState.value = _uiState.value.copy(isDeveloperModeVisible = visible)
+            }
+        }
+
+        viewModelScope.launch {
+            repository.isAppPaused().collect { paused ->
+                _uiState.value = _uiState.value.copy(isAppPaused = paused)
+            }
+        }
+
 
 
         // Observe widget transparency preference
@@ -384,6 +404,7 @@ class AirSyncViewModel(
             val isEssentialsConnectionEnabled = repository.getEssentialsConnectionEnabled().first()
             val isDeviceDiscoveryEnabled = repository.getDeviceDiscoveryEnabled().first()
             val isBlurEnabledSetting = repository.getUseBlurEnabled().first()
+            val isRippleEnabledSetting = repository.getUseRippleEnabled().first()
             val isPitchBlackThemeEnabled = repository.getPitchBlackThemeEnabled().first()
             val isFirstRun = repository.getFirstRun().first()
             val isPowerSaveMode = DeviceInfoUtil.isPowerSaveMode(context)
@@ -447,6 +468,7 @@ class AirSyncViewModel(
                 isEssentialsConnectionEnabled = isEssentialsConnectionEnabled,
                 isDeviceDiscoveryEnabled = isDeviceDiscoveryEnabled,
                 isBlurSettingEnabled = isBlurEnabledSetting,
+                isRippleSettingEnabled = isRippleEnabledSetting,
                 isPowerSaveMode = isPowerSaveMode,
                 isPitchBlackThemeEnabled = isPitchBlackThemeEnabled,
                 isBlurEnabled = isBlurEnabled,
@@ -666,9 +688,13 @@ class AirSyncViewModel(
     }
 
     fun toggleDeveloperModeVisibility() {
+        val newVisibility = !_uiState.value.isDeveloperModeVisible
         _uiState.value = _uiState.value.copy(
-            isDeveloperModeVisible = !_uiState.value.isDeveloperModeVisible
+            isDeveloperModeVisible = newVisibility
         )
+        viewModelScope.launch {
+            repository.setDeveloperModeVisible(newVisibility)
+        }
     }
 
     fun setClipboardSyncEnabled(enabled: Boolean) {
@@ -817,6 +843,32 @@ class AirSyncViewModel(
     // Awaitable variant used when ordering matters (e.g., ensure flag is persisted before disconnect)
     suspend fun setUserManuallyDisconnectedAwait(disconnected: Boolean) {
         repository.setUserManuallyDisconnected(disconnected)
+    }
+
+    fun setAppPaused(context: Context, paused: Boolean) {
+        viewModelScope.launch {
+            repository.setAppPaused(paused)
+            if (paused) {
+                repository.setUserManuallyDisconnected(true)
+                WebSocketUtil.stopAutoReconnect(context)
+                WebSocketUtil.disconnect(context)
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(context)
+                com.sameerasw.airsync.service.AirSyncService.stop(context)
+                _uiState.value = _uiState.value.copy(
+                    isConnected = false,
+                    isConnecting = false,
+                    response = "Paused"
+                )
+                ShortcutUtil.refreshShortcuts(context, false)
+            } else {
+                repository.setUserManuallyDisconnected(false)
+                val isDiscovery = repository.getDeviceDiscoveryEnabled().first()
+                com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.start(context, isDiscovery)
+                com.sameerasw.airsync.service.AirSyncService.startScanning(context)
+                WebSocketUtil.requestAutoReconnect(context)
+                ShortcutUtil.refreshShortcuts(context, false)
+            }
+        }
     }
 
     private fun hasNetworkAwareMappingForLastDevice(): ConnectedDevice? {
@@ -1193,6 +1245,13 @@ class AirSyncViewModel(
         _uiState.value = _uiState.value.copy(isBlurEnabled = finalEnabled)
         viewModelScope.launch {
             repository.setUseBlurEnabled(enabled)
+        }
+    }
+
+    fun setUseRippleEnabled(enabled: Boolean) {
+        _uiState.value = _uiState.value.copy(isRippleSettingEnabled = enabled)
+        viewModelScope.launch {
+            repository.setUseRippleEnabled(enabled)
         }
     }
 

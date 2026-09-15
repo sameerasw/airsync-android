@@ -51,12 +51,14 @@ import androidx.compose.ui.unit.dp
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.domain.model.DeviceInfo
 import com.sameerasw.airsync.domain.model.UiState
+import com.sameerasw.airsync.presentation.ui.components.buttons.ListExpandToggleButton
 import com.sameerasw.airsync.presentation.ui.components.cards.ClipboardFeaturesCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DefaultTabCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeveloperModeCard
 import com.sameerasw.airsync.presentation.ui.components.cards.DeviceInfoCard
 import com.sameerasw.airsync.presentation.ui.components.cards.ExpandNetworkingCard
 import com.sameerasw.airsync.presentation.ui.components.cards.IconToggleItem
+import com.sameerasw.airsync.presentation.ui.components.cards.ManualConnectionCard
 import com.sameerasw.airsync.presentation.ui.components.cards.MediaSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.NotificationSyncCard
 import com.sameerasw.airsync.presentation.ui.components.cards.PermissionsCard
@@ -104,11 +106,14 @@ fun SettingsView(
     onImport: () -> Unit = {},
     onResetOnboarding: () -> Unit = {},
     onShowHelp: () -> Unit = {},
-    onToggleDeveloperMode: () -> Unit = {}
+    onToggleDeveloperMode: () -> Unit = {},
+    onAvatarLongClickWithPosition: ((Offset) -> Unit)? = null,
+    onRippleToggleEnabledWithPosition: ((Offset) -> Unit)? = null
 ) {
     val haptics = LocalHapticFeedback.current
     var showAppSelectionSheet by remember { mutableStateOf(false) }
     var showMediaAppSelectionSheet by remember { mutableStateOf(false) }
+    var showManualConnection by remember { mutableStateOf(false) }
 
     val density = androidx.compose.ui.platform.LocalDensity.current
     val minHeaderHeight = 200.dp
@@ -220,6 +225,42 @@ fun SettingsView(
                 ExpandNetworkingCard(context)
             }
 
+            AnimatedVisibility(
+                visible = !uiState.isConnected && !uiState.isAppPaused,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut()
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ListExpandToggleButton(
+                        isExpanded = showManualConnection,
+                        onToggle = { showManualConnection = !showManualConnection },
+                        title = R.string.action_manual_connection,
+                    )
+
+                    AnimatedVisibility(
+                        visible = showManualConnection,
+                        enter = expandVertically() + fadeIn(),
+                        exit = shrinkVertically() + fadeOut()
+                    ) {
+                        RoundedCardContainer {
+                            ManualConnectionCard(
+                                isConnected = uiState.isConnected,
+                                lastConnected = uiState.lastConnectedDevice != null,
+                                uiState = uiState,
+                                onIpChange = { viewModel.updateIpAddress(it) },
+                                onPortChange = { viewModel.updatePort(it) },
+                                onPcNameChange = { viewModel.updateManualPcName(it) },
+                                onIsPlusChange = { viewModel.updateManualIsPlus(it) },
+                                onSymmetricKeyChange = {
+                                    viewModel.updateSymmetricKey(it)
+                                },
+                                onConnect = { viewModel.prepareForManualConnection() }
+                            )
+                        }
+                    }
+                }
+            }
+
             // Settings Categories Section
             SettingsCategory(title = "Settings") {
                 IconToggleItem(
@@ -288,6 +329,11 @@ fun SettingsView(
                     }
                 )
             }
+
+            AboutSection(
+                onAvatarLongClick = onToggleDeveloperMode,
+                onAvatarLongClickWithPosition = onAvatarLongClickWithPosition
+            )
 
             // Advanced / Developer Section
             AnimatedVisibility(
@@ -390,10 +436,6 @@ fun SettingsView(
                     )
                 }
             }
-
-            AboutSection(
-                onAvatarLongClick = onToggleDeveloperMode
-            )
         } else {
             // Sub-Settings category view
             Column(
@@ -465,8 +507,21 @@ fun SettingsView(
                             )
 
                             IconToggleItem(
+                                title = stringResource(R.string.label_ripple_animation),
+                                iconRes = R.drawable.rounded_blur_linear_24,
+                                isChecked = uiState.isRippleSettingEnabled,
+                                onCheckedChange = { enabled: Boolean ->
+                                    viewModel.setUseRippleEnabled(enabled)
+                                },
+                                onCheckedChangeWithPosition = { isChecked, pos ->
+                                    if (isChecked) {
+                                        onRippleToggleEnabledWithPosition?.invoke(pos)
+                                    }
+                                }
+                            )
+
+                            IconToggleItem(
                                 title = stringResource(R.string.label_pitch_black_theme),
-                                description = stringResource(R.string.subtitle_pitch_black_theme),
                                 iconRes = R.drawable.rounded_dark_mode_24,
                                 isChecked = uiState.isPitchBlackThemeEnabled,
                                 onCheckedChange = { enabled: Boolean ->
@@ -627,7 +682,7 @@ fun SettingsView(
             }
         }
 
-        Spacer(modifier = Modifier.height(180.dp))
+        Spacer(modifier = Modifier.height(220.dp))
     }
 
     if (showAppSelectionSheet) {

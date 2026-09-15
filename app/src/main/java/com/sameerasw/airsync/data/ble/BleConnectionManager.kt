@@ -45,20 +45,29 @@ class BleConnectionManager(private val context: Context) {
             combine(
                 dataStoreManager.getBleSyncEnabled(),
                 dataStoreManager.getUserManuallyDisconnected(),
+                dataStoreManager.isAppPaused(),
                 WebSocketUtil.connectionState
-            ) { enabled, manuallyDisconnected, wsConnected ->
-                Triple(enabled, manuallyDisconnected, wsConnected)
-            }.collectLatest { (enabled, manuallyDisconnected, wsConnected) ->
-                isBleEnabled = enabled
-                updateBleState(regularConnectionActive = wsConnected, manuallyDisconnected = manuallyDisconnected)
+            ) { enabled, manuallyDisconnected, isPaused, wsConnected ->
+                data class BleInputs(val enabled: Boolean, val manuallyDisconnected: Boolean, val isPaused: Boolean, val wsConnected: Boolean)
+                BleInputs(enabled, manuallyDisconnected, isPaused, wsConnected)
+            }.collectLatest { inputs ->
+                isBleEnabled = inputs.enabled
+                updateBleState(
+                    regularConnectionActive = inputs.wsConnected,
+                    manuallyDisconnected = inputs.manuallyDisconnected,
+                    isPaused = inputs.isPaused
+                )
             }
         }
     }
 
-    private fun updateBleState(regularConnectionActive: Boolean, manuallyDisconnected: Boolean) {
-        if (!isBleEnabled) {
-            Log.d(TAG, "BLE disabled in settings, stopping/pausing server")
+    private fun updateBleState(regularConnectionActive: Boolean, manuallyDisconnected: Boolean, isPaused: Boolean = false) {
+        if (isPaused || !isBleEnabled) {
+            Log.d(TAG, "BLE paused or disabled in settings, stopping/pausing server")
             bleServer?.pauseAdvertising()
+            if (isPaused) {
+                bleServer?.disconnectAllConnectedDevices()
+            }
             return
         }
 

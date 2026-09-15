@@ -16,6 +16,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -30,6 +37,7 @@ fun IconToggleItem(
     description: String? = null,
     isChecked: Boolean = false,
     onCheckedChange: ((Boolean) -> Unit)? = null,
+    onCheckedChangeWithPosition: ((Boolean, Offset) -> Unit)? = null,
     enabled: Boolean = true,
     onDisabledClick: (() -> Unit)? = null,
     showToggle: Boolean = true,
@@ -37,6 +45,7 @@ fun IconToggleItem(
     trailingIcon: Int? = null
 ) {
     val haptics = LocalHapticFeedback.current
+    var switchCenterOffset by remember { mutableStateOf(Offset.Zero) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -56,7 +65,9 @@ fun IconToggleItem(
                             if (onClick != null) {
                                 onClick()
                             } else if (onCheckedChange != null && showToggle) {
-                                onCheckedChange(!isChecked)
+                                val nextState = !isChecked
+                                onCheckedChange(nextState)
+                                onCheckedChangeWithPosition?.invoke(nextState, switchCenterOffset)
                             }
                         } else if (onDisabledClick != null) {
                             HapticUtil.performClick(haptics)
@@ -109,9 +120,18 @@ fun IconToggleItem(
                         if (enabled) {
                             HapticUtil.performClick(haptics)
                             onCheckedChange(checked)
+                            onCheckedChangeWithPosition?.invoke(checked, switchCenterOffset)
                         }
                     },
-                    enabled = enabled
+                    enabled = enabled,
+                    modifier = Modifier.onGloballyPositioned { coords ->
+                        val pos = coords.positionInRoot()
+                        val size = coords.size
+                        switchCenterOffset = Offset(
+                            x = pos.x + (size.width / 2f),
+                            y = pos.y + (size.height / 2f)
+                        )
+                    }
                 )
             } else if (onClick != null && !showToggle) {
                 Icon(

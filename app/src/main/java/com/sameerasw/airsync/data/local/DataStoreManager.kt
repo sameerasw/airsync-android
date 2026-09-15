@@ -46,11 +46,13 @@ class DataStoreManager(private val context: Context) {
         private val MAC_WIDGET_REFRESH_AT = longPreferencesKey("mac_widget_refresh_at")
         private val NOTIFICATION_SYNC_ENABLED = booleanPreferencesKey("notification_sync_enabled")
         private val DEVELOPER_MODE = booleanPreferencesKey("developer_mode")
+        private val DEVELOPER_MODE_VISIBLE = booleanPreferencesKey("developer_mode_visible")
         private val CLIPBOARD_SYNC_ENABLED = booleanPreferencesKey("clipboard_sync_enabled")
         private val CLIPBOARD_HISTORY_ENABLED = booleanPreferencesKey("clipboard_history_enabled")
         private val ICON_SYNC_COUNT = stringPreferencesKey("icon_sync_count")
         private val LAST_ICON_SYNC_DATE = stringPreferencesKey("last_icon_sync_date")
         private val USER_MANUALLY_DISCONNECTED = booleanPreferencesKey("user_manually_disconnected")
+        private val APP_PAUSED = booleanPreferencesKey("app_paused")
 
         // Auto reconnect toggle
         private val AUTO_RECONNECT_ENABLED = booleanPreferencesKey("auto_reconnect_enabled")
@@ -92,6 +94,7 @@ class DataStoreManager(private val context: Context) {
         private val LAST_CALL_SYNC_TIMESTAMP = longPreferencesKey("last_call_sync_timestamp")
         private val DEVICE_ID = stringPreferencesKey("device_id")
         private val USE_BLUR = booleanPreferencesKey("use_blur")
+        private val USE_RIPPLE = booleanPreferencesKey("use_ripple")
         private val PITCH_BLACK_THEME = booleanPreferencesKey("pitch_black_theme")
         private val QUICK_SHARE_ENABLED = booleanPreferencesKey("quick_share_enabled")
         private val FILE_ACCESS_ENABLED = booleanPreferencesKey("file_access_enabled")
@@ -606,6 +609,18 @@ class DataStoreManager(private val context: Context) {
         }
     }
 
+    suspend fun setDeveloperModeVisible(visible: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[DEVELOPER_MODE_VISIBLE] = visible
+        }
+    }
+
+    fun getDeveloperModeVisible(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[DEVELOPER_MODE_VISIBLE] == true // Default to hidden
+        }
+    }
+
     suspend fun setUserManuallyDisconnected(disconnected: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[USER_MANUALLY_DISCONNECTED] = disconnected
@@ -615,6 +630,18 @@ class DataStoreManager(private val context: Context) {
     fun getUserManuallyDisconnected(): Flow<Boolean> {
         return context.dataStore.data.map { preferences ->
             preferences[USER_MANUALLY_DISCONNECTED] == true // Default to false
+        }
+    }
+
+    suspend fun setAppPaused(paused: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[APP_PAUSED] = paused
+        }
+    }
+
+    fun isAppPaused(): Flow<Boolean> {
+        return context.dataStore.data.map { preferences ->
+            preferences[APP_PAUSED] == true
         }
     }
 
@@ -1060,4 +1087,11 @@ class DataStoreManager(private val context: Context) {
 
     fun getBleAutoConnectEnabled(): Flow<Boolean> =
         context.dataStore.data.map { it[BLE_AUTO_CONNECT_ENABLED] ?: true }
+
+    suspend fun setUseRippleEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[USE_RIPPLE] = enabled }
+    }
+
+    fun getUseRippleEnabled(): Flow<Boolean> =
+        context.dataStore.data.map { it[USE_RIPPLE] ?: true }
 }

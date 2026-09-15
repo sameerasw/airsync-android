@@ -1,0 +1,139 @@
+package com.sameerasw.airsync.presentation.ui.modifiers
+
+import android.graphics.RenderEffect
+import android.graphics.RuntimeShader
+import android.os.Build
+import androidx.annotation.RequiresApi
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.isSpecified
+import androidx.compose.ui.graphics.asComposeRenderEffect
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import org.intellij.lang.annotations.Language
+
+@Language("AGSL")
+private const val LIQUID_RIPPLE_AGSL = """
+    uniform shader inputShader;
+    uniform float2 uResolution;
+    uniform float2 uOrigin;
+    uniform float uTime;
+    uniform float uAmplitude;
+    uniform float uFrequency;
+    uniform float uDecay;
+    uniform float uSpeed;
+
+    half4 main(float2 fragCoord) {
+        float2 pos = fragCoord;
+        float distance = length(pos - uOrigin);
+        float delay = distance / uSpeed;
+        float time = max(0.0, uTime - delay);
+        
+        float wave1 = uAmplitude * sin(uFrequency * time) * exp(-uDecay * time);
+        
+        float subTime = max(0.0, time - 0.22);
+        float wave2 = (uAmplitude * 0.55) * sin(uFrequency * 1.15 * subTime) * exp(-(uDecay * 0.8) * subTime);
+        
+        float totalWave = wave1 + wave2;
+        float2 n = normalize(pos - uOrigin);
+        float2 newPos = pos + totalWave * n;
+        
+        float highlight = 0.16 * (totalWave / max(1.0, uAmplitude));
+        
+        return inputShader.eval(newPos) + half4(highlight, highlight, highlight, 0.0);
+    }
+"""
+
+fun Modifier.liquidRipple(
+    trigger: Int,
+    origin: Offset,
+    enabled: Boolean = true,
+    durationMillis: Int = 3000,
+    amplitudeDp: Float = 32f,
+    frequency: Float = 12f,
+    decay: Float = 4.5f,
+    speedDp: Float = 1400f,
+): Modifier = composed {
+    if (!enabled) return@composed Modifier
+
+    val density = LocalDensity.current
+    val animTime = remember { Animatable(0f) }
+
+    LaunchedEffect(trigger) {
+        if (trigger > 0) {
+            animTime.snapTo(0f)
+            animTime.animateTo(
+                targetValue = durationMillis / 1000f,
+                animationSpec = tween(durationMillis = durationMillis, easing = LinearEasing)
+            )
+            animTime.snapTo(0f)
+        }
+    }
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        Api33LiquidRipple.applyLiquidRipple(
+            modifier = Modifier,
+            animTime = animTime,
+            density = density,
+            durationMillis = durationMillis,
+            amplitudeDp = amplitudeDp,
+            frequency = frequency,
+            decay = decay,
+            speedDp = speedDp,
+            origin = origin,
+        )
+    } else {
+        Modifier
+    }
+}
+
+@RequiresApi(Build.VERSION_CODES.TIRAMISU)
+private object Api33LiquidRipple {
+    @Composable
+    fun applyLiquidRipple(
+        modifier: Modifier,
+        animTime: Animatable<Float, *>,
+        density: Density,
+        durationMillis: Int,
+        amplitudeDp: Float,
+        frequency: Float,
+        decay: Float,
+        speedDp: Float,
+        origin: Offset,
+    ): Modifier {
+        val shader = remember { RuntimeShader(LIQUID_RIPPLE_AGSL) }
+
+        return modifier.graphicsLayer {
+            val currentTime = animTime.value
+            val maxTime = durationMillis / 1000f
+            if (currentTime > 0f && currentTime < maxTime) {
+                val densityVal = density.density
+                val amplitude = amplitudeDp * densityVal
+                val speed = speedDp * densityVal
+
+                val ox = if (origin != Offset.Zero && origin.isSpecified) origin.x else size.width / 2f
+                val oy = if (origin != Offset.Zero && origin.isSpecified) origin.y else size.height / 2f
+
+                shader.setFloatUniform("uResolution", size.width, size.height)
+                shader.setFloatUniform("uOrigin", ox, oy)
+                shader.setFloatUniform("uTime", currentTime)
+                shader.setFloatUniform("uAmplitude", amplitude)
+                shader.setFloatUniform("uFrequency", frequency)
+                shader.setFloatUniform("uDecay", decay)
+                shader.setFloatUniform("uSpeed", speed)
+
+                renderEffect = RenderEffect.createRuntimeShaderEffect(shader, "inputShader").asComposeRenderEffect()
+            } else {
+                renderEffect = null
+            }
+        }
+    }
+}
