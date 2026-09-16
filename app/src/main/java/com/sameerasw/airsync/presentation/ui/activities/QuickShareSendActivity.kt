@@ -56,6 +56,7 @@ import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.service.OutboundQuickShareService
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
 import com.sameerasw.airsync.utils.ClipboardSyncManager
+import com.sameerasw.airsync.utils.ShortcutUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -155,6 +156,7 @@ private fun QuickShareSendScreen(
                 onFinished()
             } else if (uris.isEmpty()) {
                 ClipboardSyncManager.syncTextToDesktop(sharedText!!)
+                reportSummonShortcutUsed(context)
                 uiState = SendUiState.Success
                 delay(1200)
                 onFinished()
@@ -166,6 +168,7 @@ private fun QuickShareSendScreen(
                     onFinished()
                 } else {
                     OutboundQuickShareService.start(context, localUris)
+                    reportSummonShortcutUsed(context)
                     uiState = SendUiState.Success
                     delay(1200)
                     onFinished()
@@ -250,6 +253,14 @@ sealed class SendUiState {
     data object Loading : SendUiState()
     data object Success : SendUiState()
     data class Error(val message: String) : SendUiState()
+}
+
+private fun reportSummonShortcutUsed(context: Context) {
+    try {
+        ShortcutUtil.reportShareMacShortcutUsed(context)
+    } catch (_: Exception) {
+        
+    }
 }
 
 private fun copyUrisToCache(context: Context, uris: List<Uri>): List<Uri> {
