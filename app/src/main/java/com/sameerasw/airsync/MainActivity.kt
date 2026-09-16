@@ -344,10 +344,9 @@ class MainActivity : ComponentActivity() {
                 // Not connected and not paused: pause the app on QS tile long-press
                 runBlocking {
                     ds.setAppPaused(true)
-                    ds.setUserManuallyDisconnected(true)
                 }
                 WebSocketUtil.stopAutoReconnect(this)
-                WebSocketUtil.disconnect(this)
+                WebSocketUtil.disconnect(this, manual = true)
                 com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(this)
                 com.sameerasw.airsync.service.AirSyncService.stop(this)
                 ShortcutUtil.refreshShortcuts(this, false)
@@ -578,10 +577,9 @@ class MainActivity : ComponentActivity() {
             if (!isPaused && !WebSocketUtil.isConnected()) {
                 runBlocking {
                     ds.setAppPaused(true)
-                    ds.setUserManuallyDisconnected(true)
                 }
                 WebSocketUtil.stopAutoReconnect(this)
-                WebSocketUtil.disconnect(this)
+                WebSocketUtil.disconnect(this, manual = true)
                 com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(this)
                 com.sameerasw.airsync.service.AirSyncService.stop(this)
                 ShortcutUtil.refreshShortcuts(this, false)

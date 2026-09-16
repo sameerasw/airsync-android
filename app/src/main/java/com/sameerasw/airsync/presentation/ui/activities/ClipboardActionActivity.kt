@@ -159,9 +159,8 @@ private fun ClipboardActionScreen(
                     ShortcutUtil.DASH_ACTION_PAUSE -> {
                         val ds = DataStoreManager.getInstance(context)
                         ds.setAppPaused(true)
-                        ds.setUserManuallyDisconnected(true)
                         WebSocketUtil.stopAutoReconnect(context)
-                        WebSocketUtil.disconnect(context)
+                        WebSocketUtil.disconnect(context, manual = true)
                         com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(context)
                         com.sameerasw.airsync.service.AirSyncService.stop(context)
                         ShortcutUtil.refreshShortcuts(context, false)
@@ -185,9 +184,7 @@ private fun ClipboardActionScreen(
                     }
 
                     ShortcutUtil.DASH_ACTION_DISCONNECT -> {
-                        val ds = DataStoreManager.getInstance(context)
-                        ds.setUserManuallyDisconnected(true)
-                        WebSocketUtil.disconnect(context)
+                        WebSocketUtil.disconnect(context, manual = true)
                         uiState = ClipboardUiState.Success
                         delay(1200)
                         onFinished()

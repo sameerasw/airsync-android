@@ -693,9 +693,19 @@ object WebSocketUtil {
     /**
      * Disconnects the WebSocket and cleans up resources.
      * Stops related services (AirSyncService, periodic sync) and updates UI state.
+     *
+     * @param manual True only for a user-initiated disconnect. Persists the manual-disconnect
+     * flag and tells the Mac so neither side auto-reconnects. Internal/automatic disconnects
+     * (handshake timeout, network change, socket error) must pass false so auto-reconnect can
+     * still resume.
      */
-    fun disconnect(context: Context? = null) {
-        Log.d(TAG, "Disconnecting WebSocket")
+    fun disconnect(context: Context? = null, manual: Boolean = false) {
+        Log.d(TAG, "Disconnecting WebSocket (manual=$manual)")
+
+        if (manual) {
+            sendMessage("{\"type\":\"userDisconnected\",\"data\":{}}")
+        }
+
         updateConnectedStatus(false)
         isConnecting.set(false)
         isSocketOpen.set(false)
@@ -703,19 +713,21 @@ object WebSocketUtil {
         handshakeTimeoutJob?.cancel()
         currentIpAddress = null
 
-        // Set manual disconnect flag
         val ctx = context ?: appContext
-        ctx?.let { c ->
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
-                    ds.setUserManuallyDisconnected(true)
-                } catch (_: Exception) {
+
+        if (manual) {
+            ctx?.let { c ->
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val ds = com.sameerasw.airsync.data.local.DataStoreManager.getInstance(c)
+                        ds.setUserManuallyDisconnected(true)
+                    } catch (_: Exception) {
+                    }
                 }
             }
         }
 
-        webSocket?.close(1000, "Manual disconnection")
+        webSocket?.close(1000, if (manual) "Manual disconnection" else "Disconnected")
         webSocket = null
 
         // Transition back to scanning on disconnect
@@ -753,7 +765,7 @@ object WebSocketUtil {
         // Disconnect any active BLE transport connections
         try {
             val bleManager = com.sameerasw.airsync.AirSyncApp.getBleConnectionManager()
-            if (bleManager != null && bleManager.isAuthenticated) {
+            if (manual && bleManager != null && bleManager.isAuthenticated) {
                 BleTransportBridge.sendManualDisconnect()
             }
             bleManager?.disconnectAllConnectedDevices()

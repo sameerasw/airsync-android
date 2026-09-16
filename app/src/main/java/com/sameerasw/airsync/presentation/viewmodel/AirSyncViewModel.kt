@@ -840,18 +840,12 @@ class AirSyncViewModel(
         }
     }
 
-    // Awaitable variant used when ordering matters (e.g., ensure flag is persisted before disconnect)
-    suspend fun setUserManuallyDisconnectedAwait(disconnected: Boolean) {
-        repository.setUserManuallyDisconnected(disconnected)
-    }
-
     fun setAppPaused(context: Context, paused: Boolean) {
         viewModelScope.launch {
             repository.setAppPaused(paused)
             if (paused) {
-                repository.setUserManuallyDisconnected(true)
                 WebSocketUtil.stopAutoReconnect(context)
-                WebSocketUtil.disconnect(context)
+                WebSocketUtil.disconnect(context, manual = true)
                 com.sameerasw.airsync.utils.discovery.DiscoveryOrchestrator.stop(context)
                 com.sameerasw.airsync.service.AirSyncService.stop(context)
                 _uiState.value = _uiState.value.copy(

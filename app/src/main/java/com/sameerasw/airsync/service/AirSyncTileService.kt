@@ -115,9 +115,7 @@ class AirSyncTileService : TileService() {
                 dataStoreManager.setUserManuallyDisconnected(true)
                 updateTileState()
             } else if (isConnected) {
-                // Mark manual disconnect BEFORE disconnecting so listeners won't schedule auto-reconnect
-                dataStoreManager.setUserManuallyDisconnected(true)
-                WebSocketUtil.disconnect(this@AirSyncTileService)
+                WebSocketUtil.disconnect(this@AirSyncTileService, manual = true)
                 updateTileState()
             } else {
                 dataStoreManager.setUserManuallyDisconnected(false)

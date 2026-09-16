@@ -42,7 +42,7 @@ class NotificationActionReceiver : BroadcastReceiver() {
 
             AirSyncService.ACTION_DISCONNECT -> {
                 Log.d(TAG, "Disconnecting from notification")
-                WebSocketUtil.disconnect(context)
+                WebSocketUtil.disconnect(context, manual = true)
             }
 
             ACTION_CANCEL_TRANSFER -> {
