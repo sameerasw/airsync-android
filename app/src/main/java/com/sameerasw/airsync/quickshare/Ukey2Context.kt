@@ -178,6 +178,83 @@ class Ukey2Context {
         sendHmacKey = hkdf(d2dServerKey, smsgSalt, "SIG:1".toByteArray())
     }
 
+    fun buildClientInit(): Ukey2ClientInit {
+        val ourPubKey = GenericPublicKey(
+            type = PublicKeyType.EC_P256,
+            ec_p256_public_key = EcP256PublicKey(
+                x = encodePoint(keyPair.public as ECPublicKey).first.toByteString(),
+                y = encodePoint(keyPair.public as ECPublicKey).second.toByteString()
+            )
+        )
+        val clientFinished = Ukey2ClientFinished(public_key = ourPubKey.encode().toByteString())
+        val clientFinishEnvelope = com.google.security.cryptauth.lib.securegcm.Ukey2Message(
+            message_type = com.google.security.cryptauth.lib.securegcm.Ukey2Message.Type.CLIENT_FINISH,
+            message_data = clientFinished.encode().toByteString()
+        )
+        clientFinishEnvelopeBytes = clientFinishEnvelope.encode()
+
+        val digest = SHA512Digest()
+        digest.update(clientFinishEnvelopeBytes!!, 0, clientFinishEnvelopeBytes!!.size)
+        val commitment = ByteArray(digest.digestSize)
+        digest.doFinal(commitment, 0)
+
+        return Ukey2ClientInit(
+            version = 1,
+            random = serverRandom.toByteString(),
+            cipher_commitments = listOf(
+                Ukey2ClientInit.CipherCommitment(
+                    handshake_cipher = Ukey2HandshakeCipher.P256_SHA512,
+                    commitment = commitment.toByteString()
+                )
+            ),
+            next_protocol = "AES_256_CBC-HMAC_SHA256"
+        )
+    }
+
+    var clientFinishEnvelopeBytes: ByteArray? = null
+        private set
+
+    /**
+     * Processes the server's ServerInit: derives the shared secret via ECDH against our keypair,
+     * then the same HKDF chain as the server role, but with encrypt/decrypt keys swapped since
+     * we're the client this time.
+     *
+     * @param clientInitEnvelopeBytes Raw bytes of the ClientInit envelope we sent
+     * @param serverInitEnvelopeBytes Raw bytes of the ServerInit envelope we received
+     */
+    fun handleServerInit(
+        serverInit: Ukey2ServerInit,
+        clientInitEnvelopeBytes: ByteArray,
+        serverInitEnvelopeBytes: ByteArray
+    ) {
+        val serverPubKeyProto = GenericPublicKey.ADAPTER.decode(serverInit.public_key!!)
+        val serverPubKey = decodePublicKey(serverPubKeyProto.ec_p256_public_key!!)
+
+        val ka = KeyAgreement.getInstance("ECDH")
+        ka.init(keyPair.private)
+        ka.doPhase(serverPubKey, true)
+        val dhs = ka.generateSecret()
+
+        val sha256 = java.security.MessageDigest.getInstance("SHA-256")
+        val derivedSecretKey = sha256.digest(dhs)
+
+        val ukeyInfo = clientInitEnvelopeBytes + serverInitEnvelopeBytes
+        val authKey = hkdf(derivedSecretKey, "UKEY2 v1 auth".toByteArray(), ukeyInfo)
+        val nextSecret = hkdf(derivedSecretKey, "UKEY2 v1 next".toByteArray(), ukeyInfo)
+
+        authString = generatePinCode(authKey)
+
+        val d2dClientKey = hkdf(nextSecret, D2D_SALT, "client".toByteArray())
+        val d2dServerKey = hkdf(nextSecret, D2D_SALT, "server".toByteArray())
+
+        val smsgSalt = sha256.digest("SecureMessage".toByteArray())
+
+        encryptKey = hkdf(d2dClientKey, smsgSalt, "ENC:2".toByteArray())
+        sendHmacKey = hkdf(d2dClientKey, smsgSalt, "SIG:1".toByteArray())
+        decryptKey = hkdf(d2dServerKey, smsgSalt, "ENC:2".toByteArray())
+        receiveHmacKey = hkdf(d2dServerKey, smsgSalt, "SIG:1".toByteArray())
+    }
+
     private fun hkdf(
         key: ByteArray,
         salt: ByteArray,

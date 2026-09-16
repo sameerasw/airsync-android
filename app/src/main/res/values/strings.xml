@@ -25,6 +25,7 @@
     <string name="clipboard_sent">Clipboard Sent</string>
     <string name="failed_to_send_clipboard">Failed to Send Clipboard</string>
     <string name="your_mac">Your Mac</string>
+    <string name="quick_share_send_label">AirSync (Send to Mac)</string>
     <string name="disconnected">Disconnected</string>
     <string name="paused">Paused</string>
     <string name="pause">Pause</string>
