@@ -105,7 +105,7 @@ object ShortcutUtil {
                     ShortcutInfoCompat.Builder(context, SHORTCUT_ID_SHARE_MAC)
                         .setShortLabel(lastConnectedDevice.name)
                         .setLongLabel(lastConnectedDevice.name)
-                        .setIcon(IconCompat.createWithResource(context, MacModelMapper.getTileIconRes(lastConnectedDevice)))
+                        .setIcon(IconCompat.createWithResource(context, MacModelMapper.getShareIconRes(lastConnectedDevice)))
                         .setLongLived(true)
                         .setCategories(setOf(SHARE_TARGET_CATEGORY_FILE))
                         .setIntent(Intent(context, QuickShareSendActivity::class.java).apply {
