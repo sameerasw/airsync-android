@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
-    <share-target android:targetClass="com.sameerasw.airsync.presentation.ui.activities.ClipboardActionActivity">
-        <data android:mimeType="text/plain" />
-        <category android:name="com.sameerasw.airsync.categories.SHARE_TARGET" />
-    </share-target>
     <share-target android:targetClass="com.sameerasw.airsync.presentation.ui.activities.QuickShareSendActivity">
         <data android:mimeType="*/*" />
         <category android:name="com.sameerasw.airsync.categories.SHARE_TARGET_FILE" />

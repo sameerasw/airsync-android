@@ -55,6 +55,7 @@ import com.sameerasw.airsync.R
 import com.sameerasw.airsync.presentation.viewmodel.AirSyncViewModel
 import com.sameerasw.airsync.service.OutboundQuickShareService
 import com.sameerasw.airsync.ui.theme.AirSyncTheme
+import com.sameerasw.airsync.utils.ClipboardSyncManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -74,6 +75,7 @@ class QuickShareSendActivity : ComponentActivity() {
         window.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
 
         val uris = extractUris(intent)
+        val sharedText = if (uris.isEmpty()) intent?.getStringExtra(Intent.EXTRA_TEXT) else null
 
         setContent {
             val viewModel: AirSyncViewModel = viewModel { AirSyncViewModel.create(this@QuickShareSendActivity) }
@@ -83,6 +85,7 @@ class QuickShareSendActivity : ComponentActivity() {
                 QuickShareSendScreen(
                     hasWindowFocus = _windowFocus.value,
                     uris = uris,
+                    sharedText = sharedText,
                     pairedDeviceName = uiState.lastConnectedDevice?.name,
                     onFinished = { finish() }
                 )
@@ -129,6 +132,7 @@ class QuickShareSendActivity : ComponentActivity() {
 private fun QuickShareSendScreen(
     hasWindowFocus: Boolean,
     uris: List<Uri>,
+    sharedText: String?,
     pairedDeviceName: String?,
     onFinished: () -> Unit
 ) {
@@ -141,13 +145,18 @@ private fun QuickShareSendScreen(
             hasStarted = true
             delay(100)
 
-            if (uris.isEmpty()) {
+            if (uris.isEmpty() && sharedText.isNullOrBlank()) {
                 uiState = SendUiState.Error("Nothing to send")
                 delay(1500)
                 onFinished()
             } else if (pairedDeviceName.isNullOrBlank()) {
                 uiState = SendUiState.Error("No Mac paired")
                 delay(1500)
+                onFinished()
+            } else if (uris.isEmpty()) {
+                ClipboardSyncManager.syncTextToDesktop(sharedText!!)
+                uiState = SendUiState.Success
+                delay(1200)
                 onFinished()
             } else {
                 val localUris = withContext(Dispatchers.IO) { copyUrisToCache(context, uris) }
@@ -283,6 +292,7 @@ private fun QuickShareSendScreenPreviewLoading() {
         QuickShareSendScreen(
             hasWindowFocus = true,
             uris = emptyList(),
+            sharedText = null,
             pairedDeviceName = "Sameera's Mac",
             onFinished = {}
         )

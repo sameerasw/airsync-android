@@ -112,11 +112,6 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Theme.AirSync.Transparent">
-            <intent-filter>
-                <action android:name="android.intent.action.SEND" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <data android:mimeType="text/plain" />
-            </intent-filter>
         </activity>
 
         <activity
