@@ -47,14 +47,14 @@ object MacModelMapper {
         val hay = "$nameStr$modelStr$typeStr".lowercase()
 
         return when {
-            hay.contains("macbookair") -> R.drawable.rounded_laptop_mac_24
-            hay.contains("macbookpro") -> R.drawable.rounded_laptop_mac_24
-            hay.contains("macmini") -> R.drawable.ic_mac_mini_24
-            hay.contains("imac") -> R.drawable.ic_desktop_24
-            hay.contains("macstudio") -> R.drawable.ic_mac_studio_24
-            hay.contains("macpro") -> R.drawable.ic_mac_pro_24
-            hay.contains("macbookneo") -> R.drawable.rounded_laptop_mac_24
-            else -> R.drawable.rounded_laptop_mac_24
+            hay.contains("macbookair") -> R.drawable.ic_device_macbook_air
+            hay.contains("macbookpro") -> R.drawable.ic_device_macbook_air
+            hay.contains("macmini") -> R.drawable.ic_device_mac_mini
+            hay.contains("imac") -> R.drawable.ic_device_imac
+            hay.contains("macstudio") -> R.drawable.ic_device_mac_studio
+            hay.contains("macpro") -> R.drawable.ic_device_mac_pro
+            hay.contains("macbookneo") -> R.drawable.ic_device_macbook_air
+            else -> R.drawable.ic_device_macbook_air
         }
     }
 

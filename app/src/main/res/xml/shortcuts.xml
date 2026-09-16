@@ -4,4 +4,8 @@
         <data android:mimeType="text/plain" />
         <category android:name="com.sameerasw.airsync.categories.SHARE_TARGET" />
     </share-target>
+    <share-target android:targetClass="com.sameerasw.airsync.presentation.ui.activities.QuickShareSendActivity">
+        <data android:mimeType="*/*" />
+        <category android:name="com.sameerasw.airsync.categories.SHARE_TARGET_FILE" />
+    </share-target>
 </shortcuts>
