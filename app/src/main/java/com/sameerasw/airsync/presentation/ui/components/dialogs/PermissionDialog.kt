@@ -190,8 +190,8 @@ private fun getPermissionInfo(context: Context, permissionType: PermissionType):
         PermissionType.WALLPAPER_ACCESS -> PermissionInfo(
             title = "Wallpaper & File Access",
             icon = R.drawable.rounded_folder_managed_24,
-            description = "This optional permission allows AirSync to sync your phone's wallpaper to your mac.",
-            whyNeeded = "To read your current wallpaper which is not accessible with regular privileges,  AirSync needs external storage permissions. \nBut the app will only use the permission for the given explained use cases and will not alter or read any other files on the storage.",
+            description = "This optional permission allows AirSync to sync your phone's wallpaper to your Mac, and lets your Mac browse your phone's storage as a Finder volume when the File Access feature is turned on.",
+            whyNeeded = "To read your current wallpaper, and to let your paired Mac mount your phone's storage over Wi-Fi (the File Access feature in the Mac app's settings), AirSync needs broader storage permissions than regular apps get. \nThis permission is only used for these two features — wallpaper sync always, and file browsing only while File Access is explicitly enabled on your Mac and only over your local network.",
             buttonText = "Grant Storage Access"
         )
 

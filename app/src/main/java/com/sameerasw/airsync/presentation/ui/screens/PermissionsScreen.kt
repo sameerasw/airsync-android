@@ -181,10 +181,10 @@ fun PermissionsScreen(
                                     )
                                 }
 
-                                "Wallpaper Access" -> {
+                                "Wallpaper & File Access" -> {
                                     PermissionButton(
                                         permissionName = permission,
-                                        description = "Enables wallpaper sync",
+                                        description = "Enables wallpaper sync and Mac File Access",
                                         onExplainClick = {
                                             showDialog = PermissionType.WALLPAPER_ACCESS
                                         },
