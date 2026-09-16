@@ -91,6 +91,12 @@ object BleTransportBridge {
     fun handleMediaControl(action: String, context: android.content.Context) {
         Log.d(TAG, "Media control from BLE: $action")
         when {
+            action == "manual_disconnect" -> {
+                Log.d(TAG, "Received manual disconnect from Mac via BLE")
+                com.sameerasw.airsync.utils.WebSocketUtil.disconnect(context, manual = true)
+                gattServer?.disconnectAllConnectedDevices()
+            }
+
             action == "playPause" -> com.sameerasw.airsync.utils.MediaControlUtil.playPause(context)
             action == "next" -> com.sameerasw.airsync.utils.MediaControlUtil.skipNext(context)
             action == "previous" -> com.sameerasw.airsync.utils.MediaControlUtil.skipPrevious(
