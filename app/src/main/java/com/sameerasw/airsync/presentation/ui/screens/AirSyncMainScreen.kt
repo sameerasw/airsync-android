@@ -542,8 +542,7 @@ fun AirSyncMainScreen(
 
     fun disconnect() {
         scope.launch {
-            viewModel.setUserManuallyDisconnectedAwait(true)
-            WebSocketUtil.disconnect(context)
+            WebSocketUtil.disconnect(context, manual = true)
             viewModel.setConnectionStatus(isConnected = false, isConnecting = false)
             viewModel.clearClipboardHistory()
             viewModel.setResponse("Disconnected")

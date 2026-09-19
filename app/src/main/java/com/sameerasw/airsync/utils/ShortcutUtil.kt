@@ -8,6 +8,7 @@ import androidx.core.graphics.drawable.IconCompat
 import com.sameerasw.airsync.R
 import com.sameerasw.airsync.data.local.DataStoreManager
 import com.sameerasw.airsync.presentation.ui.activities.ClipboardActionActivity
+import com.sameerasw.airsync.presentation.ui.activities.QuickShareSendActivity
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 
@@ -20,6 +21,8 @@ object ShortcutUtil {
     const val SHORTCUT_ID_DISCONNECT = "shortcut_disconnect"
     const val SHORTCUT_ID_PAUSE = "shortcut_pause"
     const val SHORTCUT_ID_RESUME = "shortcut_resume"
+    const val SHORTCUT_ID_SHARE_MAC = "shortcut_share_mac"
+    const val SHARE_TARGET_CATEGORY_FILE = "com.sameerasw.airsync.categories.SHARE_TARGET_FILE"
 
     const val DASH_ACTION_RECONNECT = "com.sameerasw.airsync.ACTION_RECONNECT"
     const val DASH_ACTION_CLIPBOARD = "com.sameerasw.airsync.ACTION_CLIPBOARD"
@@ -94,6 +97,8 @@ object ShortcutUtil {
                     .build()
             )
         } else {
+            buildShareMacShortcut(context)?.let { shortcuts.add(it) }
+
             // 1. Remote (Direct to Remote tab)
             // Use MainActivity with a specific action
             shortcuts.add(
@@ -161,6 +166,32 @@ object ShortcutUtil {
 
         // Set dynamic shortcuts (replaces existing ones)
         ShortcutManagerCompat.setDynamicShortcuts(context, shortcuts)
+    }
+
+
+    private fun buildShareMacShortcut(context: Context): ShortcutInfoCompat? {
+        val dataStoreManager = DataStoreManager.getInstance(context)
+        val lastConnectedDevice = runBlocking {
+            dataStoreManager.getLastConnectedDevice().first()
+        } ?: return null
+
+        return ShortcutInfoCompat.Builder(context, SHORTCUT_ID_SHARE_MAC)
+            .setShortLabel(lastConnectedDevice.name)
+            .setLongLabel(lastConnectedDevice.name)
+            .setIcon(IconCompat.createWithResource(context, MacModelMapper.getShareIconRes(lastConnectedDevice)))
+            .setLongLived(true)
+            .setCategories(setOf(SHARE_TARGET_CATEGORY_FILE))
+            .setIntent(Intent(context, QuickShareSendActivity::class.java).apply {
+                action = Intent.ACTION_SEND
+            })
+            .build()
+    }
+
+
+    fun reportShareMacShortcutUsed(context: Context) {
+        buildShareMacShortcut(context)?.let {
+            ShortcutManagerCompat.pushDynamicShortcut(context, it)
+        }
     }
 
     // Legacy method cleanup

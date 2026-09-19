@@ -55,11 +55,7 @@ class AirSyncWidgetProvider : AppWidgetProvider() {
 
             ACTION_DISCONNECT -> {
                 try {
-                    // Mark manual disconnect and disconnect
-                    runBlocking {
-                        DataStoreManager(context).setUserManuallyDisconnected(true)
-                    }
-                    WebSocketUtil.disconnect(context)
+                    WebSocketUtil.disconnect(context, manual = true)
                 } catch (e: Exception) {
                     Log.e(TAG, "Widget disconnect failed: ${e.message}")
                 }

@@ -181,9 +181,9 @@ object PermissionUtil {
             missing.add("Background App Usage")
         }
 
-        // Check wallpaper access permission (optional)
+        // Check wallpaper/file access permission (optional)
         if (!hasWallpaperAccess()) {
-            missing.add("Wallpaper Access")
+            missing.add("Wallpaper & File Access")
         }
 
         // Check call log permission (optional)
@@ -249,9 +249,9 @@ object PermissionUtil {
             optional.add("Background App Usage")
         }
 
-        // Wallpaper access is optional for wallpaper sync feature
+        // Wallpaper/file access is optional, for wallpaper sync and the Mac File Access (WebDAV) feature
         if (!hasWallpaperAccess()) {
-            optional.add("Wallpaper Access")
+            optional.add("Wallpaper & File Access")
         }
 
         // Call log access is optional for call log sync

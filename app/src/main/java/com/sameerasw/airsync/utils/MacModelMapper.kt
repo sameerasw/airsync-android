@@ -59,6 +59,31 @@ object MacModelMapper {
     }
 
     @DrawableRes
+    fun getShareIconRes(device: ConnectedDevice?): Int {
+        if (device == null) return R.drawable.ic_device_macbook_air
+        return getShareIconRes(device.name, device.model, device.deviceType)
+    }
+
+    @DrawableRes
+    fun getShareIconRes(name: String, model: String?, deviceType: String?): Int {
+        val modelStr = model?.replace(" ", "") ?: ""
+        val nameStr = name.replace(" ", "").lowercase()
+        val typeStr = deviceType?.replace(" ", "")?.lowercase() ?: ""
+        val hay = "$nameStr$modelStr$typeStr".lowercase()
+
+        return when {
+            hay.contains("macbookair") -> R.drawable.ic_device_macbook_air
+            hay.contains("macbookpro") -> R.drawable.ic_device_macbook_air
+            hay.contains("macmini") -> R.drawable.ic_device_mac_mini
+            hay.contains("imac") -> R.drawable.ic_device_imac
+            hay.contains("macstudio") -> R.drawable.ic_device_mac_studio
+            hay.contains("macpro") -> R.drawable.ic_device_mac_pro
+            hay.contains("macbookneo") -> R.drawable.ic_device_macbook_air
+            else -> R.drawable.ic_device_macbook_air
+        }
+    }
+
+    @DrawableRes
     private fun resolveDrawable(model: String, hay: String): Int {
         // 1) Explicit Model Matching based on user mapping
         return when {
