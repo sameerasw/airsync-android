@@ -46,6 +46,7 @@ fun PermissionsScreen(
     onRequestBluetoothPermission: (() -> Unit)? = null,
     onRequestLocalNetworkPermission: (() -> Unit)? = null,
     onRequestAnswerCallsPermission: (() -> Unit)? = null,
+    onRequestLocationPermission: (() -> Unit)? = null,
     refreshTrigger: Int = 0
 ) {
     val context = LocalContext.current
@@ -147,6 +148,17 @@ fun PermissionsScreen(
                                         description = "Required for syncing notifications",
                                         onExplainClick = {
                                             showDialog = PermissionType.NOTIFICATION_ACCESS
+                                        },
+                                        isCritical = true
+                                    )
+                                }
+
+                                "Location Access" -> {
+                                    PermissionButton(
+                                        permissionName = permission,
+                                        description = "Required to accurately detect 5G Standalone vs NSA network states.",
+                                        onExplainClick = {
+                                            showDialog = PermissionType.LOCATION
                                         },
                                         isCritical = true
                                     )
@@ -308,6 +320,10 @@ fun PermissionsScreen(
 
                     PermissionType.ANSWER_CALLS -> {
                         onRequestAnswerCallsPermission?.invoke()
+                    }
+
+                    PermissionType.LOCATION -> {
+                        onRequestLocationPermission?.invoke()
                     }
                 }
             }
