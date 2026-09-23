@@ -26,5 +26,6 @@ Use your built-in camera or Google Lens or anything that can scan a QR code. It 
 - To my community mostly known as TIDWIB (Things I Do When I’m Bored ….. see the connection)
 - May sound weird but AI, Yeah, without that deep research, assistant in helpless topics, explanations, occasional detonations and all lead to the rapid development of AirSync. Without this, how da hell do I implement a notification listener without weeks of study? Yeah, if you know how to use it efficiently, it is a damn good buddy to do things that you never could imagine.
 - All the reddit peeps for showing that this is actually a thing that they wanted.
+- [ClipSync](https://github.com/WinShell-Bhanu/Clipsync) by Bhanu, which the background clipboard sync is adapted from (MIT, see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
 - All the libraries, apps and tools used for development and their creators. Issue volunteers, reddit community helpers…
 - My sleep schedule… the lack of.

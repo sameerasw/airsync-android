@@ -29,7 +29,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.sameerasw.airsync.R
 import com.sameerasw.airsync.presentation.ui.components.RoundedCardContainer
 import com.sameerasw.airsync.presentation.ui.components.dialogs.PermissionExplanationDialog
 import com.sameerasw.airsync.presentation.ui.components.dialogs.PermissionType
@@ -253,6 +255,17 @@ fun PermissionsScreen(
                                         isCritical = false
                                     )
                                 }
+
+                                "Background Clipboard Sync" -> {
+                                    PermissionButton(
+                                        permissionName = stringResource(R.string.permission_clipboard_a11y_title),
+                                        description = stringResource(R.string.permission_clipboard_a11y_desc),
+                                        onExplainClick = {
+                                            showDialog = PermissionType.CLIPBOARD_ACCESSIBILITY
+                                        },
+                                        isCritical = false
+                                    )
+                                }
                             }
                         }
                     }
@@ -308,6 +321,10 @@ fun PermissionsScreen(
 
                     PermissionType.ANSWER_CALLS -> {
                         onRequestAnswerCallsPermission?.invoke()
+                    }
+
+                    PermissionType.CLIPBOARD_ACCESSIBILITY -> {
+                        PermissionUtil.openAccessibilitySettings(context)
                     }
                 }
             }

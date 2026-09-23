@@ -9,6 +9,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +52,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import com.sameerasw.airsync.R
+import com.sameerasw.airsync.utils.HapticUtil
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -236,6 +238,22 @@ fun AboutSection(
                             openUrl(context, annotation.item)
                         }
                 }
+            )
+
+            val clipSyncUrl = stringResource(id = R.string.url_clipsync_repo)
+            Text(
+                text = stringResource(id = R.string.label_clipsync_credits),
+                style = MaterialTheme.typography.bodySmall.copy(
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.primary,
+                    textDecoration = TextDecoration.Underline
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        HapticUtil.performClick(haptics)
+                        openUrl(context, clipSyncUrl)
+                    }
             )
 
             Text(

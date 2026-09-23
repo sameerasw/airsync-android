@@ -182,6 +182,23 @@ object ClipboardSyncManager {
     }
 
     /**
+     * Called by ClipboardGhostActivity when ClipboardAccessibilityService detects a copy
+     */
+    fun onBackgroundClipboardCaptured(context: Context, text: String) {
+        if (text.isBlank() || text == lastReceivedText || text == lastSentText) return
+        if (!WebSocketUtil.isConnected()) return
+
+        syncScope.launch {
+            val enabled = try {
+                DataStoreManager(context).getClipboardSyncEnabled().first()
+            } catch (_: Exception) {
+                false
+            }
+            if (enabled) syncClipboardToDesktop(text)
+        }
+    }
+
+    /**
      * Manually sync specific text (share target)
      */
     fun syncTextToDesktop(text: String) {
