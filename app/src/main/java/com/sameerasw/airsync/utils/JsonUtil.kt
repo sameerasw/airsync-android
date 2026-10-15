@@ -138,11 +138,23 @@ object JsonUtil {
     }
 
     private fun escape(value: String): String {
-        return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
+        val sb = StringBuilder(value.length)
+        for (c in value) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                // Other control characters are not allowed unescaped in JSON strings
+                else -> if (c < ' ') {
+                    sb.append("\\u").append(c.code.toString(16).padStart(4, '0'))
+                } else {
+                    sb.append(c)
+                }
+            }
+        }
+        return sb.toString()
     }
 
     /**
@@ -227,7 +239,7 @@ object JsonUtil {
             val iconData = iconMap[app.packageName] ?: ""
             """
             "${app.packageName}": {
-                "name": "${app.appName}",
+                "name": "${escape(app.appName)}",
                 "icon": "$iconData",
                 "listening": ${app.isEnabled},
                 "systemApp": ${app.isSystemApp}
