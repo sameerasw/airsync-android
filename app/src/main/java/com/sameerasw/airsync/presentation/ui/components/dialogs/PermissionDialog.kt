@@ -40,7 +40,8 @@ enum class PermissionType {
     PHONE,
     BLUETOOTH,
     LOCAL_NETWORK,
-    ANSWER_CALLS
+    ANSWER_CALLS,
+    CLIPBOARD_ACCESSIBILITY
 }
 
 data class PermissionInfo(
@@ -241,6 +242,14 @@ private fun getPermissionInfo(context: Context, permissionType: PermissionType):
             description = context.getString(R.string.permission_answer_calls_explain),
             whyNeeded = context.getString(R.string.permission_answer_calls_why),
             buttonText = context.getString(R.string.permission_answer_calls_button)
+        )
+
+        PermissionType.CLIPBOARD_ACCESSIBILITY -> PermissionInfo(
+            title = context.getString(R.string.permission_clipboard_a11y_title),
+            icon = R.drawable.ic_clipboard_24,
+            description = context.getString(R.string.permission_clipboard_a11y_explain),
+            whyNeeded = context.getString(R.string.permission_clipboard_a11y_why),
+            buttonText = context.getString(R.string.permission_clipboard_a11y_button)
         )
     }
 }

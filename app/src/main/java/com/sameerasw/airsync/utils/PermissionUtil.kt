@@ -12,6 +12,7 @@ import android.provider.Settings
 import android.text.TextUtils
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
+import com.sameerasw.airsync.service.ClipboardAccessibilityService
 import com.sameerasw.airsync.service.MediaNotificationListener
 
 object PermissionUtil {
@@ -21,6 +22,24 @@ object PermissionUtil {
         val flat =
             Settings.Secure.getString(context.contentResolver, "enabled_notification_listeners")
         return !TextUtils.isEmpty(flat) && flat.contains(componentName.flattenToString())
+    }
+
+    fun isClipboardAccessibilityEnabled(context: Context): Boolean {
+        val componentName = ComponentName(context, ClipboardAccessibilityService::class.java)
+        val flat = Settings.Secure.getString(
+            context.contentResolver,
+            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+        ) ?: return false
+        return flat.split(':').any {
+            ComponentName.unflattenFromString(it) == componentName
+        }
+    }
+
+    fun openAccessibilitySettings(context: Context) {
+        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
     }
 
     /**
@@ -216,6 +235,10 @@ object PermissionUtil {
             missing.add("Answer Calls")
         }
 
+        if (!isClipboardAccessibilityEnabled(context)) {
+            missing.add("Background Clipboard Sync")
+        }
+
         return missing
     }
 
@@ -282,6 +305,10 @@ object PermissionUtil {
             )
         ) {
             optional.add("Answer Calls")
+        }
+
+        if (!isClipboardAccessibilityEnabled(context)) {
+            optional.add("Background Clipboard Sync")
         }
 
         return optional

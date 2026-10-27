@@ -115,6 +115,15 @@
         </activity>
 
         <activity
+            android:name=".presentation.ui.activities.ClipboardGhostActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:noHistory="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.AirSync.Ghost" />
+
+        <activity
             android:name=".presentation.ui.activities.QuickShareSendActivity"
             android:excludeFromRecents="true"
             android:exported="true"
@@ -186,6 +195,20 @@
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />
             </intent-filter>
+        </service>
+
+        <!-- Optional: detects copy actions so the clipboard can sync in the background -->
+        <service
+            android:name=".service.ClipboardAccessibilityService"
+            android:exported="false"
+            android:label="@string/accessibility_clipboard_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/clipboard_accessibility_service" />
         </service>
 
         <!-- Clipboard Quick Settings Tile Service -->

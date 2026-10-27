@@ -83,6 +83,8 @@
 
     <string name="label_app_icon_credits">App icon credits: @Syntrop2k2 on Telegram</string>
     <string name="url_syntrop_telegram">https://t.me/Syntrop2k2</string>
+    <string name="label_clipsync_credits">Background clipboard sync adapted from ClipSync by Bhanu (MIT)</string>
+    <string name="url_clipsync_repo" translatable="false">https://github.com/WinShell-Bhanu/Clipsync</string>
 
     <!-- Bluetooth & Reconnection Settings -->
     <string name="bluetooth_settings_card_title">Reconnect</string>
@@ -143,4 +145,26 @@
     <string name="action_configure">Configure</string>
     <string name="label_device_discovery">Device discovery</string>
     <string name="label_ripple_animation">Ripple animation</string>
+    <string name="accessibility_clipboard_label">AirSync Clipboard Sync</string>
+    <string name="accessibility_clipboard_description">Lets AirSync notice when you copy text in other apps so it can send it to your paired Mac, even while AirSync is in the background. AirSync only reacts to copy actions and reads the clipboard at that moment. It does not read screen content, record what you type, or collect any other data. Clipboard text is sent only to your own paired Mac over your encrypted local connection and is never uploaded to any server.</string>
+    <string name="permission_clipboard_a11y_title">Background Clipboard Sync</string>
+    <string name="permission_clipboard_a11y_desc">Recommended: sync copied text to your Mac automatically</string>
+    <string name="permission_clipboard_a11y_explain">Android does not let apps read the clipboard in the background. With this optional Accessibility service enabled, AirSync can detect when you copy text in any app and send it to your Mac automatically. Without it, you can still send your clipboard using the share sheet, the Quick Settings tile or shortcuts.</string>
+    <string name="permission_clipboard_a11y_why">AirSync uses the Accessibility API only to detect copy actions (such as tapping "Copy" or a "Copied to clipboard" message). When a copy is detected, AirSync briefly opens an invisible window to read the clipboard and sends the text to your paired Mac.
+
+What AirSync does NOT do with this permission:
+• It does not read or store screen content, messages or passwords
+• It does not record keystrokes or perform actions on your behalf
+• It does not share any data with third parties or upload it to any server
+
+Clipboard text is only sent to your own paired Mac over your encrypted local connection, and only while connected. You can turn this off at any time in Android Accessibility settings.
+
+By tapping "Agree and open settings" you consent to this use.</string>
+    <string name="permission_clipboard_a11y_button">Agree and open settings</string>
+    <string-array name="clipboard_copy_words">
+        <item>copy</item>
+    </string-array>
+    <string-array name="clipboard_copied_words">
+        <item>copied</item>
+    </string-array>
 </resources>
