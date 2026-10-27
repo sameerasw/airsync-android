@@ -23,13 +23,28 @@ class QuickShareAdvertiser(private val context: Context) {
     private val nsdManager = context.getSystemService(Context.NSD_SERVICE) as NsdManager
     private var registrationListener: NsdManager.RegistrationListener? = null
 
+    private var advertisedName: String? = null
+    private var advertisedPort: Int = -1
+
+    // Stable across service restarts so peers don't accumulate stale entries for this phone
     private val endpointId: String by lazy {
-        val alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        (1..4).map { alphabet.random() }.joinToString("")
+        val prefs = context.getSharedPreferences("quickshare", Context.MODE_PRIVATE)
+        prefs.getString("endpoint_id", null)?.takeIf { it.length == 4 } ?: run {
+            val alphabet = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+            (1..4).map { alphabet.random() }.joinToString("").also {
+                prefs.edit().putString("endpoint_id", it).apply()
+            }
+        }
     }
 
     fun startAdvertising(deviceName: String, port: Int) {
+        if (registrationListener != null && advertisedName == deviceName && advertisedPort == port) {
+            Log.d(TAG, "Already advertising as $deviceName on $port")
+            return
+        }
         stopAdvertising()
+        advertisedName = deviceName
+        advertisedPort = port
 
         val serviceInfo = NsdServiceInfo().apply {
             serviceType = SERVICE_TYPE
@@ -52,6 +67,11 @@ class QuickShareAdvertiser(private val context: Context) {
 
             override fun onRegistrationFailed(info: NsdServiceInfo, errorCode: Int) {
                 Log.e(TAG, "Registration failed: $errorCode")
+                if (registrationListener === this) {
+                    registrationListener = null
+                    advertisedName = null
+                    advertisedPort = -1
+                }
             }
 
             override fun onServiceUnregistered(info: NsdServiceInfo) {
@@ -83,6 +103,8 @@ class QuickShareAdvertiser(private val context: Context) {
             }
         }
         registrationListener = null
+        advertisedName = null
+        advertisedPort = -1
     }
 
     private fun generateServiceName(): String {
