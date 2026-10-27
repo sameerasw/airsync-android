@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Foreground service that manages Quick Share advertisement and connections.
@@ -41,7 +42,7 @@ class QuickShareService : Service() {
     private lateinit var server: QuickShareServer
     private lateinit var advertiser: QuickShareAdvertiser
     private lateinit var dataStoreManager: DataStoreManager
-    private val activeConnections = mutableMapOf<String, InboundQuickShareConnection>()
+    private val activeConnections = ConcurrentHashMap<String, InboundQuickShareConnection>()
     private val binder = LocalBinder()
     private val serviceScope = CoroutineScope(Dispatchers.IO)
     private var discoveryJob: kotlinx.coroutines.Job? = null
@@ -251,8 +252,12 @@ class QuickShareService : Service() {
         return START_STICKY
     }
 
+    @Synchronized
     private fun startDiscoveryWithTimeout() {
-        discoveryJob?.cancel()
+        if (discoveryJob?.isActive == true) {
+            Log.d(TAG, "Discovery already active")
+            return
+        }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             startForeground(

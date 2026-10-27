@@ -25,6 +25,7 @@ import java.io.FileOutputStream
 import java.net.Socket
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 import com.google.android.gms.nearby.sharing.ConnectionResponseFrame as SharingResponse
 import com.google.android.gms.nearby.sharing.V1Frame as SharingV1
 
@@ -50,6 +51,7 @@ class InboundQuickShareConnection(
     }
 
     private val executor = Executors.newSingleThreadExecutor()
+    private val finished = AtomicBoolean(false)
     private var isRunning = true
     private var encryptionActive = false
 
@@ -67,17 +69,17 @@ class InboundQuickShareConnection(
         val size: Long,
         var bytesTransferred: Long = 0,
         var file: File? = null,
-        var outputStream: java.io.OutputStream? = null,
+        @Volatile var outputStream: java.io.OutputStream? = null,
         var uri: Uri? = null
     )
 
-    init {
+    fun start() {
         executor.execute {
             try {
                 runHandshake()
             } catch (e: Exception) {
                 Log.e(TAG, "Handshake failed", e)
-                close()
+                closeConnection()
             }
         }
     }
@@ -325,7 +327,7 @@ class InboundQuickShareConnection(
                 break
             }
         }
-        close()
+        closeConnection()
     }
 
     private fun handleSharingFrame(frame: Frame) {
@@ -367,11 +369,11 @@ class InboundQuickShareConnection(
             )
         )
 
-        writeSharingFrame(frame)
-
         if (status == SharingResponse.Status.ACCEPT) {
             openFiles()
         }
+
+        writeSharingFrame(frame)
     }
 
     private fun prepareFiles(intro: IntroductionFrame) {
@@ -396,8 +398,8 @@ class InboundQuickShareConnection(
                     values
                 )
                 if (uri != null) {
-                    info.outputStream = context.contentResolver.openOutputStream(uri)
                     info.uri = uri
+                    info.outputStream = context.contentResolver.openOutputStream(uri)
                     Log.d(TAG, "Prepared file via MediaStore: ${info.name} -> $uri")
                 }
             } else {
@@ -424,10 +426,11 @@ class InboundQuickShareConnection(
         val id = payloadTransfer.payload_header?.id ?: return
         val chunk = payloadTransfer.payload_chunk ?: return
         val info = transferredFiles[id] ?: return
+        val outputStream = checkNotNull(info.outputStream) { "No output stream for ${info.name}" }
 
         val body = chunk.body?.toByteArray()
         if (body != null && body.isNotEmpty()) {
-            info.outputStream?.write(body)
+            outputStream.write(body)
             info.bytesTransferred += body.size
 
             // Update progress (throttle if needed, but for now simple)
@@ -445,8 +448,9 @@ class InboundQuickShareConnection(
 
         // Check last chunk flag (flags & 1)
         if ((chunk.flags ?: 0) and 1 != 0) {
+            check(info.bytesTransferred == info.size) { "Incomplete file: ${info.name}" }
             Log.d(TAG, "File ${info.name} transfer complete (${info.bytesTransferred} bytes)")
-            info.outputStream?.close()
+            outputStream.close()
             info.outputStream = null
 
             // Clear IS_PENDING so file becomes visible in Downloads
@@ -462,22 +466,29 @@ class InboundQuickShareConnection(
             // Check if all files are finished
             if (transferredFiles.values.all { it.outputStream == null }) {
                 Log.d(TAG, "All files transferred")
-                onFinished?.invoke(this)
+                finish()
             }
         }
     }
 
     fun closeConnection() {
-        val wasRunning = isRunning
         isRunning = false
-        super.close()
+        try {
+            super.close()
+        } catch (_: Exception) {
+            // May already be closed after a failed handshake.
+        }
         try {
             socket.close()
         } catch (e: Exception) {
             // Ignore
         }
         executor.shutdownNow()
-        if (wasRunning) {
+        finish()
+    }
+
+    private fun finish() {
+        if (finished.compareAndSet(false, true)) {
             onFinished?.invoke(this)
         }
     }

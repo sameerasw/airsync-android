@@ -43,6 +43,7 @@ class QuickShareServer(
                             socket = socket
                         )
                         onNewConnection(connection)
+                        connection.start()
                     }
                 } catch (e: Exception) {
                     if (isRunning) {
