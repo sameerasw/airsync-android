@@ -23,7 +23,7 @@ object JsonUtil {
     ): String {
         val targetIpJson =
             if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
-        return """{"type":"device","data":{"name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[]$targetIpJson}}"""
+        return """{"type":"device","data":{"name":"${escape(name)}","ipAddress":"$ipAddress","port":$port,"version":"${escape(version)}","adbPorts":[]$targetIpJson}}"""
     }
 
     /**
@@ -41,7 +41,7 @@ object JsonUtil {
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
         val targetIpJson =
             if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
-        return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$targetIpJson}}"""
+        return """{"type":"device","data":{"id":"$id","name":"${escape(name)}","ipAddress":"$ipAddress","port":$port,"version":"${escape(version)}","adbPorts":[$portsJson]$targetIpJson}}"""
     }
 
     /**
@@ -71,7 +71,7 @@ object JsonUtil {
         val portsJson = adbPorts.joinToString(",") { "\"$it\"" }
         val targetIpJson =
             if (targetIpAddress != null) """, "targetIpAddress": "$targetIpAddress" """ else ""
-        return """{"type":"device","data":{"id":"$id","name":"$name","ipAddress":"$ipAddress","port":$port,"version":"$version","adbPorts":[$portsJson]$wallpaperJson$bleTokenJson$targetIpJson}}"""
+        return """{"type":"device","data":{"id":"$id","name":"${escape(name)}","ipAddress":"$ipAddress","port":$port,"version":"${escape(version)}","adbPorts":[$portsJson]$wallpaperJson$bleTokenJson$targetIpJson}}"""
     }
 
     /**
@@ -84,7 +84,7 @@ object JsonUtil {
         app: String,
         packageName: String
     ): String {
-        return """{"type":"notification","data":{"id":"$id","title":"$title","body":"$body","app":"$app","package":"$packageName"}}"""
+        return """{"type":"notification","data":{"id":"${escape(id)}","title":"${escape(title)}","body":"${escape(body)}","app":"${escape(app)}","package":"${escape(packageName)}"}}"""
     }
 
     /**
@@ -138,11 +138,23 @@ object JsonUtil {
     }
 
     private fun escape(value: String): String {
-        return value
-            .replace("\\", "\\\\")
-            .replace("\"", "\\\"")
-            .replace("\n", "\\n")
-            .replace("\r", "\\r")
+        val sb = StringBuilder(value.length)
+        for (c in value) {
+            when (c) {
+                '\\' -> sb.append("\\\\")
+                '"' -> sb.append("\\\"")
+                '\n' -> sb.append("\\n")
+                '\r' -> sb.append("\\r")
+                '\t' -> sb.append("\\t")
+                // Other control characters are not allowed unescaped in JSON strings
+                else -> if (c < ' ') {
+                    sb.append("\\u").append(c.code.toString(16).padStart(4, '0'))
+                } else {
+                    sb.append(c)
+                }
+            }
+        }
+        return sb.toString()
     }
 
     /**
@@ -168,7 +180,7 @@ object JsonUtil {
         val albumArtJson = if (albumArt != null) ",\"albumArt\":\"$albumArt\"" else ""
         val albumArtLiteJson =
             if (albumArtLite != null) ",\"albumArtLite\":\"$albumArtLite\"" else ""
-        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"$title","artist":"$artist","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
+        return """{"type":"status","data":{"battery":{"level":$batteryLevel,"isCharging":$isCharging},"isPaired":$isPaired,"music":{"isPlaying":$isPlaying,"title":"${escape(title)}","artist":"${escape(artist)}","volume":$volume,"isMuted":$isMuted$albumArtJson$albumArtLiteJson,"duration":$duration,"position":$position,"positionTimestamp":$positionTimestamp,"isBuffering":$isBuffering,"likeStatus":"$likeStatus"}}}"""
     }
 
     /**
@@ -179,7 +191,7 @@ object JsonUtil {
         success: Boolean,
         message: String = ""
     ): String {
-        return """{"type":"dismissalResponse","data":{"id":"$id","success":$success,"message":"$message"}}"""
+        return """{"type":"dismissalResponse","data":{"id":"$id","success":$success,"message":"${escape(message)}"}}"""
     }
 
     /**
@@ -202,7 +214,7 @@ object JsonUtil {
      * Creates a response JSON for media control result
      */
     fun createMediaControlResponse(action: String, success: Boolean, message: String = ""): String {
-        return """{"type":"mediaControlResponse","data":{"action":"$action","success":$success,"message":"$message"}}"""
+        return """{"type":"mediaControlResponse","data":{"action":"$action","success":$success,"message":"${escape(message)}"}}"""
     }
 
     /**
@@ -213,7 +225,7 @@ object JsonUtil {
         success: Boolean,
         message: String = ""
     ): String {
-        return """{"type":"volumeControlResponse","data":{"action":"$action","success":$success,"message":"$message"}}"""
+        return """{"type":"volumeControlResponse","data":{"action":"$action","success":$success,"message":"${escape(message)}"}}"""
     }
 
     /**
@@ -227,7 +239,7 @@ object JsonUtil {
             val iconData = iconMap[app.packageName] ?: ""
             """
             "${app.packageName}": {
-                "name": "${app.appName}",
+                "name": "${escape(app.appName)}",
                 "icon": "$iconData",
                 "listening": ${app.isEnabled},
                 "systemApp": ${app.isSystemApp}
@@ -255,7 +267,7 @@ object JsonUtil {
         newState: Boolean,
         message: String = ""
     ): String {
-        return """{"type":"toggleAppNotifResponse","data":{"package":"$packageName","success":$success,"newState":$newState,"message":"$message"}}"""
+        return """{"type":"toggleAppNotifResponse","data":{"package":"$packageName","success":$success,"newState":$newState,"message":"${escape(message)}"}}"""
     }
 
     /**
