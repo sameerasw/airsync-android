@@ -321,6 +321,15 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".utils.SyncControlReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.sameerasw.airsync.action.PAUSE_SYNC" />
+                <action android:name="com.sameerasw.airsync.action.RESUME_SYNC" />
+            </intent-filter>
+        </receiver>
+
         <!-- Crash Reporting System Components -->
         <receiver
             android:name=".crash.CrashNotificationReceiver"
