@@ -34,16 +34,18 @@ class AirSyncIslandService : ComposeIslandProviderService() {
         publisher?.cancel()
         val store = DataStoreManager.getInstance(applicationContext)
         publisher = scope.launch {
+            val prefs = combine(
+                store.getIslandShowBattery(),
+                store.getIslandShowWhenDisconnected(),
+            ) { showBattery, showDisconnected -> showBattery to showDisconnected }
             combine(
                 MacDeviceStatusManager.macDeviceStatus,
                 WebSocketUtil.connectionState,
                 store.getLastConnectedDevice(),
-                store.getIslandEnabled(),
-                store.getIslandShowBattery(),
-            ) { status, socketConnected, device, enabled, showBattery ->
+                prefs,
+            ) { status, socketConnected, device, (showBattery, showDisconnected) ->
                 val statusName = status?.name?.takeIf { it.isNotBlank() && it != "Unknown" }
                 AirSyncIslandState(
-                    enabled = enabled,
                     connected = socketConnected || WebSocketUtil.isConnected(),
                     hasDevice = device != null,
                     name = statusName ?: device?.name.orEmpty(),
@@ -52,6 +54,7 @@ class AirSyncIslandService : ComposeIslandProviderService() {
                     batteryLevel = status?.battery?.level ?: -1,
                     isCharging = status?.battery?.isCharging ?: false,
                     showBattery = showBattery,
+                    showWhenDisconnected = showDisconnected,
                 )
             }.distinctUntilChanged().collect { next ->
                 state.value = next
@@ -65,6 +68,16 @@ class AirSyncIslandService : ComposeIslandProviderService() {
         publisher?.cancel()
         publisher = null
         super.onHostDetached()
+    }
+
+    override fun onOptionChanged(key: String, checked: Boolean) {
+        val store = DataStoreManager.getInstance(applicationContext)
+        scope.launch {
+            when (key) {
+                AirSyncIslandPayload.OPTION_BATTERY -> store.setIslandShowBattery(checked)
+                AirSyncIslandPayload.OPTION_DISCONNECTED -> store.setIslandShowWhenDisconnected(checked)
+            }
+        }
     }
 
     override fun hasExpandedContent(itemKey: String): Boolean = itemKey == AirSyncIslandPayload.ITEM_KEY

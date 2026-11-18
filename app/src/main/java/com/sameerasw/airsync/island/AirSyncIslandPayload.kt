@@ -14,6 +14,7 @@ import com.sameerasw.island.sdk.IslandExpandedPayload
 import com.sameerasw.island.sdk.IslandInteractionsPayload
 import com.sameerasw.island.sdk.IslandItemPayload
 import com.sameerasw.island.sdk.IslandLinePayload
+import com.sameerasw.island.sdk.IslandOptionPayload
 import com.sameerasw.island.sdk.IslandPayload
 import com.sameerasw.island.sdk.IslandPlacement
 import com.sameerasw.island.sdk.IslandTone
@@ -22,6 +23,8 @@ class AirSyncIslandContent(val payload: IslandPayload, val assets: Map<String, B
 
 object AirSyncIslandPayload {
     const val ITEM_KEY = "mac"
+    const val OPTION_BATTERY = "battery"
+    const val OPTION_DISCONNECTED = "disconnected"
 
     private const val PRIORITY = 58
     private const val ICON_ID = "device"
@@ -29,7 +32,13 @@ object AirSyncIslandPayload {
     private const val HEIGHT_DP = 270
 
     fun build(context: Context, state: AirSyncIslandState): AirSyncIslandContent {
-        if (!state.enabled || (!state.connected && !state.hasDevice)) return AirSyncIslandContent(IslandPayload(), emptyMap())
+        val options = listOf(
+            IslandOptionPayload(OPTION_BATTERY, context.getString(R.string.island_setting_battery_title), state.showBattery),
+            IslandOptionPayload(OPTION_DISCONNECTED, context.getString(R.string.island_setting_disconnected_title), state.showWhenDisconnected),
+        )
+        if (!state.connected && !(state.hasDevice && state.showWhenDisconnected)) {
+            return AirSyncIslandContent(IslandPayload(options = options), emptyMap())
+        }
 
         val assets = HashMap<String, Bitmap>()
         val iconRes = MacModelMapper.getTileIconRes(state.name, state.model, state.deviceType)
@@ -65,7 +74,7 @@ object AirSyncIslandPayload {
                 onLongPress = IslandAction(IslandActionType.OPEN_APP),
             ),
         )
-        return AirSyncIslandContent(IslandPayload(items = listOf(item)), assets)
+        return AirSyncIslandContent(IslandPayload(items = listOf(item), options = options), assets)
     }
 
     private fun bitmap(context: Context, @DrawableRes res: Int): Bitmap? =

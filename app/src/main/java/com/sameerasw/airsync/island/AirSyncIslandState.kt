@@ -1,7 +1,6 @@
 package com.sameerasw.airsync.island
 
 data class AirSyncIslandState(
-    val enabled: Boolean = true,
     val connected: Boolean = false,
     val hasDevice: Boolean = false,
     val name: String = "",
@@ -10,4 +9,5 @@ data class AirSyncIslandState(
     val batteryLevel: Int = -1,
     val isCharging: Boolean = false,
     val showBattery: Boolean = true,
+    val showWhenDisconnected: Boolean = true,
 )
