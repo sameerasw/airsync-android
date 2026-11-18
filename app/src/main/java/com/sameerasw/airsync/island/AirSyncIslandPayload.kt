@@ -29,7 +29,7 @@ object AirSyncIslandPayload {
     private const val PRIORITY = 58
     private const val ICON_ID = "device"
     private const val ICON_SIZE_PX = 96
-    private const val HEIGHT_DP = 270
+    private const val HEIGHT_DP = 300
 
     fun build(context: Context, state: AirSyncIslandState): AirSyncIslandContent {
         val options = listOf(

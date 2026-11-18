@@ -86,6 +86,7 @@ fun AirSyncIslandExpanded(
                     color = Color.White,
                     fontSize = 16.sp,
                     fontWeight = FontWeight.SemiBold,
+                    fontFamily = IslandFontFamily,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
@@ -97,11 +98,21 @@ fun AirSyncIslandExpanded(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (state.connected && state.batteryLevel in 0..100) {
+                        if (state.isCharging) {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_bolt_24),
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Spacer(Modifier.width(2.dp))
+                        }
                         Text(
-                            text = (if (state.isCharging) "⚡ " else "") + "${state.batteryLevel}%",
+                            text = "${state.batteryLevel}%",
                             color = Color.White,
                             fontSize = 16.sp,
                             fontWeight = FontWeight.SemiBold,
+                            fontFamily = IslandFontFamily,
                             maxLines = 1,
                         )
                     }
@@ -113,16 +124,19 @@ fun AirSyncIslandExpanded(
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(top = 8.dp)
-                    .height(88.dp),
+                    .height(128.dp),
             )
-            Text(
-                text = stringResource(if (state.connected) R.string.island_connected else R.string.disconnected),
-                color = Color.White.copy(alpha = 0.7f),
-                fontSize = 13.sp,
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 6.dp),
-            )
+            if (!state.connected) {
+                Text(
+                    text = stringResource(R.string.disconnected),
+                    color = Color.White.copy(alpha = 0.7f),
+                    fontSize = 13.sp,
+                    fontFamily = IslandFontFamily,
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .padding(top = 6.dp),
+                )
+            }
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -161,6 +175,6 @@ private fun ActionButton(icon: Int, label: String, tint: Color, onClick: () -> U
     ) {
         Icon(painter = painterResource(icon), contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
         Spacer(Modifier.height(6.dp))
-        Text(text = label, color = tint, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text = label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.Medium, fontFamily = IslandFontFamily, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
