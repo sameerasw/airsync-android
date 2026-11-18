@@ -135,7 +135,6 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import org.json.JSONObject
 import java.net.URLDecoder
 
 @OptIn(
@@ -219,13 +218,7 @@ fun AirSyncMainScreen(
         scope.launch {
             try {
                 HapticUtil.performLightTick(haptics)
-                val json = JSONObject()
-                json.put("type", "remoteControl")
-                val data = JSONObject()
-                data.put("action", action)
-                if (value != null) data.put("value", value)
-                json.put("data", data)
-                WebSocketUtil.sendMessage(json.toString())
+                com.sameerasw.airsync.utils.MacRemoteActions.sendRemoteAction(action, value)
             } catch (e: Exception) {
                 e.printStackTrace()
             }

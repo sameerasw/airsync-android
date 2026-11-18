@@ -3,6 +3,7 @@ package com.sameerasw.airsync.island
 data class AirSyncIslandState(
     val enabled: Boolean = true,
     val connected: Boolean = false,
+    val hasDevice: Boolean = false,
     val name: String = "",
     val model: String? = null,
     val deviceType: String? = null,

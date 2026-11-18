@@ -10,6 +10,7 @@ import com.sameerasw.airsync.utils.MacModelMapper
 import com.sameerasw.island.sdk.IslandAction
 import com.sameerasw.island.sdk.IslandActionType
 import com.sameerasw.island.sdk.IslandCellPayload
+import com.sameerasw.island.sdk.IslandExpandedPayload
 import com.sameerasw.island.sdk.IslandInteractionsPayload
 import com.sameerasw.island.sdk.IslandItemPayload
 import com.sameerasw.island.sdk.IslandLinePayload
@@ -25,9 +26,10 @@ object AirSyncIslandPayload {
     private const val PRIORITY = 58
     private const val ICON_ID = "device"
     private const val ICON_SIZE_PX = 96
+    private const val HEIGHT_DP = 270
 
     fun build(context: Context, state: AirSyncIslandState): AirSyncIslandContent {
-        if (!state.enabled || !state.connected) return AirSyncIslandContent(IslandPayload(), emptyMap())
+        if (!state.enabled || (!state.connected && !state.hasDevice)) return AirSyncIslandContent(IslandPayload(), emptyMap())
 
         val assets = HashMap<String, Bitmap>()
         val iconRes = MacModelMapper.getTileIconRes(state.name, state.model, state.deviceType)
@@ -36,11 +38,12 @@ object AirSyncIslandPayload {
         val hasBattery = state.batteryLevel in 0..100
         val cells = buildList {
             add(IslandCellPayload(key = "$ITEM_KEY.icon", iconId = ICON_ID.takeIf { it in assets }, tone = IslandTone.ACCENT))
-            if (state.showBattery && hasBattery) {
+            if (state.connected && state.showBattery && hasBattery) {
                 add(IslandCellPayload(key = "$ITEM_KEY.battery", text = "${state.batteryLevel}%", tone = IslandTone.NONE))
             }
         }
         val lineEnd = when {
+            !state.connected -> context.getString(R.string.disconnected)
             !hasBattery -> context.getString(R.string.island_connected)
             state.isCharging -> context.getString(R.string.island_battery_charging, state.batteryLevel)
             else -> "${state.batteryLevel}%"
@@ -50,6 +53,8 @@ object AirSyncIslandPayload {
             priority = PRIORITY,
             placement = IslandPlacement.DYNAMIC,
             compact = cells,
+            compactVisible = state.connected,
+            expanded = IslandExpandedPayload(heightDp = HEIGHT_DP),
             line = IslandLinePayload(
                 start = state.name.ifBlank { context.getString(R.string.island_default_device_name) },
                 end = lineEnd,

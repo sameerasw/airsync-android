@@ -172,4 +172,5 @@ By tapping "Agree and open settings" you consent to this use.</string>
     <string name="island_connected">Connected</string>
     <string name="island_battery_charging">%1$d%% · Charging</string>
     <string name="island_default_device_name">Mac</string>
+    <string name="island_reconnect">Reconnect</string>
 </resources>
