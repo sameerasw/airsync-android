@@ -14,8 +14,8 @@ android {
     defaultConfig {
         applicationId = "com.sameerasw.airsync"
         minSdk = 30
-        versionCode = 34
-        versionName = "4.2.0"
+        versionCode = 35
+        versionName = "4.2.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
