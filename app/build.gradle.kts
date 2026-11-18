@@ -55,7 +55,7 @@ android {
         compose = true
         buildConfig = true
     }
-    compileSdkMinor = 0
+    compileSdkMinor = 1
 
     defaultConfig {
         targetSdk = 37
@@ -65,6 +65,8 @@ android {
 
 dependencies {
     implementation(libs.exceptionreport)
+
+    implementation(project(":island-sdk-compose"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

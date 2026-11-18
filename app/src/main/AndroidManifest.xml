@@ -236,6 +236,23 @@
             android:foregroundServiceType="connectedDevice" />
 
         <service
+            android:name=".island.AirSyncIslandService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.sameerasw.island.PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="com.sameerasw.island.provider.label"
+                android:value="@string/island_provider_label" />
+            <meta-data
+                android:name="com.sameerasw.island.provider.description"
+                android:value="@string/island_provider_description" />
+            <meta-data
+                android:name="com.sameerasw.island.provider.priority"
+                android:value="58" />
+        </service>
+
+        <service
             android:name=".quickshare.QuickShareService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />
