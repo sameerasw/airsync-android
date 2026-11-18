@@ -15,25 +15,35 @@ jobs:
     steps:
       - name: Gather and Clean Data
         id: info
+        env:
+          CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TOPIC_ID: ${{ secrets.TELEGRAM_TOPIC_ID }}
+          RELEASE_BODY: ${{ github.event.release.body }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_URL: ${{ github.event.release.html_url }}
+          ISSUE_TITLE: ${{ github.event.issue.title }}
+          ISSUE_URL: ${{ github.event.issue.html_url }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_MERGED: ${{ github.event.pull_request.merged }}
+          EVENT_ACTION: ${{ github.event.action }}
         run: |
-          CHAT_ID="${{ secrets.TELEGRAM_CHAT_ID }}"
-          TOPIC_ID="${{ secrets.TELEGRAM_TOPIC_ID }}"
           echo "final_chat_id=${CHAT_ID:- -1001653455300}" >> $GITHUB_OUTPUT
           echo "final_topic_id=${TOPIC_ID:-71370}" >> $GITHUB_OUTPUT
 
-          REPO="${{ github.repository }}"
-          EVENT="${{ github.event_name }}"
+          REPO="$GITHUB_REPOSITORY"
+          EVENT="$GITHUB_EVENT_NAME"
           
           if [[ "$EVENT" == "release" || "$EVENT" == "workflow_dispatch" ]]; then
             if [[ "$EVENT" == "workflow_dispatch" ]]; then
-              DATA=$(curl -s https://api.github.com/repos/${{ github.repository }}/releases/latest)
+              DATA=$(curl -s https://api.github.com/repos/$REPO/releases/latest)
               RAW_BODY=$(echo "$DATA" | jq -r .body)
               TAG=$(echo "$DATA" | jq -r .tag_name)
               URL=$(echo "$DATA" | jq -r .html_url)
             else
-              RAW_BODY="${{ github.event.release.body }}"
-              TAG="${{ github.event.release.tag_name }}"
-              URL="${{ github.event.release.html_url }}"
+              RAW_BODY="$RELEASE_BODY"
+              TAG="$RELEASE_TAG"
+              URL="$RELEASE_URL"
             fi
             
             CLEAN_BODY=$(echo "$RAW_BODY" | \
@@ -54,22 +64,24 @@ jobs:
             } >> "$GITHUB_OUTPUT"
 
           elif [[ "$EVENT" == "issues" ]]; then
-            ACTION="${{ github.event.action }}"
+            ACTION="$EVENT_ACTION"
             STATUS=$([[ "$ACTION" == "opened" ]] && echo "🟢 NEW ISSUE" || echo "🔴 CLOSED ISSUE")
+            SAFE_TITLE=$(printf '%s' "$ISSUE_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
             {
               echo "full_message<<EOF"
               echo "<b>$STATUS: $REPO</b>"
-              echo "<a href='${{ github.event.issue.html_url }}'>Issue: ${{ github.event.issue.title }}</a>"
+              echo "<a href='$ISSUE_URL'>Issue: $SAFE_TITLE</a>"
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
 
           elif [[ "$EVENT" == "pull_request" ]]; then
-            ACTION="${{ github.event.action }}"
-            [[ "$ACTION" == "closed" && "${{ github.event.pull_request.merged }}" == "true" ]] && STATUS="💜 MERGED PR" || STATUS="🔵 PR $ACTION"
+            ACTION="$EVENT_ACTION"
+            [[ "$ACTION" == "closed" && "$PR_MERGED" == "true" ]] && STATUS="💜 MERGED PR" || STATUS="🔵 PR $ACTION"
+            SAFE_TITLE=$(printf '%s' "$PR_TITLE" | sed 's/&/\&amp;/g; s/</\&lt;/g; s/>/\&gt;/g')
             {
               echo "full_message<<EOF"
               echo "<b>$STATUS: $REPO</b>"
-              echo "<a href='${{ github.event.pull_request.html_url }}'>PR: ${{ github.event.pull_request.title }}</a>"
+              echo "<a href='$PR_URL'>PR: $SAFE_TITLE</a>"
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
           fi

@@ -38,6 +38,10 @@ class DataStoreManager(private val context: Context) {
         private val LAST_CONNECTED_DEVICE_TYPE = stringPreferencesKey("last_connected_device_type")
         private val LAST_SYNC_TIME = stringPreferencesKey("last_sync_time")
 
+        // Essentials island provider
+        private val ISLAND_SHOW_BATTERY = booleanPreferencesKey("island_show_battery")
+        private val ISLAND_SHOW_WHEN_DISCONNECTED = booleanPreferencesKey("island_show_when_disconnected")
+
         // Widget-visible Mac status keys
         private val MAC_BATTERY_LEVEL = intPreferencesKey("mac_battery_level")
         private val MAC_BATTERY_CHARGING = booleanPreferencesKey("mac_battery_charging")
@@ -1094,4 +1098,18 @@ class DataStoreManager(private val context: Context) {
 
     fun getUseRippleEnabled(): Flow<Boolean> =
         context.dataStore.data.map { it[USE_RIPPLE] ?: true }
+
+    fun getIslandShowWhenDisconnected(): Flow<Boolean> =
+        context.dataStore.data.map { it[ISLAND_SHOW_WHEN_DISCONNECTED] ?: true }
+
+    suspend fun setIslandShowWhenDisconnected(enabled: Boolean) {
+        context.dataStore.edit { it[ISLAND_SHOW_WHEN_DISCONNECTED] = enabled }
+    }
+
+    fun getIslandShowBattery(): Flow<Boolean> =
+        context.dataStore.data.map { it[ISLAND_SHOW_BATTERY] ?: true }
+
+    suspend fun setIslandShowBattery(enabled: Boolean) {
+        context.dataStore.edit { it[ISLAND_SHOW_BATTERY] = enabled }
+    }
 }

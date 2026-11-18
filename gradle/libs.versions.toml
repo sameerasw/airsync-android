@@ -21,10 +21,12 @@ wire = "6.0.0-alpha03"
 bouncycastle = "1.78.1"
 ktor = "2.3.12"
 appcompat = "1.7.1"
+gson = "2.10.1"
 exceptionreport = "2.0.0"
 
 
 [libraries]
+gson = { group = "com.google.code.gson", name = "gson", version.ref = "gson" }
 exceptionreport = { group = "com.github.cnrture", name = "ExceptionReport", version.ref = "exceptionreport" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
