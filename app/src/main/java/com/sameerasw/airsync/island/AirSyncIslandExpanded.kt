@@ -66,7 +66,6 @@ fun AirSyncIslandExpanded(
             .onSizeChanged { onHeight(it.height) }
             .islandSnapshot(onSnapshot = onSnapshot)
             .clip(RoundedCornerShape(corner))
-            .background(Color.Black)
             .clickable(onClick = onOpenApp),
     ) {
         Column(Modifier.fillMaxWidth()) {
